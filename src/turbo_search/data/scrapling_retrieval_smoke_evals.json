@@ -1,0 +1,52 @@
+[
+  {
+    "id": "fetchers-choosing",
+    "question": "How should I choose between Scrapling fetchers?",
+    "expected_urls": [
+      "https://scrapling.readthedocs.io/en/latest/fetching/choosing.html"
+    ],
+    "expected_topics": [
+      "Fetchers basics",
+      "Fetcher",
+      "DynamicFetcher",
+      "StealthyFetcher"
+    ]
+  },
+  {
+    "id": "link-extractor-filters",
+    "question": "How does Scrapling LinkExtractor filter links by allow and deny patterns?",
+    "expected_urls": [
+      "https://scrapling.readthedocs.io/en/latest/spiders/generic-templates.html"
+    ],
+    "expected_topics": [
+      "LinkExtractor",
+      "allow",
+      "deny",
+      "allow_domains"
+    ]
+  },
+  {
+    "id": "sitemap-spider",
+    "question": "How does Scrapling SitemapSpider crawl URLs from a sitemap?",
+    "expected_urls": [
+      "https://scrapling.readthedocs.io/en/latest/spiders/generic-templates.html"
+    ],
+    "expected_topics": [
+      "SitemapSpider",
+      "sitemap_urls",
+      "rules"
+    ]
+  },
+  {
+    "id": "adaptive-parser",
+    "question": "What does Scrapling's adaptive parser do when website elements change?",
+    "expected_urls": [
+      "https://scrapling.readthedocs.io/en/latest/parsing/adaptive.html"
+    ],
+    "expected_topics": [
+      "adaptive",
+      "relocate",
+      "website changes"
+    ]
+  }
+]

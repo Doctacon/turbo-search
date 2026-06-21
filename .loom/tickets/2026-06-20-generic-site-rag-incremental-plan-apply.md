@@ -1,6 +1,6 @@
-Status: open
+Status: done
 Created: 2026-06-20
-Updated: 2026-06-20
+Updated: 2026-06-21
 Parent: none
 Depends-On: .loom/specs/generic-site-rag-incremental-plan-apply.md, .loom/decisions/generic-site-rag-incremental-state.md, .loom/research/2026-06-20-incremental-rag-state-backend-research.md, .loom/knowledge/generic-site-rag-plan-apply-vocabulary.md, .loom/specs/generic-website-rag-dry-run-crawl.md
 
@@ -114,8 +114,12 @@ The parent is done when:
 
 - 2026-06-20: User asked for a Loom plan and child tickets after choosing local applied-state manifest first.
 - 2026-06-20: Research, decision, vocabulary, spec, parent ticket, and child tickets were created. No code implementation, credentials, embeddings, or turbopuffer calls were performed.
+- 2026-06-21: All child tickets were implemented and marked done. The workflow now includes local plan artifacts, local applied state, incremental diffing, `turbo-search plan`, `turbo-search apply` preflight, approved incremental upsert, explicit `--delete-stale`, docs/skill guidance, and generic retrieval/eval dry-run support.
+- 2026-06-21: Parent validation passed with 76 tests under both direct Python and uv, compile checks, apply preflight smoke, generic eval/retrieve dry-runs, secret-adjacent grep checks, and no staged files. Evidence: `.loom/evidence/2026-06-21-generic-site-rag-incremental-plan-apply-parent-validation.md`.
+- 2026-06-21: Final parent review initially found one spec mismatch: approved `--delete-stale` with no stale rows did not fail. The implementation was fixed to reject this before credential access/live work and test coverage was added. Reviews: `.loom/reviews/2026-06-21-generic-site-rag-incremental-plan-apply-parent-review.md`, `.loom/reviews/2026-06-21-generic-site-rag-incremental-plan-apply-final-blocker-review.md`.
 
 ## Blockers
 
-- Live apply behavior remains blocked until implementation exists and the user explicitly approves a specific live write.
-- Exact turbopuffer delete SDK/API mechanics still need verification during implementation.
+None for the local plan/apply workflow.
+
+Live generic applies/deletes remain authority-gated and require explicit user approval for a specific site/namespace. Live turbopuffer SDK compatibility for generic upserts/deletes remains unverified by design.

@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
 Parent: .loom/tickets/2026-06-20-generic-site-rag-incremental-plan-apply.md
@@ -66,7 +66,13 @@ turbo-search plan --base-url <url> --namespace site-example-com-v1 --json
 ## Progress and notes
 
 - 2026-06-20: Ticket opened for Phase 2 CLI surface.
+- 2026-06-20: Implemented `turbo-search plan` in `src/turbo_search/cli.py` with the same crawl options as `crawl`, plus `--namespace` and `--state-root`.
+- 2026-06-20: Plan reuses `crawl_site()`, re-processes generated pages into an indexing plan, builds `plan.json`/`manifest.json`/`chunks.jsonl`, loads local applied state, computes incremental diff output, and overwrites `summary.json` with plan-specific local-only summary fields.
+- 2026-06-20: Updated `src/turbo_search/plan_artifacts.py` so plan artifact state paths honor a supplied state root.
+- 2026-06-20: Added mocked/no-network CLI tests for first-apply artifact creation, existing-state unchanged diff, and invalid URL validation while preserving existing crawl behavior tests.
+- 2026-06-20: Updated README with plan command usage and artifact list.
+- 2026-06-20: Validation passed. Evidence: `.loom/evidence/2026-06-20-plan-cli-artifact-workflow-validation.md`.
 
 ## Blockers
 
-Depends on artifact/manifest model and diff engine.
+None.

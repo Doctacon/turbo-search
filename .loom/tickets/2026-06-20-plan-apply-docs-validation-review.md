@@ -1,6 +1,6 @@
-Status: open
+Status: done
 Created: 2026-06-20
-Updated: 2026-06-20
+Updated: 2026-06-21
 Parent: .loom/tickets/2026-06-20-generic-site-rag-incremental-plan-apply.md
 Depends-On: .loom/tickets/2026-06-20-plan-cli-artifact-workflow.md, .loom/tickets/2026-06-20-apply-cli-incremental-upsert.md, .loom/tickets/2026-06-20-apply-stale-delete-guardrail.md
 
@@ -46,7 +46,11 @@ Out of scope:
 ## Progress and notes
 
 - 2026-06-20: Ticket opened as Phase 3 hardening/review work.
+- 2026-06-21: Updated README, added `docs/generic-site-rag-plan-apply.md`, and updated `.pi/skills/turbopuffer-site-rag/` guidance to clearly distinguish local-only plan, apply preflight, approved apply, and `--delete-stale` stale-row deletion.
+- 2026-06-21: Confirmed existing tests document no-credential/no-live-call behavior for plan and apply preflight; no new tests were needed for this docs-only ticket.
+- 2026-06-21: Ran full Python and uv unit suites, compile checks, private identifier/secret-adjacent grep checks, and a safe real-network Scrapling docs `turbo-search plan` smoke. Evidence: `.loom/evidence/2026-06-21-plan-apply-docs-validation-review.md`.
+- 2026-06-21: Recorded adversarial review with pass verdict. Review: `.loom/reviews/2026-06-21-plan-apply-docs-validation-review.md`.
 
 ## Blockers
 
-Depends on implementation tickets.
+None.

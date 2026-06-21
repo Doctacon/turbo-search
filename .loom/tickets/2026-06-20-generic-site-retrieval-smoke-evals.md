@@ -1,6 +1,6 @@
-Status: open
+Status: done
 Created: 2026-06-20
-Updated: 2026-06-20
+Updated: 2026-06-21
 Parent: .loom/tickets/2026-06-20-generic-site-rag-incremental-plan-apply.md
 Depends-On: .loom/tickets/2026-06-20-apply-cli-incremental-upsert.md, .loom/specs/generic-site-rag-incremental-plan-apply.md
 
@@ -37,7 +37,17 @@ Out of scope:
 ## Progress and notes
 
 - 2026-06-20: Ticket opened as Phase 3 product validation. It may be executed after apply exists.
+- 2026-06-21: Added non-secret runtime override flags (`--namespace`, `--region`, `--embedding-model`) to `retrieve` and `evals`, while preserving environment defaults.
+- 2026-06-21: Added `src/turbo_search/data/scrapling_retrieval_smoke_evals.json` with four Scrapling docs smoke eval cases and expected URL/topic hints.
+- 2026-06-21: Added tests for generic retrieve dry-run overrides, generic eval dry-run overrides using the Scrapling dataset, Scrapling dataset loading, and live-mode API-key gates.
+- 2026-06-21: Updated README, `docs/generic-site-rag-plan-apply.md`, and the site RAG skill reference with generic retrieval/eval validation examples and safety notes.
+- 2026-06-21: Validation passed. Evidence: `.loom/evidence/2026-06-21-generic-site-retrieval-smoke-evals-validation.md`.
 
 ## Blockers
 
-Depends on the apply workflow producing a namespace worth validating.
+None.
+
+## Residual risks
+
+- Live retrieval quality against a generic applied namespace remains unverified because no live generic namespace query was approved or run for this ticket.
+- The Scrapling eval dataset is intentionally a small smoke set, not a comprehensive benchmark.

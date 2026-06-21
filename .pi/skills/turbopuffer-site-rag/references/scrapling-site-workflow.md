@@ -28,9 +28,9 @@ base URL
   - crawl delay, e.g. `0.25` to `1.0` seconds
 - Use static HTTP fetching first. Escalate to browser rendering only when pages are empty or clearly JavaScript-dependent.
 
-## Dry-run CLI
+## Preview and plan CLI
 
-Run from the repository root:
+Use `crawl` for a simple local crawl/chunk preview:
 
 ```bash
 uv run turbo-search crawl \
@@ -41,7 +41,19 @@ uv run turbo-search crawl \
   --json
 ```
 
-Expected safety fields:
+Use `plan` for Terraform-like review/apply artifacts and incremental diffing against local state:
+
+```bash
+uv run turbo-search plan \
+  --base-url "https://scrapling.readthedocs.io/en/latest/" \
+  --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
+  --max-pages 1000 \
+  --max-chunks 10000 \
+  --css-selector ".md-content__inner" \
+  --json
+```
+
+Expected safety fields for crawl/plan:
 
 ```json
 {
@@ -51,7 +63,7 @@ Expected safety fields:
 }
 ```
 
-The CLI writes local generated Markdown pages under the requested `artifacts/...` output directory and chunks them with the existing `turbo_search.indexer` Markdown pipeline. `artifacts/` is gitignored. Use `--css-selector` when a docs site has clear main-content wrappers; this reduces nav/sponsor/sidebar noise before chunking.
+The CLI writes local generated Markdown pages under the requested `artifacts/...` output directory and chunks them with the existing `turbo_search.indexer` Markdown pipeline. `artifacts/` is gitignored. Plan also writes `plan.json`, `summary.json`, `manifest.json`, and `chunks.jsonl`, and reads local applied state from `.turbo-search/` when present. `.turbo-search/` is gitignored local state. Use `--css-selector` when a docs site has clear main-content wrappers; this reduces nav/sponsor/sidebar noise before chunking.
 
 ## Metadata to preserve per page
 
@@ -89,26 +101,77 @@ Examples:
 
 Ask before creating/writing a namespace. Never delete or overwrite an existing namespace unless the user explicitly approves deletion/replacement.
 
-## Live write sequence
+## Apply sequence
+
+Apply has a preflight mode and an explicit live mode.
+
+Preflight, no credentials or live calls:
+
+```bash
+uv run turbo-search apply \
+  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
+  --namespace site-scrapling-readthedocs-io-v1 \
+  --json
+```
+
+Approved live upsert, only after explicit user approval and after `TURBOPUFFER_API_KEY` is already in the environment:
+
+```bash
+uv run turbo-search apply \
+  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
+  --namespace site-scrapling-readthedocs-io-v1 \
+  --approve \
+  --json
+```
+
+Stale row deletion is off by default. Preflight with `--delete-stale` reports exact stale row IDs without live calls. Live stale deletion requires both `--approve` and `--delete-stale`:
+
+```bash
+uv run turbo-search apply \
+  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
+  --namespace site-scrapling-readthedocs-io-v1 \
+  --approve \
+  --delete-stale \
+  --json
+```
 
 Only after explicit user approval:
 
-1. Run dry-run and inspect page/chunk counts.
-2. Confirm namespace and write caps.
+1. Run `plan` and inspect page/chunk counts, samples, and diff.
+2. Run apply preflight and confirm namespace, rows to upsert, embeddings to generate, stale rows, and local state path.
 3. Retrieve `TURBOPUFFER_API_KEY` into shell memory only.
 4. Set `TURBOPUFFER_REGION` and `TURBOPUFFER_NAMESPACE` in shell only.
-5. Embed locally with `BAAI/bge-small-en-v1.5`.
-6. Write batched rows with the same schema used by the Jellyfish prototype unless a cost-optimized schema has been approved.
-7. Run one live retrieval smoke query, not a broad eval suite, unless approved.
-8. Record evidence without secret values.
+5. Run approved apply; it embeds/upserts only new or changed chunks.
+6. Delete stale rows only with `--delete-stale`; this deletes row IDs only, not namespaces.
+7. Record evidence without secret values or private credential identifiers.
+
+## Retrieval validation
+
+After an explicitly approved apply, generic retrieval/eval commands can target the site namespace without code changes:
+
+```bash
+uv run turbo-search retrieve \
+  "How does Scrapling LinkExtractor filter links?" \
+  --dry-run \
+  --namespace site-scrapling-readthedocs-io-v1 \
+  --json
+
+uv run turbo-search evals \
+  --dry-run \
+  --dataset src/turbo_search/data/scrapling_retrieval_smoke_evals.json \
+  --namespace site-scrapling-readthedocs-io-v1 \
+  --json
+```
+
+Dry-run/list mode is credential-free and turbopuffer-free. Live retrieval/evals require `--live` and `TURBOPUFFER_API_KEY` in the environment; do not run them without explicit user approval.
 
 ## Known gaps before productionizing
 
-The current implementation is still dry-run only. A production generic site indexer still needs:
+The current implementation has a local-first plan/apply workflow but still needs:
 
-- live write workflow with explicit namespace approval and write caps
+- live SDK smoke validation against a disposable namespace before production reliance
+- remote/shared state backend for multi-machine workflows
 - resumable crawl manifests
-- incremental recrawls based on source hash / HTTP cache metadata
+- HTTP cache metadata such as `etag`/`last-modified` for crawl efficiency
 - local content store for cost-optimized turbopuffer rows
 - namespace lifecycle commands with explicit safety prompts
-- retrieval config that can target arbitrary namespaces, not only Jellyfish defaults

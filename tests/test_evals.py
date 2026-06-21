@@ -20,6 +20,16 @@ class EvalHarnessTests(unittest.TestCase):
         for case in cases:
             self.assertTrue(case.expected_urls or case.expected_topics)
 
+    def test_loads_scrapling_smoke_eval_dataset(self) -> None:
+        cases = load_eval_cases(Path("src/turbo_search/data/scrapling_retrieval_smoke_evals.json"))
+
+        self.assertGreaterEqual(len(cases), 4)
+        questions = {case.question for case in cases}
+        self.assertIn("How does Scrapling LinkExtractor filter links by allow and deny patterns?", questions)
+        self.assertTrue(any("scrapling.readthedocs.io" in url for case in cases for url in case.expected_urls))
+        for case in cases:
+            self.assertTrue(case.expected_urls or case.expected_topics)
+
     def test_score_hits_passes_on_expected_url_in_top_k(self) -> None:
         case = EvalCase(
             id="dora",

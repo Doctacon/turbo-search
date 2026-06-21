@@ -1,4 +1,4 @@
-"""Lightweight retrieval smoke/eval harness for Jellyfish docs search."""
+"""Lightweight retrieval smoke/eval harness for configured site namespaces."""
 
 from __future__ import annotations
 

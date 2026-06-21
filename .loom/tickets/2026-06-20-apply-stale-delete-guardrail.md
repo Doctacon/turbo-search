@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
 Parent: .loom/tickets/2026-06-20-generic-site-rag-incremental-plan-apply.md
@@ -54,7 +54,19 @@ turbo-search apply --plan <plan.json> --namespace <namespace> --approve --delete
 ## Progress and notes
 
 - 2026-06-20: Ticket opened because user explicitly chose delete-by-flag behavior.
+- 2026-06-20: Implemented `--delete-stale` on `turbo-search apply` and passed the flag through preflight and approved apply.
+- 2026-06-20: Added apply summaries for `delete_stale`, `delete_would_run`, `stale_rows_to_delete`, `stale_row_ids_to_delete`, `rows_deleted`, and retained stale counts.
+- 2026-06-20: Added `TurbopufferWriter.delete_rows()` using the documented `write(deletes=[...])` row-delete shape.
+- 2026-06-20: Approved apply now deletes exact stale row IDs only when both `--approve` and `--delete-stale` are supplied; otherwise stale rows are retained in local state as `retained_stale`.
+- 2026-06-20: State is saved only after successful upsert/delete work. Fake delete failure coverage confirms previous state remains intact when delete fails.
+- 2026-06-20: Updated README with stale delete preflight/live usage.
+- 2026-06-20: Validation passed. Evidence: `.loom/evidence/2026-06-20-apply-stale-delete-guardrail-validation.md`.
+- 2026-06-21: Final parent review found a spec mismatch: approved apply with `--delete-stale` and zero stale rows should fail before live work. Fixed `run_approved_apply()` to reject that case before credential access, embedding, writer construction, or state update. Added targeted test coverage in `tests/test_apply_cli.py`.
 
 ## Blockers
 
-- Exact turbopuffer delete API/SDK shape must be verified before live usage.
+None.
+
+## Residual risks
+
+- Exact live turbopuffer delete compatibility remains unverified because this ticket intentionally used fakes/mocks and did not run live deletes. The writer uses the documented `ns.write(deletes=[ids])` shape.

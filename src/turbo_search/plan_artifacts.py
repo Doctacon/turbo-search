@@ -132,10 +132,10 @@ def site_id_for_url(base_url: str) -> str:
     return safe_slug(namespace_candidate(base_url).removeprefix("site-").removesuffix("-v1"), fallback="site")
 
 
-def state_path_for_site(site_id: str, namespace: str) -> str:
-    """Return the default local applied-state path for a site/namespace."""
+def state_path_for_site(site_id: str, namespace: str, *, state_root: Path = Path(".turbo-search")) -> str:
+    """Return the local applied-state path for a site/namespace."""
 
-    return str(Path(".turbo-search") / "state" / site_id / namespace / "last-applied.json")
+    return str(Path(state_root) / "state" / site_id / namespace / "last-applied.json")
 
 
 def generic_site_row_id(
@@ -198,6 +198,7 @@ def build_plan_artifacts(
     chunk_options: JsonObject | None = None,
     embedding_model: str = DEFAULT_PLAN_EMBEDDING_MODEL,
     diff: JsonObject | None = None,
+    state_root: Path = Path(".turbo-search"),
 ) -> PlanArtifacts:
     """Build deterministic plan/manifest/chunk artifacts from local chunks.
 
@@ -253,7 +254,7 @@ def build_plan_artifacts(
         namespace=namespace_value,
         namespace_candidate=namespace_hint,
         state_backend="local",
-        state_path=state_path_for_site(site_id, namespace_value),
+        state_path=state_path_for_site(site_id, namespace_value, state_root=state_root),
         crawl_options=crawl_options_value,
         chunk_options=chunk_options_value,
         embedding_model=embedding_model,

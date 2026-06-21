@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
 Parent: .loom/tickets/2026-06-20-generic-site-rag-incremental-plan-apply.md
@@ -52,10 +52,14 @@ The schema should continue storing `content` in turbopuffer for MVP retrieval er
 - 2026-06-20: Added tests for stable row IDs across unrelated page-section changes, row ID changes when chunk content changes, and generic row metadata/schema construction.
 - 2026-06-20: Validation passed. Evidence: `.loom/evidence/2026-06-20-generic-site-stable-row-ids-and-schema-validation.md`.
 - 2026-06-20: Phase 1 review found a blocker: repeated identical chunks within the same URL and section can collide because row IDs use `site_id + canonical_url + section_path + chunk_hash`. Review: `.loom/reviews/2026-06-20-generic-site-plan-apply-phase1-review.md`.
+- 2026-06-20: Resolved the duplicate row ID blocker by adding deterministic duplicate ordinals for repeated URL/section/content groups while preserving normal unique row IDs and continuing to exclude page hash/page path/chunk index from ordinary row identity.
+- 2026-06-20: Added a defensive `PlanDiffError` fail-fast check so duplicate desired row IDs cannot silently collapse in diff/apply preparation.
+- 2026-06-20: Added `created_at` to `PlanDocument`, resolving the minor Phase 1 review note.
+- 2026-06-20: Added tests for duplicate disambiguation, page-hash churn avoidance, and diff duplicate fail-fast. Validation passed. Evidence: `.loom/evidence/2026-06-20-generic-site-row-id-duplicate-blocker-resolution.md`.
 
 ## Blockers
 
-- Row ID collision handling must be fixed before apply/CLI continuation.
+None.
 
 ## Residual risks
 

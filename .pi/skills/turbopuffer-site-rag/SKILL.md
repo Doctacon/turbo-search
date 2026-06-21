@@ -37,22 +37,14 @@ See [Jellyfish namespace reference](references/jellyfish-namespace.md) for exact
 
 Use this when building or testing the “base URL → crawl → chunks → namespace → search” workflow.
 
-1. Start with a base URL.
-2. Derive a stable namespace slug from the URL.
-3. Crawl same-site pages with Scrapling:
-   - prefer `robots.txt` / sitemap discovery first
-   - fall back to same-domain link crawling when needed
-   - obey robots.txt and apply low concurrency/delay
-4. Extract clean Markdown/text plus metadata:
-   - `url`, canonical URL when known
-   - `title`
-   - crawl timestamp
-   - source hash
-   - content type/status
-5. Chunk using the existing Markdown chunking path.
-6. Dry-run by default: print counts, sample chunks, and a namespace candidate.
-7. Only with explicit approval: embed locally and write chunks to the planned namespace.
-8. Search with the same hybrid retrieval/citation pattern as Jellyfish.
+The polished workflow is Terraform-like:
+
+1. `turbo-search plan`: local-only preview. Crawl with Scrapling, extract Markdown, chunk, compare with local applied state, and write review artifacts. No credentials, embeddings, namespace creation, or turbopuffer calls.
+2. `turbo-search apply` without `--approve`: local-only preflight. Re-read the saved plan, verify artifacts, recompute the local diff, and report what would happen. No credentials, embeddings, or turbopuffer calls.
+3. `turbo-search apply --approve`: explicit live path. Require `TURBOPUFFER_API_KEY` in the environment, embed/upsert only new or changed chunks, and update local applied state after success.
+4. `--delete-stale`: extra delete guardrail. Stale rows are retained by default; live stale deletion requires both `--approve` and `--delete-stale`.
+
+Plan artifacts are Markdown/JSON-first: `plan.json`, `summary.json`, `manifest.json`, `chunks.jsonl`, and `pages/*.md`. Local applied state lives under `.turbo-search/state/...` and is gitignored.
 
 See [Scrapling site workflow](references/scrapling-site-workflow.md) for commands and design notes.
 
@@ -73,21 +65,38 @@ This command must report `dry_run: true` and `turbopuffer_api_calls: false`.
 
 The older local-only helper remains at `scripts/scrapling_dry_crawl.py` for skill-level experimentation, but production workflow should use `turbo-search crawl`.
 
-## Live write checklist
+## Live apply checklist
 
-Only proceed if the user explicitly asks for a live namespace/index write.
+Only proceed if the user explicitly asks for a live generic site apply.
 
-1. Confirm base URL, namespace name, crawl cap, and write cap.
-2. Confirm whether existing namespace deletion/replacement is allowed. Default: no deletion.
-3. Retrieve turbopuffer API key into shell memory only.
-4. Set env vars in the current shell only:
+1. Run `turbo-search plan` first and inspect `summary.json`, `plan.json`, `manifest.json`, `chunks.jsonl`, and generated `pages/*.md`.
+2. Run apply preflight without approval:
+
+```bash
+uv run turbo-search apply \
+  --plan <plan-dir>/plan.json \
+  --namespace <approved-namespace> \
+  --json
+```
+
+3. Confirm the namespace, rows to upsert, embeddings to generate, stale row counts, and whether stale deletion is desired. Default: retain stale rows; never delete namespaces here.
+4. Retrieve the turbopuffer API key into shell memory only and set environment variables only in the active shell:
 
 ```bash
 export TURBOPUFFER_REGION=gcp-us-central1
 export TURBOPUFFER_NAMESPACE=<approved-namespace>
-export TURBOPUFFER_API_KEY=<from Proton Pass, do not print>
+export TURBOPUFFER_API_KEY=<retrieved into shell memory only>
 ```
 
-5. Run a dry-run first and inspect counts/samples.
-6. Run the explicit write command only after the dry-run looks correct.
-7. Record evidence with counts and command shape, never secret values.
+5. Run approved apply only after explicit approval:
+
+```bash
+uv run turbo-search apply \
+  --plan <plan-dir>/plan.json \
+  --namespace <approved-namespace> \
+  --approve \
+  --json
+```
+
+6. Delete stale rows only when explicitly requested with both `--approve` and `--delete-stale`.
+7. Record evidence with counts and command shape, never secret values, private vault names, item titles, share IDs, or token/API-key values.

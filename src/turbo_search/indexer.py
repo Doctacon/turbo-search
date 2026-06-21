@@ -589,13 +589,14 @@ def write_chunks(
 class TurbopufferWriter:
     """Small wrapper around the turbopuffer SDK write path."""
 
-    def __init__(self, *, config: RuntimeConfig, api_key: str) -> None:
+    def __init__(self, *, config: RuntimeConfig, api_key: str, schema: dict[str, object] | None = None) -> None:
         try:
             import turbopuffer as tpuf
         except ImportError as exc:  # pragma: no cover - depends on optional install.
             raise RuntimeError("turbopuffer is required for write mode. Run `uv sync` first.") from exc
 
         self._tpuf = tpuf
+        self._schema = schema or TURBOPUFFER_SCHEMA
         self._namespace = self._build_namespace(tpuf, config, api_key)
 
     @staticmethod
@@ -621,7 +622,7 @@ class TurbopufferWriter:
         try:
             self._namespace.write(
                 upsert_rows=list(rows),
-                schema=TURBOPUFFER_SCHEMA,
+                schema=self._schema,
                 distance_metric="cosine_distance",
             )
         except TypeError:
@@ -629,9 +630,16 @@ class TurbopufferWriter:
             # to write mode so dry-runs never depend on SDK shape.
             self._namespace.write(
                 rows=list(rows),
-                schema=TURBOPUFFER_SCHEMA,
+                schema=self._schema,
                 distance_metric="cosine_distance",
             )
+
+    def delete_rows(self, row_ids: Sequence[str]) -> None:
+        """Delete whole documents by row ID."""
+
+        if not row_ids:
+            return
+        self._namespace.write(deletes=list(row_ids), distance_metric="cosine_distance")
 
 
 def batched(items: Sequence[T], batch_size: int) -> Iterator[list[T]]:
