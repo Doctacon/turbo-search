@@ -1,6 +1,0 @@
----
-url: "https://jellyfish.co/category-sitemap.xml"
-title: undefined
----
-
-https://jellyfish.co/blog/category/ai-coding/2026-06-15T13:49:54+00:00https://jellyfish.co/blog/category/best-practices/2026-06-16T21:46:39+00:00https://jellyfish.co/blog/category/delivery-management/2026-04-17T13:15:05+00:00https://jellyfish.co/blog/category/devex/2026-01-13T14:48:52+00:00https://jellyfish.co/blog/category/devfinops/2026-05-28T13:13:17+00:00https://jellyfish.co/blog/category/employee-spotlight/2026-02-25T18:14:23+00:00https://jellyfish.co/blog/category/engineering-and-product-operations/2025-12-04T19:28:46+00:00https://jellyfish.co/blog/category/engineering-investment-and-business-alignment/2026-02-06T00:32:14+00:00https://jellyfish.co/blog/category/frameworks/2025-08-01T21:16:21+00:00https://jellyfish.co/blog/category/in-the-bloom/2026-03-03T15:18:40+00:00https://jellyfish.co/blog/category/leadership/2026-06-15T13:49:54+00:00https://jellyfish.co/blog/category/platform-engineering/2026-03-18T19:43:22+00:00https://jellyfish.co/blog/category/strategy-planning/2026-06-16T15:38:43+00:00https://jellyfish.co/blog/category/team-health/2025-09-12T19:45:43+00:00
