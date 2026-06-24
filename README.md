@@ -24,6 +24,26 @@ uv run hf auth login
 
 Do **not** commit API keys. Live apply/retrieval read `TURBOPUFFER_API_KEY` from the environment only.
 
+## Optional global command
+
+Install the CLI so `turbo-search` works from any directory:
+
+```bash
+# from the repo root
+uv tool install --editable . --force
+
+# or from anywhere
+uv tool install --editable /path/to/turbo-search --force
+```
+
+Verify:
+
+```bash
+turbo-search --help
+```
+
+When run outside this repo, generated `artifacts/` and `.turbo-search/` state are created in the current directory.
+
 ## Index a new website
 
 ```bash
