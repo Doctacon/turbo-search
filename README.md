@@ -137,34 +137,3 @@ Dry-run retrieval is the default and does not contact turbopuffer:
 ```bash
 uv run turbo-search retrieve "How does this feature work?" --namespace site-example-com-v1
 ```
-
-## Evals
-
-Use a small JSON dataset of questions, expected URLs, and expected topics:
-
-```bash
-uv run turbo-search evals \
-  --live \
-  --dataset path/to/evals.json \
-  --namespace site-example-com-v1 \
-  --top-k 5 \
-  --candidates 50
-```
-
-## Legacy Jellyfish corpus
-
-The repo still includes the original Jellyfish docs prototype:
-
-```bash
-uv run turbo-search index --corpus-dir jellyfish-site-docs
-uv run turbo-search index --corpus-dir jellyfish-site-docs --write
-```
-
-Prefer the generic `plan`/`apply` workflow for new websites.
-
-## Tests
-
-```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -v
-PYTHONPATH=src python3 -m compileall -q src tests
-```
