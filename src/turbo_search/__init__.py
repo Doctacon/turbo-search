@@ -1,4 +1,4 @@
-"""Scaffold package for the Jellyfish docs turbopuffer RAG prototype."""
+"""Website-to-turbopuffer hybrid RAG utilities."""
 
 __all__ = ["__version__"]
 

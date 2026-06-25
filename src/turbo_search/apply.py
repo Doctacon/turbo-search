@@ -26,7 +26,7 @@ from turbo_search.applied_state import (
     save_applied_state,
 )
 from turbo_search.config import RuntimeConfig
-from turbo_search.indexer import SentenceTransformerEmbedder, TurbopufferWriter, batched, sha256_text
+from turbo_search.chunker import SentenceTransformerEmbedder, TurbopufferWriter, batched, sha256_text
 from turbo_search.plan_artifacts import (
     GENERIC_SITE_TURBOPUFFER_SCHEMA,
     PLAN_SCHEMA_VERSION,

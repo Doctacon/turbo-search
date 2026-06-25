@@ -22,7 +22,7 @@ from turbo_search.crawler import (
     validate_base_url,
     write_markdown_corpus,
 )
-from turbo_search.indexer import process_corpus
+from turbo_search.chunker import process_corpus
 
 
 class CrawlerHelperTests(unittest.TestCase):

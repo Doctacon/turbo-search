@@ -11,7 +11,7 @@ from unittest.mock import patch
 from turbo_search.applied_state import AppliedStateRow, build_applied_state, save_applied_state
 from turbo_search.cli import build_parser, main
 from turbo_search.crawler import CrawlOptions
-from turbo_search.indexer import process_corpus
+from turbo_search.chunker import process_corpus
 from turbo_search.plan_artifacts import build_plan_artifacts
 
 
@@ -490,7 +490,7 @@ class CliTests(unittest.TestCase):
         self.assertTrue(payload["dry_run"])
         self.assertFalse(payload["credentials_required"])
         self.assertFalse(payload["turbopuffer_api_calls"])
-        self.assertGreaterEqual(payload["total"], 5)
+        self.assertGreaterEqual(payload["total"], 4)
         self.assertEqual(payload["top_k"], 3)
         self.assertEqual(payload["candidates"], 30)
         first_case = payload["cases"][0]

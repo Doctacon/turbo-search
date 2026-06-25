@@ -169,8 +169,8 @@ def parse_markdown_file(path: Path, corpus_dir: Path) -> MarkdownDocument:
 def split_frontmatter(raw: str) -> tuple[dict[str, str], str]:
     """Split simple YAML frontmatter from a Markdown document.
 
-    The Jellyfish exports use scalar ``url`` and ``title`` fields. This parser is
-    intentionally small and dependency-free for dry-run validation; unknown or
+    Generated page artifacts use scalar ``url`` and ``title`` fields. This parser
+    is intentionally small and dependency-free for dry-run validation; unknown or
     nested frontmatter lines are ignored rather than treated as fatal.
     """
 
@@ -522,24 +522,6 @@ def process_corpus(
     )
 
 
-def build_row(chunk: MarkdownChunk, vector: Sequence[float]) -> dict[str, object]:
-    """Build the turbopuffer row for one embedded chunk."""
-
-    return {
-        "id": chunk.id,
-        "vector": list(vector),
-        "content": chunk.content,
-        "title": chunk.title,
-        "url": chunk.url,
-        "path": chunk.path,
-        "section_path": chunk.section_path,
-        "chunk_index": chunk.chunk_index,
-        "doc_kind": chunk.doc_kind,
-        "tags": chunk.tags,
-        "source_hash": chunk.source_hash,
-    }
-
-
 class SentenceTransformerEmbedder:
     """Lazy local BGE embedder used only for approved live apply/retrieval paths."""
 
@@ -671,7 +653,7 @@ def sha256_text(text: str) -> str:
 
 
 def title_from_path(path: Path) -> str:
-    stem = path.stem.replace("jellyfish.co_", "")
+    stem = path.stem
     words = [part for part in re.split(r"[_-]+", stem) if part]
     return " ".join(word.capitalize() for word in words) or path.stem
 

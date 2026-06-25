@@ -37,7 +37,7 @@ from turbo_search.evals import (
     load_eval_cases,
     run_live_evals,
 )
-from turbo_search.indexer import (
+from turbo_search.chunker import (
     DEFAULT_OVERLAP_SENTENCES,
     DEFAULT_TARGET_TOKENS,
     process_corpus,
@@ -435,7 +435,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--dataset",
         type=Path,
         default=None,
-        help="Optional path to a JSON eval dataset. Defaults to the built-in Jellyfish smoke set; pass a site-specific dataset for generic site namespaces.",
+        help="Optional path to a JSON eval dataset. Defaults to the built-in Scrapling docs smoke set; pass a site-specific dataset for other namespaces.",
     )
     add_runtime_config_arguments(evals_parser)
     evals_parser.add_argument(

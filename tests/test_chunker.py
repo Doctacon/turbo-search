@@ -4,9 +4,8 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from turbo_search.indexer import (
+from turbo_search.chunker import (
     approximate_token_count,
-    build_row,
     chunk_document,
     derive_doc_kind_and_tags,
     parse_markdown_file,
@@ -14,17 +13,17 @@ from turbo_search.indexer import (
 )
 
 
-class MarkdownIndexerTests(unittest.TestCase):
+class MarkdownChunkerTests(unittest.TestCase):
     def test_frontmatter_normalization_and_doc_tags(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             corpus = Path(tmp)
             page = corpus / "page.md"
             page.write_text(
                 "---\n"
-                "url: \"https://jellyfish.co/blog/example-post/\"\n"
+                "url: \"https://example.com/blog/example-post/\"\n"
                 "title: \"Example Post\"\n"
                 "---\n\n"
-                "[Skip to content](https://jellyfish.co/blog/example-post/#content)\n\n"
+                "[Skip to content](https://example.com/blog/example-post/#content)\n\n"
                 "In this article\n\n"
                 "Overview\n"
                 "## Overview\n"
@@ -35,7 +34,7 @@ class MarkdownIndexerTests(unittest.TestCase):
             document = parse_markdown_file(page, corpus)
             doc_kind, tags = derive_doc_kind_and_tags(document.url, document.relative_path)
 
-            self.assertEqual(document.url, "https://jellyfish.co/blog/example-post/")
+            self.assertEqual(document.url, "https://example.com/blog/example-post/")
             self.assertEqual(document.title, "Example Post")
             self.assertNotIn("Skip to content", document.normalized_body)
             self.assertNotIn("In this article", document.normalized_body)
@@ -48,11 +47,11 @@ class MarkdownIndexerTests(unittest.TestCase):
             corpus = Path(tmp)
             page = corpus / "library.md"
             page.write_text(
-                "---\nurl: https://jellyfish.co/library/dora-metrics/\ntitle: DORA Metrics\n---\n\n"
+                "---\nurl: https://example.com/docs/fetchers/\ntitle: Fetchers\n---\n\n"
                 "Intro sentence for the page. Another intro sentence.\n\n"
-                "## Deployment Frequency\n"
-                + " ".join(f"Deployment sentence {idx}." for idx in range(80))
-                + "\n\n## Change Failure Rate\nStable releases matter.\n",
+                "## Static Fetching\n"
+                + " ".join(f"Fetcher sentence {idx}." for idx in range(80))
+                + "\n\n## Browser Fetching\nDynamic pages may need browser rendering.\n",
                 encoding="utf-8",
             )
 
@@ -63,47 +62,16 @@ class MarkdownIndexerTests(unittest.TestCase):
             self.assertGreater(len(chunks_a), 2)
             self.assertEqual([chunk.id for chunk in chunks_a], [chunk.id for chunk in chunks_b])
             self.assertTrue(all(len(chunk.id) <= 64 for chunk in chunks_a))
-            self.assertIn("Deployment Frequency", {chunk.section_path for chunk in chunks_a})
-            self.assertIn("Title: DORA Metrics", chunks_a[0].embedding_text)
+            self.assertIn("Static Fetching", {chunk.section_path for chunk in chunks_a})
+            self.assertIn("Title: Fetchers", chunks_a[0].embedding_text)
             self.assertTrue(all(approximate_token_count(chunk.content) <= 60 for chunk in chunks_a))
-
-    def test_row_construction_contains_expected_attributes(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            corpus = Path(tmp)
-            page = corpus / "blog.md"
-            page.write_text(
-                "---\nurl: https://jellyfish.co/blog/test/\ntitle: Test\n---\n\nBody text.\n",
-                encoding="utf-8",
-            )
-            chunk = chunk_document(parse_markdown_file(page, corpus))[0]
-            row = build_row(chunk, [0.1, 0.2, 0.3])
-
-            self.assertEqual(
-                set(row),
-                {
-                    "id",
-                    "vector",
-                    "content",
-                    "title",
-                    "url",
-                    "path",
-                    "section_path",
-                    "chunk_index",
-                    "doc_kind",
-                    "tags",
-                    "source_hash",
-                },
-            )
-            self.assertEqual(row["id"], chunk.id)
-            self.assertEqual(row["vector"], [0.1, 0.2, 0.3])
-            self.assertEqual(row["doc_kind"], "blog")
 
     def test_process_corpus_handles_empty_files_and_limits(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             corpus = Path(tmp)
             (corpus / "empty.md").write_text("---\ntitle: Empty\n---\n\n", encoding="utf-8")
             (corpus / "full.md").write_text(
-                "---\nurl: https://jellyfish.co/platform/test/\ntitle: Full\n---\n\n"
+                "---\nurl: https://example.com/docs/test/\ntitle: Full\n---\n\n"
                 "## Section\nUseful text. More useful text.\n",
                 encoding="utf-8",
             )

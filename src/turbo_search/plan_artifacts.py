@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from turbo_search.crawler import namespace_candidate, safe_slug, validate_base_url
-from turbo_search.indexer import (
+from turbo_search.chunker import (
     TURBOPUFFER_SCHEMA,
     IndexingPlan,
     MarkdownChunk,

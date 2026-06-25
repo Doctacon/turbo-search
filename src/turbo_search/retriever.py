@@ -1,4 +1,4 @@
-"""Hybrid retrieval helpers for Jellyfish docs turbopuffer search.
+"""Hybrid retrieval helpers for turbopuffer-backed site search.
 
 Dry-run planning is local-only. Live retrieval is intentionally isolated behind
 ``HybridRetriever.from_config`` so credentials are read only when the caller has
@@ -12,7 +12,7 @@ import os
 from typing import Any, Mapping, Protocol, Sequence
 
 from turbo_search.config import RuntimeConfig
-from turbo_search.indexer import SentenceTransformerEmbedder
+from turbo_search.chunker import SentenceTransformerEmbedder
 
 DEFAULT_TOP_K = 5
 DEFAULT_CANDIDATES = 100

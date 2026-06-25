@@ -1,7 +1,7 @@
-"""Runtime configuration helpers for the scaffold CLI.
+"""Runtime configuration helpers for the turbo-search CLI.
 
-This module intentionally does not read secrets. Turbopuffer credentials are only
-expected from the environment in future execution tickets.
+This module intentionally does not read secrets. Live commands read turbopuffer
+credentials at the call site only after explicit user approval.
 """
 
 from __future__ import annotations
@@ -10,13 +10,13 @@ from dataclasses import dataclass
 import os
 
 DEFAULT_REGION = "gcp-us-central1"
-DEFAULT_NAMESPACE = "jellyfish-site-docs-v1"
+DEFAULT_NAMESPACE = "site-scrapling-readthedocs-io-v1"
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """Non-secret runtime defaults for local prototype commands."""
+    """Non-secret runtime defaults for local and live commands."""
 
     region: str = DEFAULT_REGION
     namespace: str = DEFAULT_NAMESPACE

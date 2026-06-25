@@ -33,12 +33,12 @@ class CapturingNamespace:
                     "id": "chunk-1",
                     "score": 0.42,
                     "attributes": {
-                        "title": "DORA Metrics",
-                        "url": "https://jellyfish.co/library/dora-metrics/",
-                        "section_path": "Deployment Frequency",
-                        "content": "Deployment frequency is one of the DORA metrics.",
-                        "path": "library/dora.md",
-                        "doc_kind": "library",
+                        "title": "Fetchers basics",
+                        "url": "https://scrapling.readthedocs.io/en/latest/fetching/choosing.html",
+                        "section_path": "Fetcher choices",
+                        "content": "Choose Fetcher, DynamicFetcher, or StealthyFetcher based on the target site.",
+                        "path": "fetching/choosing.md",
+                        "doc_kind": "docs",
                         "chunk_index": 3,
                         "vector": [9.0, 9.0],
                     },
@@ -76,29 +76,29 @@ class RerankUnsupportedNamespace:
 class RetrieverTests(unittest.TestCase):
     def test_builds_ann_and_boosted_bm25_subqueries_without_vectors_in_attributes(self) -> None:
         queries = build_multi_query_subqueries(
-            query="developer productivity",
+            query="link extraction",
             query_vector=[0.1, 0.2],
             candidates=25,
-            doc_kind="blog",
+            doc_kind="docs",
         )
 
         self.assertEqual(len(queries), 2)
         self.assertEqual(queries[0]["rank_by"], ("vector", "ANN", [0.1, 0.2]))
-        self.assertEqual(queries[1]["rank_by"], bm25_rank_by("developer productivity"))
+        self.assertEqual(queries[1]["rank_by"], bm25_rank_by("link extraction"))
         self.assertEqual(
-            bm25_rank_by("developer productivity"),
+            bm25_rank_by("link extraction"),
             (
                 "Sum",
                 [
-                    ("Product", 2.0, ("title", "BM25", "developer productivity")),
-                    ("Product", 1.5, ("section_path", "BM25", "developer productivity")),
-                    ("content", "BM25", "developer productivity"),
+                    ("Product", 2.0, ("title", "BM25", "link extraction")),
+                    ("Product", 1.5, ("section_path", "BM25", "link extraction")),
+                    ("content", "BM25", "link extraction"),
                 ],
             ),
         )
         for query in queries:
             self.assertEqual(query["limit"], 25)
-            self.assertEqual(query["filters"], ("doc_kind", "Eq", "blog"))
+            self.assertEqual(query["filters"], ("doc_kind", "Eq", "docs"))
             self.assertEqual(query["include_attributes"], RETRIEVAL_ATTRIBUTES)
             self.assertNotIn("vector", query["include_attributes"])
 
@@ -112,20 +112,20 @@ class RetrieverTests(unittest.TestCase):
         )
 
         result = retriever.retrieve(
-            "What are DORA metrics?",
+            "How should I choose a Scrapling fetcher?",
             RetrievalOptions(top_k=5, candidates=10),
         )
 
-        self.assertEqual(embedder.texts, [["What are DORA metrics?"]])
+        self.assertEqual(embedder.texts, [["How should I choose a Scrapling fetcher?"]])
         self.assertEqual(len(namespace.calls), 1)
         self.assertEqual(namespace.calls[0]["rerank_by"], ("RRF",))
         self.assertEqual(len(namespace.calls[0]["queries"]), 2)
         self.assertEqual(result.fusion, "server_rrf")
-        self.assertEqual(result.hits[0].title, "DORA Metrics")
+        self.assertEqual(result.hits[0].title, "Fetchers basics")
         payload = result.to_dict()
         self.assertNotIn("vector", str(payload))
-        self.assertEqual(payload["hits"][0]["url"], "https://jellyfish.co/library/dora-metrics/")
-        self.assertEqual(payload["hits"][0]["section_path"], "Deployment Frequency")
+        self.assertEqual(payload["hits"][0]["url"], "https://scrapling.readthedocs.io/en/latest/fetching/choosing.html")
+        self.assertEqual(payload["hits"][0]["section_path"], "Fetcher choices")
         self.assertIn("score_info", payload["hits"][0])
 
     def test_client_side_rrf_fallback_when_server_rerank_unsupported(self) -> None:

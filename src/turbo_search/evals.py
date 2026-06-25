@@ -10,7 +10,7 @@ from typing import Mapping, Sequence
 from turbo_search.config import RuntimeConfig
 from turbo_search.retriever import HybridRetriever, RetrievalOptions, SearchHit
 
-DEFAULT_EVAL_DATASET = Path(__file__).with_name("data") / "retrieval_smoke_evals.json"
+DEFAULT_EVAL_DATASET = Path(__file__).with_name("data") / "scrapling_retrieval_smoke_evals.json"
 
 
 @dataclass(frozen=True)

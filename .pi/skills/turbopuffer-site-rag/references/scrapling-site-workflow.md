@@ -64,7 +64,7 @@ Expected safety fields for crawl/plan:
 }
 ```
 
-The CLI writes local generated Markdown pages under the requested `artifacts/...` output directory and chunks them with the existing `turbo_search.indexer` Markdown pipeline. `artifacts/` is gitignored. Plan also writes `plan.json`, `summary.json`, `manifest.json`, and `chunks.jsonl`, and reads local applied state from `.turbo-search/` when present. `.turbo-search/` is gitignored local state. Use `--css-selector` when a docs site has clear main-content wrappers; this reduces nav/sponsor/sidebar noise before chunking.
+The CLI writes local generated Markdown pages under the requested `artifacts/...` output directory and chunks them with the existing `turbo_search.chunker` Markdown pipeline. `artifacts/` is gitignored. Plan also writes `plan.json`, `summary.json`, `manifest.json`, and `chunks.jsonl`, and reads local applied state from `.turbo-search/` when present. `.turbo-search/` is gitignored local state. Use `--css-selector` when a docs site has clear main-content wrappers; this reduces nav/sponsor/sidebar noise before chunking.
 
 ## Metadata to preserve per page
 
@@ -97,7 +97,7 @@ site-<host-slug>-v1
 
 Examples:
 
-- `https://jellyfish.co/` -> `site-jellyfish-co-v1`
+- `https://example.com/` -> `site-example-com-v1`
 - `https://scrapling.readthedocs.io/en/latest/` -> `site-scrapling-readthedocs-io-v1`
 
 Ask before creating/writing a namespace. Never delete or overwrite an existing namespace unless the user explicitly approves deletion/replacement.

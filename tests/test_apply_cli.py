@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from turbo_search.applied_state import ROW_STATUS_ACTIVE, ROW_STATUS_RETAINED_STALE, AppliedStateRow, build_applied_state, load_applied_state, save_applied_state
 from turbo_search.cli import main
-from turbo_search.indexer import process_corpus
+from turbo_search.chunker import process_corpus
 from turbo_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
 
 

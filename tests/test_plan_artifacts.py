@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from turbo_search.indexer import IndexingPlan, IndexingStats, MarkdownChunk, process_corpus
+from turbo_search.chunker import IndexingPlan, IndexingStats, MarkdownChunk, process_corpus
 from turbo_search.plan_artifacts import (
     GENERIC_SITE_TURBOPUFFER_SCHEMA,
     PLAN_SCHEMA_VERSION,

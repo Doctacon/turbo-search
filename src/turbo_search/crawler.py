@@ -17,7 +17,7 @@ import re
 from typing import Any, Sequence
 from urllib.parse import urlparse, urlunparse
 
-from turbo_search.indexer import (
+from turbo_search.chunker import (
     DEFAULT_OVERLAP_SENTENCES,
     DEFAULT_TARGET_TOKENS,
     IndexingPlan,
