@@ -142,6 +142,9 @@ class AutoresearchExperiment:
                 "top_k": self.retrieval_options.top_k,
                 "candidates": self.retrieval_options.candidates,
                 "doc_kind": self.retrieval_options.doc_kind,
+                "ranking_mode": self.retrieval_options.ranking_mode,
+                "ranking_profile": self.retrieval_options.ranking_profile,
+                "ranking_pool": self.retrieval_options.ranking_pool,
             },
             "notes": self.notes,
         }
@@ -191,6 +194,9 @@ def retrieval_options_from_payload(payload: Mapping[str, object]) -> RetrievalOp
         top_k=positive_int_field(payload, "top_k"),
         candidates=positive_int_field(payload, "candidates"),
         doc_kind=optional_string(payload, "doc_kind"),
+        ranking_mode=string_or_default(payload, "ranking_mode", "file"),
+        ranking_profile=string_or_default(payload, "ranking_profile", "repo_code").replace("-", "_"),
+        ranking_pool=positive_int_field(payload, "ranking_pool", default=100),
     )
 
 
@@ -203,8 +209,10 @@ def string_or_default(payload: Mapping[str, object], field_name: str, default: s
     return value.strip()
 
 
-def positive_int_field(payload: Mapping[str, object], field_name: str) -> int:
+def positive_int_field(payload: Mapping[str, object], field_name: str, *, default: int | None = None) -> int:
     value = payload.get(field_name)
+    if value is None and default is not None:
+        return default
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise AutoresearchExperimentError(f"Retrieval option {field_name!r} must be a positive integer.")
     return value
@@ -309,6 +317,9 @@ def run_fixture_evals(cases: Sequence[EvalCase], *, experiment: AutoresearchExpe
         top_k=experiment.retrieval_options.top_k,
         candidates=experiment.retrieval_options.candidates,
         embedding_model=experiment.config.embedding_model,
+        ranking_mode=experiment.retrieval_options.ranking_mode,
+        ranking_profile=experiment.retrieval_options.ranking_profile,
+        ranking_pool=experiment.retrieval_options.ranking_pool,
         repo_metrics=aggregate_repo_scores(repo_scores) if repo_scores else None,
     )
 

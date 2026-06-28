@@ -176,6 +176,9 @@ class EvalRunResult:
     top_k: int
     candidates: int
     embedding_model: str
+    ranking_mode: str
+    ranking_profile: str
+    ranking_pool: int
     repo_metrics: dict[str, float] | None = None
 
     def to_dict(self) -> dict[str, object]:
@@ -191,6 +194,9 @@ class EvalRunResult:
             "embedding_model": self.embedding_model,
             "top_k": self.top_k,
             "candidates": self.candidates,
+            "ranking_mode": self.ranking_mode,
+            "ranking_profile": self.ranking_profile,
+            "ranking_pool": self.ranking_pool,
             "total": self.total,
             "passed": self.passed,
             "failed": 0 if self.dry_run else self.total - self.passed,
@@ -557,6 +563,9 @@ def build_dry_run_eval_report(
         top_k=options.top_k,
         candidates=options.candidates,
         embedding_model=config.embedding_model,
+        ranking_mode=options.ranking_mode,
+        ranking_profile=options.ranking_profile,
+        ranking_pool=options.ranking_pool,
     )
 
 
@@ -600,5 +609,8 @@ def run_live_evals(
         top_k=options.top_k,
         candidates=options.candidates,
         embedding_model=config.embedding_model,
+        ranking_mode=options.ranking_mode,
+        ranking_profile=options.ranking_profile,
+        ranking_pool=options.ranking_pool,
         repo_metrics=aggregate_repo_scores(repo_scores) if repo_scores else None,
     )

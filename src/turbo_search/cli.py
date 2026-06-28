@@ -55,6 +55,7 @@ from turbo_search.plan_artifacts import (
 from turbo_search.plan_diff import IncrementalPlanDiff, PlanDiffError, diff_manifest_against_state
 from turbo_search.retriever import (
     DEFAULT_CANDIDATES,
+    DEFAULT_RANKING_POOL,
     DEFAULT_TOP_K,
     HybridRetriever,
     RetrievalOptions,
@@ -402,6 +403,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Candidate limit for each ANN/BM25 subquery before RRF fusion.",
     )
     retrieve_parser.add_argument(
+        "--ranking-mode",
+        choices=["file", "page", "chunk"],
+        default="file",
+        help="Final ranking mode. Default file mode deduplicates repository chunks by repo_path; page mode deduplicates website chunks by URL.",
+    )
+    retrieve_parser.add_argument(
+        "--ranking-profile",
+        choices=["repo-code", "none"],
+        default="repo-code",
+        help="Final ranking profile. Default repo-code gently demotes repository process/docs paths after file ranking.",
+    )
+    retrieve_parser.add_argument(
+        "--ranking-pool",
+        type=positive_int,
+        default=DEFAULT_RANKING_POOL,
+        help="Number of fused candidates to consider during final file-level ranking.",
+    )
+    retrieve_parser.add_argument(
         "--doc-kind",
         default=None,
         help="Optional doc_kind filter, e.g. blog, library, platform, integrations.",
@@ -447,6 +466,24 @@ def build_parser() -> argparse.ArgumentParser:
         type=positive_int,
         default=DEFAULT_CANDIDATES,
         help="Candidate limit for each ANN/BM25 subquery before RRF fusion.",
+    )
+    evals_parser.add_argument(
+        "--ranking-mode",
+        choices=["file", "page", "chunk"],
+        default="file",
+        help="Final ranking mode. Default file mode deduplicates repository chunks by repo_path; page mode deduplicates website chunks by URL.",
+    )
+    evals_parser.add_argument(
+        "--ranking-profile",
+        choices=["repo-code", "none"],
+        default="repo-code",
+        help="Final ranking profile. Default repo-code gently demotes repository process/docs paths after file ranking.",
+    )
+    evals_parser.add_argument(
+        "--ranking-pool",
+        type=positive_int,
+        default=DEFAULT_RANKING_POOL,
+        help="Number of fused candidates to consider during final file-level ranking.",
     )
     evals_parser.add_argument(
         "--dataset",
@@ -516,6 +553,10 @@ def nonnegative_float(value: str) -> float:
     if parsed < 0:
         raise argparse.ArgumentTypeError("must be zero or greater")
     return parsed
+
+
+def ranking_profile_from_cli(value: str) -> str:
+    return value.replace("-", "_")
 
 
 def _print_json(payload: dict[str, object]) -> None:
@@ -767,7 +808,14 @@ def _run_apply(args: argparse.Namespace) -> int:
 
 def _run_retrieve(args: argparse.Namespace) -> int:
     config = config_from_args(args)
-    options = RetrievalOptions(top_k=args.top_k, candidates=args.candidates, doc_kind=args.doc_kind)
+    options = RetrievalOptions(
+        top_k=args.top_k,
+        candidates=args.candidates,
+        doc_kind=args.doc_kind,
+        ranking_mode=args.ranking_mode,
+        ranking_profile=ranking_profile_from_cli(args.ranking_profile),
+        ranking_pool=args.ranking_pool,
+    )
     if args.dry_run and args.live:
         print("Choose either --live or --dry-run/--plan, not both.", file=sys.stderr)
         return 2
@@ -793,7 +841,13 @@ def _run_retrieve(args: argparse.Namespace) -> int:
 
 def _run_evals(args: argparse.Namespace) -> int:
     config = config_from_args(args)
-    options = RetrievalOptions(top_k=args.top_k, candidates=args.candidates)
+    options = RetrievalOptions(
+        top_k=args.top_k,
+        candidates=args.candidates,
+        ranking_mode=args.ranking_mode,
+        ranking_profile=ranking_profile_from_cli(args.ranking_profile),
+        ranking_pool=args.ranking_pool,
+    )
     if args.dry_run and args.live:
         print("Choose either --live or --dry-run/--list, not both.", file=sys.stderr)
         return 2
@@ -936,12 +990,21 @@ def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:
         print(f"  namespace: {payload['namespace']} ({payload['region']})")
         print(f"  embedding_model: {payload['embedding_model']}")
         print(f"  top_k: {payload['top_k']}; candidates per subquery: {payload['candidates']}")
+        print(
+            "  ranking: "
+            f"mode={payload.get('ranking_mode')}; "
+            f"profile={payload.get('ranking_profile')}; "
+            f"pool={payload.get('ranking_pool')}"
+        )
         print("  hybrid: ANN over vector + boosted BM25 over title/section_path/content + RRF")
         print("  live: pass --live to execute; TURBOPUFFER_API_KEY is read from the environment only")
         return
 
     hits = payload.get("hits", [])
-    print(f"Retrieved {len(hits)} chunks using {payload.get('fusion')}:")
+    print(
+        f"Retrieved {len(hits)} chunks using {payload.get('fusion')} "
+        f"with ranking mode={payload.get('ranking_mode')} profile={payload.get('ranking_profile')}:"
+    )
     for index, hit in enumerate(hits, start=1):
         if not isinstance(hit, dict):
             continue
@@ -965,7 +1028,11 @@ def print_eval_text(payload: dict[str, object]) -> None:
     if payload.get("dry_run"):
         print("Retrieval smoke evals (dry-run; no credentials, embeddings, or turbopuffer API calls):")
         print(f"  namespace: {payload['namespace']} ({payload['region']})")
-        print(f"  evals: {payload['total']}; top_k: {payload['top_k']}; candidates: {payload['candidates']}")
+        print(
+            f"  evals: {payload['total']}; top_k: {payload['top_k']}; "
+            f"candidates: {payload['candidates']}; "
+            f"ranking: {payload.get('ranking_mode')}/{payload.get('ranking_profile')}"
+        )
         print("  live: pass --live to execute; TURBOPUFFER_API_KEY is read from the environment only")
     else:
         print(

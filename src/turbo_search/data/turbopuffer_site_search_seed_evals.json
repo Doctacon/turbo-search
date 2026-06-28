@@ -1,0 +1,194 @@
+{
+  "dataset_id": "turbopuffer-site-search-seed-evals",
+  "source": "https://turbopuffer.com/",
+  "namespace": "site-turbopuffer-com-v1",
+  "human_approved_ground_truth": false,
+  "notes": "Assistant-drafted seed labels for turbopuffer.com website retrieval experiments. Use for calibration only until reviewed.",
+  "cases": [
+    {
+      "id": "fts-bm25-string-fields",
+      "question": "Where does turbopuffer document BM25 full-text search over string and string array fields?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/fts",
+          "grade": 3,
+          "reason": "Full-Text Search guide covers BM25, string fields, []string fields, and examples."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/query",
+          "grade": 1,
+          "reason": "Query API reference lists BM25 as a rank_by option."
+        }
+      ]
+    },
+    {
+      "id": "hybrid-search-rank-fusion",
+      "question": "Which page explains hybrid search with vector queries, text queries, rank fusion, and reranking?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/hybrid",
+          "grade": 3,
+          "reason": "Hybrid Search page explains vector/text queries, rank fusion, query rewriting, and reranking."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/query",
+          "grade": 2,
+          "reason": "Query API reference describes multi-queries used for hybrid search."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/fts",
+          "grade": 1,
+          "reason": "FTS guide points readers to hybrid search for combining BM25 and vectors."
+        }
+      ]
+    },
+    {
+      "id": "query-api-rank-by-options",
+      "question": "Where are query rank_by options like ANN, exact kNN, BM25, SparseKNN, ordering, and multi-queries documented?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/query",
+          "grade": 3,
+          "reason": "Query documents reference enumerates rank_by options and multi-query behavior."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/vector",
+          "grade": 1,
+          "reason": "Vector Search guide covers vector-specific query usage."
+        }
+      ]
+    },
+    {
+      "id": "debug-recall-endpoint",
+      "question": "Where can I find the endpoint for evaluating ANN recall against exhaustive search in a namespace?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/recall",
+          "grade": 3,
+          "reason": "Evaluate recall page documents POST /v1/namespaces/:namespace/_debug/recall and explains ANN vs exact search."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/testing",
+          "grade": 1,
+          "reason": "Testing guidance is adjacent to evaluating retrieval quality."
+        }
+      ]
+    },
+    {
+      "id": "vector-search-guide",
+      "question": "Which guide shows how to perform vector search with nearest neighbors in turbopuffer?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/vector",
+          "grade": 3,
+          "reason": "Vector Search guide covers nearest-neighbor vector search."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/query",
+          "grade": 2,
+          "reason": "Query API reference documents ANN and kNN rank_by options."
+        }
+      ]
+    },
+    {
+      "id": "write-upsert-schema",
+      "question": "Where does turbopuffer explain writing rows, upserts, vectors, attributes, and schema configuration?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/write",
+          "grade": 3,
+          "reason": "Write API page documents upsert rows, vectors, attributes, and schema."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/metadata",
+          "grade": 1,
+          "reason": "Namespace metadata is related to schema/metadata inspection."
+        }
+      ]
+    },
+    {
+      "id": "namespace-metadata-api",
+      "question": "Where is the namespace metadata API documented for inspecting schema and namespace metadata?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/metadata",
+          "grade": 3,
+          "reason": "Namespace metadata reference covers metadata/schema inspection."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/namespaces",
+          "grade": 1,
+          "reason": "List namespaces is adjacent namespace control-plane documentation."
+        }
+      ]
+    },
+    {
+      "id": "delete-namespace-api",
+      "question": "Which documentation page covers deleting a turbopuffer namespace?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/delete-namespace",
+          "grade": 3,
+          "reason": "Delete namespace reference covers namespace deletion."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/namespaces",
+          "grade": 1,
+          "reason": "List namespaces is related namespace management documentation."
+        }
+      ]
+    },
+    {
+      "id": "warm-cache-api",
+      "question": "Where does turbopuffer document warming the cache for a namespace or query workload?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/warm-cache",
+          "grade": 3,
+          "reason": "Warm cache reference documents cache warming."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/performance",
+          "grade": 2,
+          "reason": "Performance guidance is closely related to cache warming."
+        }
+      ]
+    },
+    {
+      "id": "performance-latency-tuning",
+      "question": "Which page explains turbopuffer performance considerations for latency and query tuning?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://turbopuffer.com/docs/performance",
+          "grade": 3,
+          "reason": "Performance page covers latency and performance considerations."
+        },
+        {
+          "url": "https://turbopuffer.com/docs/warm-cache",
+          "grade": 1,
+          "reason": "Warm cache is one performance-adjacent API."
+        }
+      ]
+    }
+  ]
+}

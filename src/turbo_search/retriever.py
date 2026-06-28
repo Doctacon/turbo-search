@@ -15,7 +15,12 @@ from turbo_search.config import RuntimeConfig
 from turbo_search.chunker import SentenceTransformerEmbedder
 
 DEFAULT_TOP_K = 5
-DEFAULT_CANDIDATES = 100
+DEFAULT_CANDIDATES = 200
+DEFAULT_RANKING_POOL = 100
+DEFAULT_RANKING_MODE = "file"
+DEFAULT_RANKING_PROFILE = "repo_code"
+RANKING_MODES = {"chunk", "file", "page"}
+RANKING_PROFILES = {"none", "repo_code"}
 RRF_K = 60
 RETRIEVAL_ATTRIBUTES = [
     "title",
@@ -27,6 +32,7 @@ RETRIEVAL_ATTRIBUTES = [
     "doc_kind",
     "chunk_index",
 ]
+SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES = [attribute for attribute in RETRIEVAL_ATTRIBUTES if attribute != "repo_path"]
 
 
 class Embedder(Protocol):
@@ -41,6 +47,25 @@ class RetrievalOptions:
     top_k: int = DEFAULT_TOP_K
     candidates: int = DEFAULT_CANDIDATES
     doc_kind: str | None = None
+    ranking_mode: str = DEFAULT_RANKING_MODE
+    ranking_profile: str = DEFAULT_RANKING_PROFILE
+    ranking_pool: int = DEFAULT_RANKING_POOL
+
+    def __post_init__(self) -> None:
+        if self.top_k <= 0:
+            raise ValueError("top_k must be greater than zero.")
+        if self.candidates <= 0:
+            raise ValueError("candidates must be greater than zero.")
+        if self.ranking_pool <= 0:
+            raise ValueError("ranking_pool must be greater than zero.")
+        if self.ranking_mode not in RANKING_MODES:
+            raise ValueError(f"ranking_mode must be one of {sorted(RANKING_MODES)}.")
+        if self.ranking_profile not in RANKING_PROFILES:
+            raise ValueError(f"ranking_profile must be one of {sorted(RANKING_PROFILES)}.")
+
+    @property
+    def effective_ranking_pool(self) -> int:
+        return max(self.top_k, self.ranking_pool if self.ranking_mode in {"file", "page"} else self.top_k)
 
 
 @dataclass
@@ -90,6 +115,9 @@ class RetrievalResult:
     candidates: int
     doc_kind: str | None
     fusion: str
+    ranking_mode: str
+    ranking_profile: str
+    ranking_pool: int
     dry_run: bool = False
     turbopuffer_api_calls: bool = True
 
@@ -107,6 +135,9 @@ class RetrievalResult:
             "top_k": self.top_k,
             "candidates": self.candidates,
             "doc_kind": self.doc_kind,
+            "ranking_mode": self.ranking_mode,
+            "ranking_profile": self.ranking_profile,
+            "ranking_pool": self.ranking_pool,
             "fusion": self.fusion,
             "hits": [hit.to_dict() for hit in self.hits],
         }
@@ -151,6 +182,9 @@ class RetrievalPlan:
             "top_k": self.options.top_k,
             "candidates": self.options.candidates,
             "doc_kind": self.options.doc_kind,
+            "ranking_mode": self.options.ranking_mode,
+            "ranking_profile": self.options.ranking_profile,
+            "ranking_pool": self.options.ranking_pool,
             "live_execution": "pass --live to embed the query and call turbopuffer",
             "retrieval": {
                 "request": "turbopuffer multi_query",
@@ -203,17 +237,22 @@ class HybridRetriever:
             candidates=options.candidates,
             doc_kind=options.doc_kind,
         )
-        response: object
-        fusion = "server_rrf"
         try:
-            response = self._namespace.multi_query(queries=subqueries, rerank_by=("RRF",))  # type: ignore[attr-defined]
-        except TypeError as exc:
-            if not is_unsupported_rerank_type_error(exc):
+            response, fusion = run_multi_query(self._namespace, subqueries)
+        except Exception as exc:  # pragma: no cover - SDK/network/schema failure paths are integration-tested.
+            if not is_missing_attribute_error(exc, "repo_path"):
                 raise RuntimeError(user_friendly_query_error(exc)) from exc
-            response = self._namespace.multi_query(queries=subqueries)  # type: ignore[attr-defined]
-            fusion = "client_rrf"
-        except Exception as exc:  # pragma: no cover - requires SDK/network failure.
-            raise RuntimeError(user_friendly_query_error(exc)) from exc
+            portable_subqueries = build_multi_query_subqueries(
+                query=cleaned_query,
+                query_vector=vectors[0],
+                candidates=options.candidates,
+                doc_kind=options.doc_kind,
+                include_attributes=SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES,
+            )
+            try:
+                response, fusion = run_multi_query(self._namespace, portable_subqueries)
+            except Exception as fallback_exc:  # pragma: no cover - requires SDK/network failure.
+                raise RuntimeError(user_friendly_query_error(fallback_exc)) from fallback_exc
 
         result_lists = extract_result_lists(response)
         if not result_lists:
@@ -227,12 +266,20 @@ class HybridRetriever:
                 candidates=options.candidates,
                 doc_kind=options.doc_kind,
                 fusion=fusion,
+                ranking_mode=options.ranking_mode,
+                ranking_profile=options.ranking_profile,
+                ranking_pool=options.ranking_pool,
             )
+        ranking_pool = options.effective_ranking_pool
         if fusion == "client_rrf" or len(result_lists) > 1:
-            hits = client_side_rrf(result_lists, top_k=options.top_k)
+            hits = client_side_rrf(result_lists, top_k=ranking_pool)
             fusion = "client_rrf"
         else:
-            hits = [row_to_hit(row, score_info={"fusion": "server_rrf"}) for row in result_lists[0]][: options.top_k]
+            hits = [
+                row_to_hit(row, score_info={"fusion": "server_rrf", "source_rank": rank})
+                for rank, row in enumerate(result_lists[0], start=1)
+            ][:ranking_pool]
+        hits = rank_hits(hits, options=options)[: options.top_k]
         return RetrievalResult(
             query=cleaned_query,
             hits=hits,
@@ -243,6 +290,9 @@ class HybridRetriever:
             candidates=options.candidates,
             doc_kind=options.doc_kind,
             fusion=fusion,
+            ranking_mode=options.ranking_mode,
+            ranking_profile=options.ranking_profile,
+            ranking_pool=options.ranking_pool,
         )
 
 
@@ -256,12 +306,13 @@ def build_multi_query_subqueries(
     query_vector: Sequence[float],
     candidates: int,
     doc_kind: str | None = None,
+    include_attributes: Sequence[str] = RETRIEVAL_ATTRIBUTES,
 ) -> list[dict[str, object]]:
     """Build ANN and boosted BM25 subqueries for one turbopuffer multi-query."""
 
     common: dict[str, object] = {
         "limit": candidates,
-        "include_attributes": RETRIEVAL_ATTRIBUTES,
+        "include_attributes": list(include_attributes),
     }
     if doc_kind:
         common["filters"] = ("doc_kind", "Eq", doc_kind)
@@ -288,6 +339,17 @@ def bm25_rank_by(query: str) -> tuple[object, ...]:
             ("content", "BM25", query),
         ],
     )
+
+
+def run_multi_query(namespace: object, subqueries: Sequence[dict[str, object]]) -> tuple[object, str]:
+    fusion = "server_rrf"
+    try:
+        return namespace.multi_query(queries=subqueries, rerank_by=("RRF",)), fusion  # type: ignore[attr-defined]
+    except TypeError as exc:
+        if not is_unsupported_rerank_type_error(exc):
+            raise
+        fusion = "client_rrf"
+        return namespace.multi_query(queries=subqueries), fusion  # type: ignore[attr-defined]
 
 
 def build_namespace(*, config: RuntimeConfig, api_key: str) -> object:
@@ -317,6 +379,12 @@ def build_namespace(*, config: RuntimeConfig, api_key: str) -> object:
 def is_unsupported_rerank_type_error(exc: TypeError) -> bool:
     message = str(exc).lower()
     return "rerank_by" in message or "unexpected keyword" in message or "unexpected argument" in message
+
+
+def is_missing_attribute_error(exc: BaseException, attribute: str) -> bool:
+    message = str(exc).casefold()
+    attribute_text = attribute.casefold()
+    return attribute_text in message and "not found in schema" in message
 
 
 def user_friendly_query_error(exc: BaseException) -> str:
@@ -409,6 +477,103 @@ def client_side_rrf(result_lists: Sequence[Sequence[object]], *, top_k: int, rrf
             )
         )
     return hits
+
+
+def rank_hits(hits: Sequence[SearchHit], *, options: RetrievalOptions) -> list[SearchHit]:
+    """Apply the configured final ranking layer to fused retrieval candidates."""
+
+    if options.ranking_mode == "chunk":
+        return list(hits)
+
+    groups: dict[str, list[tuple[int, SearchHit]]] = {}
+    for rank, hit in enumerate(hits, start=1):
+        key = ranking_group_key(hit, options.ranking_mode)
+        groups.setdefault(key, []).append((rank, hit))
+
+    ranked_groups: list[tuple[float, int, str, SearchHit]] = []
+    for key, group in groups.items():
+        best_rank, representative = min(group, key=lambda item: item[0])
+        base_score = max(1.0 / (RRF_K + rank) for rank, _hit in group)
+        ranking_score = base_score * ranking_profile_multiplier(representative, options.ranking_profile)
+        ranked_groups.append(
+            (
+                ranking_score,
+                best_rank,
+                key,
+                hit_with_ranking_info(
+                    representative,
+                    ranking_score=ranking_score,
+                    source_rank=best_rank,
+                    file_hit_count=len(group),
+                    options=options,
+                ),
+            )
+        )
+    ranked_groups.sort(key=lambda item: (-item[0], item[1], item[2]))
+    return [item[3] for item in ranked_groups]
+
+
+def ranking_group_key(hit: SearchHit, mode: str) -> str:
+    """Group repository chunks by file and, when requested, website chunks by page."""
+
+    if hit.repo_path:
+        return f"repo:{normalize_path(hit.repo_path)}"
+    if hit.path and hit.url.startswith("https://github.com/"):
+        return f"repo:{normalize_path(hit.path)}"
+    if mode == "page" and hit.url:
+        return f"page:{normalize_page_url(hit.url)}"
+    return f"chunk:{hit.id or hit.url or hit.path or hit.title}"
+
+
+def hit_with_ranking_info(
+    hit: SearchHit,
+    *,
+    ranking_score: float,
+    source_rank: int,
+    file_hit_count: int,
+    options: RetrievalOptions,
+) -> SearchHit:
+    score_info = dict(hit.score_info)
+    score_info["ranking"] = {
+        "mode": options.ranking_mode,
+        "profile": options.ranking_profile,
+        "ranking_pool": options.ranking_pool,
+        "file_score": ranking_score,
+        "file_hit_count": file_hit_count,
+        "source_rank": source_rank,
+    }
+    return SearchHit(
+        id=hit.id,
+        title=hit.title,
+        url=hit.url,
+        section_path=hit.section_path,
+        content=hit.content,
+        path=hit.path,
+        repo_path=hit.repo_path,
+        score_info=score_info,
+        doc_kind=hit.doc_kind,
+        chunk_index=hit.chunk_index,
+    )
+
+
+def ranking_profile_multiplier(hit: SearchHit, profile: str) -> float:
+    if profile == "none" or not hit.repo_path:
+        return 1.0
+    path = normalize_path(hit.repo_path)
+    lower_path = path.casefold()
+    if lower_path.startswith((".pi/", ".10x/", ".loom/", ".claude/", ".cursor/")):
+        return 0.20
+    if lower_path.startswith("docs/") or lower_path.endswith(".md") or lower_path in {"readme.md", "changelog.md"}:
+        return 0.70
+    return 1.0
+
+
+def normalize_path(value: str) -> str:
+    return value.replace("\\", "/").strip("/")
+
+
+def normalize_page_url(value: str) -> str:
+    return value.split("#", 1)[0].rstrip("/").casefold()
 
 
 def row_to_hit(row: object, *, score_info: Mapping[str, object] | None = None) -> SearchHit:

@@ -75,6 +75,42 @@ class RerankUnsupportedNamespace:
         }
 
 
+class DuplicateRepoPathNamespace:
+    def multi_query(self, **kwargs: object) -> dict[str, object]:
+        return {
+            "rows": [
+                {"id": "docs-1", "attributes": {"title": "Docs", "repo_path": "docs/guide.md", "path": "docs/guide.md"}},
+                {"id": "src-1", "attributes": {"title": "Code A", "repo_path": "src/module.py", "path": "src/module.py"}},
+                {"id": "src-2", "attributes": {"title": "Code B", "repo_path": "src/module.py", "path": "src/module.py"}},
+                {"id": "skill-1", "attributes": {"title": "Skill", "repo_path": ".pi/skills/tool/SKILL.md", "path": ".pi/skills/tool/SKILL.md"}},
+                {"id": "test-1", "attributes": {"title": "Tests", "repo_path": "tests/test_module.py", "path": "tests/test_module.py"}},
+            ]
+        }
+
+
+class MissingRepoPathSchemaNamespace:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def multi_query(self, **kwargs: object) -> dict[str, object]:
+        self.calls.append(kwargs)
+        include_attributes = kwargs["queries"][0]["include_attributes"]
+        if "repo_path" in include_attributes:
+            raise RuntimeError('attribute "repo_path" not found in schema')
+        return {"rows": [{"id": "page-1", "attributes": {"title": "Page", "url": "https://example.com/docs", "content": "Docs"}}]}
+
+
+class DuplicateUrlNamespace:
+    def multi_query(self, **kwargs: object) -> dict[str, object]:
+        return {
+            "rows": [
+                {"id": "docs-a", "attributes": {"title": "Docs A", "url": "https://example.com/docs#intro", "content": "first docs chunk"}},
+                {"id": "docs-b", "attributes": {"title": "Docs B", "url": "https://example.com/docs", "content": "second docs chunk"}},
+                {"id": "api-a", "attributes": {"title": "API", "url": "https://example.com/api", "content": "api chunk"}},
+            ]
+        }
+
+
 class RetrieverTests(unittest.TestCase):
     def test_builds_ann_and_boosted_bm25_subqueries_without_vectors_in_attributes(self) -> None:
         queries = build_multi_query_subqueries(
@@ -151,6 +187,83 @@ class RetrieverTests(unittest.TestCase):
         self.assertEqual(result.hits[0].score_info["fusion"], "client_rrf")
         self.assertIn("ann", result.hits[0].score_info["source_ranks"])
         self.assertIn("bm25", result.hits[0].score_info["source_ranks"])
+
+    def test_default_file_ranking_deduplicates_repo_paths_and_demotes_process_docs(self) -> None:
+        retriever = HybridRetriever(
+            namespace=DuplicateRepoPathNamespace(),
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        result = retriever.retrieve("repo code", RetrievalOptions(top_k=3, candidates=10, ranking_pool=10))
+
+        self.assertEqual([hit.repo_path for hit in result.hits], ["src/module.py", "tests/test_module.py", "docs/guide.md"])
+        self.assertEqual(len({hit.repo_path for hit in result.hits}), 3)
+        self.assertEqual(result.ranking_mode, "file")
+        self.assertEqual(result.ranking_profile, "repo_code")
+        self.assertEqual(result.hits[0].score_info["ranking"]["file_hit_count"], 2)
+
+    def test_chunk_ranking_preserves_raw_fused_order(self) -> None:
+        retriever = HybridRetriever(
+            namespace=DuplicateRepoPathNamespace(),
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        result = retriever.retrieve(
+            "repo code",
+            RetrievalOptions(top_k=3, candidates=10, ranking_mode="chunk", ranking_profile="none"),
+        )
+
+        self.assertEqual([hit.id for hit in result.hits], ["docs-1", "src-1", "src-2"])
+        self.assertEqual(result.ranking_mode, "chunk")
+
+    def test_page_ranking_deduplicates_website_urls_only_when_requested(self) -> None:
+        retriever = HybridRetriever(
+            namespace=DuplicateUrlNamespace(),
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        default_result = retriever.retrieve("website docs", RetrievalOptions(top_k=3, candidates=10, ranking_pool=10))
+        page_result = retriever.retrieve(
+            "website docs",
+            RetrievalOptions(top_k=3, candidates=10, ranking_mode="page", ranking_profile="none", ranking_pool=10),
+        )
+
+        self.assertEqual([hit.id for hit in default_result.hits], ["docs-a", "docs-b", "api-a"])
+        self.assertEqual([hit.id for hit in page_result.hits], ["docs-a", "api-a"])
+        self.assertEqual(page_result.ranking_mode, "page")
+
+    def test_page_ranking_still_groups_repo_rows_by_repo_path(self) -> None:
+        retriever = HybridRetriever(
+            namespace=DuplicateRepoPathNamespace(),
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        result = retriever.retrieve(
+            "repo code",
+            RetrievalOptions(top_k=3, candidates=10, ranking_mode="page", ranking_profile="none", ranking_pool=10),
+        )
+
+        self.assertEqual([hit.repo_path for hit in result.hits], ["docs/guide.md", "src/module.py", ".pi/skills/tool/SKILL.md"])
+        self.assertEqual(len({hit.repo_path for hit in result.hits}), 3)
+
+    def test_live_retriever_retries_without_repo_path_for_website_schema(self) -> None:
+        namespace = MissingRepoPathSchemaNamespace()
+        retriever = HybridRetriever(
+            namespace=namespace,
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        result = retriever.retrieve("website docs", RetrievalOptions(top_k=1, candidates=10))
+
+        self.assertEqual(result.hits[0].url, "https://example.com/docs")
+        self.assertEqual(len(namespace.calls), 2)
+        self.assertIn("repo_path", namespace.calls[0]["queries"][0]["include_attributes"])
+        self.assertNotIn("repo_path", namespace.calls[1]["queries"][0]["include_attributes"])
 
 
 if __name__ == "__main__":

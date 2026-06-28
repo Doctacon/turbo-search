@@ -163,6 +163,8 @@ uv run turbo-search evals \
 
 Do not run live retrieval/evals unless the namespace has been applied and the user explicitly approves live validation.
 
+Retrieval defaults to final file-level ranking for GitHub repository rows after hybrid ANN + BM25 + RRF. The default `repo-code` profile deduplicates by `repo_path` and gently demotes process/docs paths such as `.pi/`, `.10x/`, `.loom/`, `docs/`, and Markdown files. Pass `--ranking-mode page --ranking-profile none` to experiment with URL/page-level website deduplication, or `--ranking-mode chunk --ranking-profile none` when validating raw fused chunk order.
+
 ### Repository composite evals and config autoresearch
 
 Repository search evals support graded judgments for expected source files and

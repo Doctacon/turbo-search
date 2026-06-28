@@ -130,9 +130,10 @@ uv run turbo-search retrieve \
   "How does this feature work?" \
   --live \
   --namespace site-example-com-v1 \
-  --top-k 5 \
-  --candidates 50
+  --top-k 5
 ```
+
+Retrieval defaults to hybrid ANN + BM25 + RRF, then final file-level ranking for repository rows. File ranking deduplicates chunks by `repo_path` and applies the default `repo-code` profile, which gently demotes repository process/docs paths such as `.pi/`, `.10x/`, `.loom/`, `docs/`, and Markdown files after fusion. Use `--ranking-mode page --ranking-profile none` to experiment with URL/page-level deduplication for websites, or `--ranking-mode chunk --ranking-profile none` to inspect raw chunk-level fused order.
 
 Dry-run retrieval is the default and does not contact turbopuffer:
 

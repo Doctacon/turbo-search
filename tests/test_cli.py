@@ -601,9 +601,37 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["top_k"], 3)
         self.assertEqual(payload["candidates"], 20)
         self.assertEqual(payload["doc_kind"], "library")
+        self.assertEqual(payload["ranking_mode"], "file")
+        self.assertEqual(payload["ranking_profile"], "repo_code")
+        self.assertEqual(payload["ranking_pool"], 100)
         self.assertEqual(payload["retrieval"]["rerank_by"], ["RRF"])
         include_attributes = payload["retrieval"]["subqueries"][0]["include_attributes"]
         self.assertNotIn("vector", include_attributes)
+
+    def test_retrieve_command_accepts_page_ranking_mode_in_dry_run(self) -> None:
+        stdout = StringIO()
+        with redirect_stdout(stdout):
+            result = main(
+                [
+                    "retrieve",
+                    "Where is the query API documented?",
+                    "--dry-run",
+                    "--ranking-mode",
+                    "page",
+                    "--ranking-profile",
+                    "none",
+                    "--ranking-pool",
+                    "20",
+                    "--json",
+                ]
+            )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["ranking_mode"], "page")
+        self.assertEqual(payload["ranking_profile"], "none")
+        self.assertEqual(payload["ranking_pool"], 20)
+        self.assertFalse(payload["turbopuffer_api_calls"])
 
     def test_retrieve_command_supports_generic_runtime_overrides_in_dry_run(self) -> None:
         stdout = StringIO()
@@ -631,6 +659,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["namespace"], "site-scrapling-readthedocs-io-v1")
         self.assertEqual(payload["region"], "gcp-us-central1")
         self.assertEqual(payload["embedding_model"], "BAAI/bge-small-en-v1.5")
+        self.assertEqual(payload["ranking_mode"], "file")
 
     def test_retrieve_live_with_generic_overrides_is_gated_by_api_key(self) -> None:
         stdout = StringIO()
@@ -665,6 +694,8 @@ class CliTests(unittest.TestCase):
         self.assertGreaterEqual(payload["total"], 4)
         self.assertEqual(payload["top_k"], 3)
         self.assertEqual(payload["candidates"], 30)
+        self.assertEqual(payload["ranking_mode"], "file")
+        self.assertEqual(payload["ranking_profile"], "repo_code")
         first_case = payload["cases"][0]
         self.assertIn("question", first_case)
         self.assertIn("expected_urls", first_case)
@@ -704,6 +735,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["embedding_model"], "BAAI/bge-small-en-v1.5")
         self.assertEqual(payload["top_k"], 4)
         self.assertEqual(payload["candidates"], 40)
+        self.assertEqual(payload["ranking_mode"], "file")
+        self.assertEqual(payload["ranking_pool"], 100)
         self.assertGreaterEqual(payload["total"], 4)
         self.assertIn("LinkExtractor", payload["cases"][1]["expected_topics"])
 
