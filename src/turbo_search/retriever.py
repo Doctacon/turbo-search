@@ -23,6 +23,7 @@ RETRIEVAL_ATTRIBUTES = [
     "section_path",
     "content",
     "path",
+    "repo_path",
     "doc_kind",
     "chunk_index",
 ]
@@ -52,6 +53,7 @@ class SearchHit:
     section_path: str = ""
     content: str = ""
     path: str = ""
+    repo_path: str = ""
     score_info: dict[str, object] = field(default_factory=dict)
     doc_kind: str = ""
     chunk_index: int | None = None
@@ -63,6 +65,7 @@ class SearchHit:
             "url": self.url,
             "section_path": self.section_path,
             "path": self.path,
+            "repo_path": self.repo_path,
             "score_info": self.score_info,
         }
         if include_content:
@@ -426,6 +429,7 @@ def row_to_hit(row: object, *, score_info: Mapping[str, object] | None = None) -
         section_path=str(attrs.get("section_path") or ""),
         content=str(attrs.get("content") or ""),
         path=str(attrs.get("path") or ""),
+        repo_path=str(attrs.get("repo_path") or ""),
         doc_kind=str(attrs.get("doc_kind") or ""),
         chunk_index=chunk_index if isinstance(chunk_index, int) else None,
         score_info=base_score_info,

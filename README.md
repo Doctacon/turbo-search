@@ -139,3 +139,44 @@ Dry-run retrieval is the default and does not contact turbopuffer:
 ```bash
 uv run turbo-search retrieve "How does this feature work?" --namespace site-example-com-v1
 ```
+
+## Evaluate repository search quality
+
+Repository search evals use graded source judgments and report a composite score
+from 0 to 100:
+
+```text
+repo_search_score = 100 * (
+  0.55 * NDCG@10
++ 0.20 * Recall@10
++ 0.15 * MRR@10
++ 0.10 * Precision@5
+)
+```
+
+The seed dataset for this repo lives at:
+
+```text
+src/turbo_search/data/turbo_search_repo_search_seed_evals.json
+```
+
+Dataset cases contain a natural-language `question` and `judgments` with
+repo-relative `repo_path`, optional `url`/`section_path`, integer `grade` from
+0 to 3, and a reviewer-facing `reason`. The seed labels are assistant-drafted
+and marked `human_approved_ground_truth: false`; use them for calibration until
+reviewed.
+
+Run the safe fixture autoresearch sample without credentials or turbopuffer
+calls:
+
+```bash
+uv run python -m turbo_search.autoresearch \
+  --experiment autoresearch/experiments/repo-search-fixture-baseline.json \
+  --out /tmp/turbo-search-repo-search-fixture-baseline \
+  --json
+```
+
+The autoresearch runner executes exactly one config-only trial and writes
+`plan.json`, `result.json`, and `report.md`. Live autoresearch mode is
+retrieval-only and must target an already-applied namespace; it never performs
+apply, writes, deletes, or namespace management.

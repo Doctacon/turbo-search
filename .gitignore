@@ -32,6 +32,7 @@ sentence_transformers/
 outputs/
 generated/
 artifacts/
+autoresearch/runs/
 *.log
 
 # Local/private Loom binary evidence captures

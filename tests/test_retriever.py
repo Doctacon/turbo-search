@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from turbo_search.config import RuntimeConfig
+from turbo_search.evals import hit_summary
 from turbo_search.retriever import (
     RETRIEVAL_ATTRIBUTES,
     HybridRetriever,
@@ -38,6 +39,7 @@ class CapturingNamespace:
                         "section_path": "Fetcher choices",
                         "content": "Choose Fetcher, DynamicFetcher, or StealthyFetcher based on the target site.",
                         "path": "fetching/choosing.md",
+                        "repo_path": "src/turbo_search/retriever.py",
                         "doc_kind": "docs",
                         "chunk_index": 3,
                         "vector": [9.0, 9.0],
@@ -126,6 +128,9 @@ class RetrieverTests(unittest.TestCase):
         self.assertNotIn("vector", str(payload))
         self.assertEqual(payload["hits"][0]["url"], "https://scrapling.readthedocs.io/en/latest/fetching/choosing.html")
         self.assertEqual(payload["hits"][0]["section_path"], "Fetcher choices")
+        self.assertEqual(payload["hits"][0]["repo_path"], "src/turbo_search/retriever.py")
+        self.assertEqual(result.hits[0].repo_path, "src/turbo_search/retriever.py")
+        self.assertEqual(hit_summary(result.hits[0], 1)["repo_path"], "src/turbo_search/retriever.py")
         self.assertIn("score_info", payload["hits"][0])
 
     def test_client_side_rrf_fallback_when_server_rerank_unsupported(self) -> None:

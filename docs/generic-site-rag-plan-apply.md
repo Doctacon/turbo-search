@@ -163,6 +163,42 @@ uv run turbo-search evals \
 
 Do not run live retrieval/evals unless the namespace has been applied and the user explicitly approves live validation.
 
+### Repository composite evals and config autoresearch
+
+Repository search evals support graded judgments for expected source files and
+report both component metrics and a weighted composite:
+
+```text
+repo_search_score = 100 * (0.55 * NDCG@10 + 0.20 * Recall@10 + 0.15 * MRR@10 + 0.10 * Precision@5)
+```
+
+The first seed dataset for this repository is:
+
+```text
+src/turbo_search/data/turbo_search_repo_search_seed_evals.json
+```
+
+Each case has a `question` and `judgments`; each judgment uses repo-relative
+`repo_path`, optional `url`/`section_path`, integer `grade` in `[0, 3]`, and a
+`reason`. The dataset metadata marks the labels as `seed-draft` and
+`human_approved_ground_truth: false`, so treat the labels as calibration data
+until reviewed.
+
+Run one safe fixture-mode autoresearch experiment with no credentials or live
+calls:
+
+```bash
+uv run python -m turbo_search.autoresearch \
+  --experiment autoresearch/experiments/repo-search-fixture-baseline.json \
+  --out /tmp/turbo-search-repo-search-fixture-baseline \
+  --json
+```
+
+The runner is config-only and one-shot. It writes `plan.json`, `result.json`,
+and `report.md`; live mode is retrieval-only against an already-applied
+namespace and does not apply, upsert, delete stale rows, delete namespaces, or
+update local applied state.
+
 ## What is still not automatic
 
 - Remote/shared state is not implemented; state is local-first.
