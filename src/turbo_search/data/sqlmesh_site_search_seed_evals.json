@@ -1,0 +1,184 @@
+{
+  "dataset_id": "sqlmesh-site-search-seed-evals",
+  "source": "https://sqlmesh.readthedocs.io/en/stable/",
+  "namespace": "site-sqlmesh-readthedocs-io-v1",
+  "human_approved_ground_truth": false,
+  "notes": "Assistant-drafted seed labels for SQLMesh website retrieval experiments. Use for cross-site calibration only until reviewed.",
+  "cases": [
+    {
+      "id": "connections-state-default-test-gateway",
+      "question": "Where does SQLMesh document state, default, and test connections plus default gateway configuration?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/guides/connections",
+          "grade": 3,
+          "reason": "Connections guide covers state connection, default connection, test connection, default gateway, and supported engines."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/reference/configuration",
+          "grade": 1,
+          "reason": "Configuration reference is adjacent to connection configuration."
+        }
+      ]
+    },
+    {
+      "id": "built-in-scheduler",
+      "question": "Which SQLMesh guide explains the built-in scheduler for running models on a cadence?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/guides/scheduling",
+          "grade": 3,
+          "reason": "Scheduling guide contains the built-in scheduler section."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/reference/configuration",
+          "grade": 1,
+          "reason": "Configuration reference may describe scheduler settings."
+        }
+      ]
+    },
+    {
+      "id": "model-unit-tests",
+      "question": "Where are SQLMesh model unit tests and testing changes to models documented?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/guides/testing",
+          "grade": 3,
+          "reason": "Testing guide documents testing changes to models and model test structure."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/concepts/tests",
+          "grade": 2,
+          "reason": "Testing concept page is closely related conceptual material."
+        }
+      ]
+    },
+    {
+      "id": "audits-row-count-null-values",
+      "question": "Where does SQLMesh explain audits such as row counts, null value checks, generic audits, and inline audits?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/concepts/audits",
+          "grade": 3,
+          "reason": "Auditing page covers generic audits, inline audits, row counts, NULL value audits, and plan vs run behavior."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/guides/testing",
+          "grade": 1,
+          "reason": "Testing guide is adjacent quality-validation documentation."
+        }
+      ]
+    },
+    {
+      "id": "model-kinds-scd-materialization",
+      "question": "Where are SQLMesh model kinds, materialization strategies, incremental models, and SCD Type 2 model options documented?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/concepts/models/model_kinds",
+          "grade": 3,
+          "reason": "Model kinds page covers materialization strategies, incremental kinds, and SCD Type 2 by time/column."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/guides/incremental_time",
+          "grade": 1,
+          "reason": "Incremental by time guide is related to incremental model behavior."
+        }
+      ]
+    },
+    {
+      "id": "sqlmesh-macro-operators",
+      "question": "Which SQLMesh page documents macro operators like @EACH, @IF, @EVAL, @FILTER, @REDUCE, and @STAR?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/concepts/macros/sqlmesh_macros",
+          "grade": 3,
+          "reason": "SQLMesh macros page lists macro operators including @EACH, @IF, @EVAL, @FILTER, @REDUCE, and @STAR."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/concepts/macros/overview",
+          "grade": 1,
+          "reason": "Macros overview is adjacent conceptual material."
+        }
+      ]
+    },
+    {
+      "id": "metrics-automatic-joins-derived",
+      "question": "Where does SQLMesh define metrics with automatic joins, derived metrics, expressions, owners, and dialects?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/concepts/metrics/definition",
+          "grade": 3,
+          "reason": "Metrics definition page covers automatic joins, derived metrics, name, expression, description, owner, and dialect fields."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/concepts/metrics/overview",
+          "grade": 2,
+          "reason": "Metrics overview is closely related context."
+        }
+      ]
+    },
+    {
+      "id": "github-actions-cicd-bot",
+      "question": "Where is the SQLMesh GitHub Actions CI/CD bot documented, including required approval and deploy command signals?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/integrations/github",
+          "grade": 3,
+          "reason": "GitHub Actions CI/CD Bot page covers required approval signal/configuration and deploy command signal/configuration."
+        }
+      ]
+    },
+    {
+      "id": "duckdb-connection-catalogs-secrets",
+      "question": "Where are SQLMesh DuckDB connection options, catalogs, DuckLake catalog examples, secrets, and filesystem configuration documented?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/integrations/engines/duckdb",
+          "grade": 3,
+          "reason": "DuckDB integration page covers connection options, catalogs, DuckLake catalog example, secrets, and filesystem configuration."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/guides/connections",
+          "grade": 1,
+          "reason": "Connections guide is broadly related to engine connection configuration."
+        }
+      ]
+    },
+    {
+      "id": "cli-export-import-reference",
+      "question": "Which SQLMesh reference page documents CLI commands including export and import?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/reference/cli",
+          "grade": 3,
+          "reason": "CLI reference page includes export and import command sections."
+        },
+        {
+          "url": "https://sqlmesh.readthedocs.io/en/stable/quickstart/cli",
+          "grade": 1,
+          "reason": "CLI quickstart is related but not the command reference."
+        }
+      ]
+    }
+  ]
+}

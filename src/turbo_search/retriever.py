@@ -19,8 +19,14 @@ DEFAULT_CANDIDATES = 200
 DEFAULT_RANKING_POOL = 100
 DEFAULT_RANKING_MODE = "file"
 DEFAULT_RANKING_PROFILE = "repo_code"
+DEFAULT_RANKING_AGGREGATION = "max"
+DEFAULT_WEBSITE_RANKING_MODE = "page"
+DEFAULT_WEBSITE_RANKING_PROFILE = "none"
+DEFAULT_WEBSITE_RANKING_POOL = 20
+DEFAULT_WEBSITE_RANKING_AGGREGATION = "max"
 RANKING_MODES = {"chunk", "file", "page"}
 RANKING_PROFILES = {"none", "repo_code"}
+RANKING_AGGREGATIONS = {"max", "capped_sum_3"}
 RRF_K = 60
 RETRIEVAL_ATTRIBUTES = [
     "title",
@@ -33,6 +39,30 @@ RETRIEVAL_ATTRIBUTES = [
     "chunk_index",
 ]
 SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES = [attribute for attribute in RETRIEVAL_ATTRIBUTES if attribute != "repo_path"]
+
+
+def namespace_uses_website_defaults(namespace: str) -> bool:
+    """Return true when a namespace should use website ranking defaults."""
+
+    return namespace.startswith("site-")
+
+
+def ranking_defaults_for_namespace(namespace: str) -> dict[str, object]:
+    """Return namespace-aware ranking defaults for CLI and experiment runners."""
+
+    if namespace_uses_website_defaults(namespace):
+        return {
+            "ranking_mode": DEFAULT_WEBSITE_RANKING_MODE,
+            "ranking_profile": DEFAULT_WEBSITE_RANKING_PROFILE,
+            "ranking_pool": DEFAULT_WEBSITE_RANKING_POOL,
+            "ranking_aggregation": DEFAULT_WEBSITE_RANKING_AGGREGATION,
+        }
+    return {
+        "ranking_mode": DEFAULT_RANKING_MODE,
+        "ranking_profile": DEFAULT_RANKING_PROFILE,
+        "ranking_pool": DEFAULT_RANKING_POOL,
+        "ranking_aggregation": DEFAULT_RANKING_AGGREGATION,
+    }
 
 
 class Embedder(Protocol):
@@ -50,6 +80,7 @@ class RetrievalOptions:
     ranking_mode: str = DEFAULT_RANKING_MODE
     ranking_profile: str = DEFAULT_RANKING_PROFILE
     ranking_pool: int = DEFAULT_RANKING_POOL
+    ranking_aggregation: str = DEFAULT_RANKING_AGGREGATION
 
     def __post_init__(self) -> None:
         if self.top_k <= 0:
@@ -62,6 +93,8 @@ class RetrievalOptions:
             raise ValueError(f"ranking_mode must be one of {sorted(RANKING_MODES)}.")
         if self.ranking_profile not in RANKING_PROFILES:
             raise ValueError(f"ranking_profile must be one of {sorted(RANKING_PROFILES)}.")
+        if self.ranking_aggregation not in RANKING_AGGREGATIONS:
+            raise ValueError(f"ranking_aggregation must be one of {sorted(RANKING_AGGREGATIONS)}.")
 
     @property
     def effective_ranking_pool(self) -> int:
@@ -118,6 +151,7 @@ class RetrievalResult:
     ranking_mode: str
     ranking_profile: str
     ranking_pool: int
+    ranking_aggregation: str
     dry_run: bool = False
     turbopuffer_api_calls: bool = True
 
@@ -138,6 +172,7 @@ class RetrievalResult:
             "ranking_mode": self.ranking_mode,
             "ranking_profile": self.ranking_profile,
             "ranking_pool": self.ranking_pool,
+            "ranking_aggregation": self.ranking_aggregation,
             "fusion": self.fusion,
             "hits": [hit.to_dict() for hit in self.hits],
         }
@@ -185,6 +220,7 @@ class RetrievalPlan:
             "ranking_mode": self.options.ranking_mode,
             "ranking_profile": self.options.ranking_profile,
             "ranking_pool": self.options.ranking_pool,
+            "ranking_aggregation": self.options.ranking_aggregation,
             "live_execution": "pass --live to embed the query and call turbopuffer",
             "retrieval": {
                 "request": "turbopuffer multi_query",
@@ -269,6 +305,7 @@ class HybridRetriever:
                 ranking_mode=options.ranking_mode,
                 ranking_profile=options.ranking_profile,
                 ranking_pool=options.ranking_pool,
+                ranking_aggregation=options.ranking_aggregation,
             )
         ranking_pool = options.effective_ranking_pool
         if fusion == "client_rrf" or len(result_lists) > 1:
@@ -293,6 +330,7 @@ class HybridRetriever:
             ranking_mode=options.ranking_mode,
             ranking_profile=options.ranking_profile,
             ranking_pool=options.ranking_pool,
+            ranking_aggregation=options.ranking_aggregation,
         )
 
 
@@ -493,7 +531,7 @@ def rank_hits(hits: Sequence[SearchHit], *, options: RetrievalOptions) -> list[S
     ranked_groups: list[tuple[float, int, str, SearchHit]] = []
     for key, group in groups.items():
         best_rank, representative = min(group, key=lambda item: item[0])
-        base_score = max(1.0 / (RRF_K + rank) for rank, _hit in group)
+        base_score = ranking_group_score(group, options.ranking_aggregation)
         ranking_score = base_score * ranking_profile_multiplier(representative, options.ranking_profile)
         ranked_groups.append(
             (
@@ -505,12 +543,22 @@ def rank_hits(hits: Sequence[SearchHit], *, options: RetrievalOptions) -> list[S
                     ranking_score=ranking_score,
                     source_rank=best_rank,
                     file_hit_count=len(group),
+                    source_ranks=[rank for rank, _hit in group],
                     options=options,
                 ),
             )
         )
     ranked_groups.sort(key=lambda item: (-item[0], item[1], item[2]))
     return [item[3] for item in ranked_groups]
+
+
+def ranking_group_score(group: Sequence[tuple[int, SearchHit]], aggregation: str) -> float:
+    scores = sorted((1.0 / (RRF_K + rank) for rank, _hit in group), reverse=True)
+    if aggregation == "max":
+        return scores[0]
+    if aggregation == "capped_sum_3":
+        return sum(scores[:3])
+    raise ValueError(f"Unsupported ranking aggregation: {aggregation}")
 
 
 def ranking_group_key(hit: SearchHit, mode: str) -> str:
@@ -531,6 +579,7 @@ def hit_with_ranking_info(
     ranking_score: float,
     source_rank: int,
     file_hit_count: int,
+    source_ranks: Sequence[int],
     options: RetrievalOptions,
 ) -> SearchHit:
     score_info = dict(hit.score_info)
@@ -538,9 +587,13 @@ def hit_with_ranking_info(
         "mode": options.ranking_mode,
         "profile": options.ranking_profile,
         "ranking_pool": options.ranking_pool,
+        "aggregation": options.ranking_aggregation,
         "file_score": ranking_score,
+        "group_score": ranking_score,
         "file_hit_count": file_hit_count,
+        "group_hit_count": file_hit_count,
         "source_rank": source_rank,
+        "source_ranks": list(source_ranks),
     }
     return SearchHit(
         id=hit.id,

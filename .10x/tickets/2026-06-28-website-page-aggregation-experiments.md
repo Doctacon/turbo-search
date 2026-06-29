@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-06-28
 Updated: 2026-06-28
 Depends-On: .10x/evidence/2026-06-28-website-page-level-ranking-validation.md
@@ -32,3 +32,8 @@ Hypothesis: for website search, ranking pages by aggregated evidence from multip
 ## Progress and notes
 
 - 2026-06-28: Activated after user instructed execution of the page-level aggregation hypothesis.
+- 2026-06-28: Ran live retrieval-only raw chunk aggregation grid on `site-turbopuffer-com-v1`. Best Precision@5 variant was `agg-capped-sum-3-best-rank-c200-p20` with `Precision@5 = 0.290` and `repo_search_score = 71.220`; best composite variant was `agg-capped-sum-3-best-rank-c400-p150` with `repo_search_score = 77.957`. Evidence: `.10x/evidence/2026-06-28-website-page-aggregation-experiments.md`.
+
+## Current State
+
+Done. Hypothesis passed. No defaults were changed.

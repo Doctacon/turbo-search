@@ -179,6 +179,7 @@ class EvalRunResult:
     ranking_mode: str
     ranking_profile: str
     ranking_pool: int
+    ranking_aggregation: str
     repo_metrics: dict[str, float] | None = None
 
     def to_dict(self) -> dict[str, object]:
@@ -197,6 +198,7 @@ class EvalRunResult:
             "ranking_mode": self.ranking_mode,
             "ranking_profile": self.ranking_profile,
             "ranking_pool": self.ranking_pool,
+            "ranking_aggregation": self.ranking_aggregation,
             "total": self.total,
             "passed": self.passed,
             "failed": 0 if self.dry_run else self.total - self.passed,
@@ -566,6 +568,7 @@ def build_dry_run_eval_report(
         ranking_mode=options.ranking_mode,
         ranking_profile=options.ranking_profile,
         ranking_pool=options.ranking_pool,
+        ranking_aggregation=options.ranking_aggregation,
     )
 
 
@@ -612,5 +615,6 @@ def run_live_evals(
         ranking_mode=options.ranking_mode,
         ranking_profile=options.ranking_profile,
         ranking_pool=options.ranking_pool,
+        ranking_aggregation=options.ranking_aggregation,
         repo_metrics=aggregate_repo_scores(repo_scores) if repo_scores else None,
     )

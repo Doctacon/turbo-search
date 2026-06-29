@@ -27,6 +27,28 @@ class AutoresearchRunnerTests(unittest.TestCase):
         self.assertEqual(experiment.retrieval_options.top_k, 5)
         self.assertEqual(experiment.fixture_hits["case-a"][0]["path"], "README.md")
 
+    def test_load_experiment_uses_website_defaults_for_site_namespace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            experiment_path = write_experiment(
+                root,
+                extra={
+                    "config": {
+                        "namespace": "site-example-com-v1",
+                        "region": "gcp-us-central1",
+                        "embedding_model": "BAAI/bge-small-en-v1.5",
+                    }
+                },
+                fixture_hits={"case-a": [{"url": "https://example.com/docs"}]},
+            )
+
+            experiment = load_experiment(experiment_path)
+
+        self.assertEqual(experiment.retrieval_options.ranking_mode, "page")
+        self.assertEqual(experiment.retrieval_options.ranking_profile, "none")
+        self.assertEqual(experiment.retrieval_options.ranking_pool, 20)
+        self.assertEqual(experiment.retrieval_options.ranking_aggregation, "max")
+
     def test_load_experiment_rejects_source_mutation_and_live_write_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

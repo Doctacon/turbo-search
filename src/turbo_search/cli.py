@@ -55,12 +55,12 @@ from turbo_search.plan_artifacts import (
 from turbo_search.plan_diff import IncrementalPlanDiff, PlanDiffError, diff_manifest_against_state
 from turbo_search.retriever import (
     DEFAULT_CANDIDATES,
-    DEFAULT_RANKING_POOL,
     DEFAULT_TOP_K,
     HybridRetriever,
     RetrievalOptions,
     RetrievalPlan,
     RetrievalResult,
+    ranking_defaults_for_namespace,
     retrieval_plan,
 )
 
@@ -405,20 +405,26 @@ def build_parser() -> argparse.ArgumentParser:
     retrieve_parser.add_argument(
         "--ranking-mode",
         choices=["file", "page", "chunk"],
-        default="file",
-        help="Final ranking mode. Default file mode deduplicates repository chunks by repo_path; page mode deduplicates website chunks by URL.",
+        default=None,
+        help="Final ranking mode. Default is namespace-aware: site-* uses page, other namespaces use file.",
     )
     retrieve_parser.add_argument(
         "--ranking-profile",
         choices=["repo-code", "none"],
-        default="repo-code",
-        help="Final ranking profile. Default repo-code gently demotes repository process/docs paths after file ranking.",
+        default=None,
+        help="Final ranking profile. Default is namespace-aware: site-* uses none, other namespaces use repo-code.",
     )
     retrieve_parser.add_argument(
         "--ranking-pool",
         type=positive_int,
-        default=DEFAULT_RANKING_POOL,
-        help="Number of fused candidates to consider during final file-level ranking.",
+        default=None,
+        help="Number of fused candidates to consider during final file/page ranking. Default is 20 for site-* and 100 otherwise.",
+    )
+    retrieve_parser.add_argument(
+        "--ranking-aggregation",
+        choices=["max", "capped-sum-3"],
+        default=None,
+        help="Group scoring for file/page ranking. Default max preserves existing behavior; capped-sum-3 rewards up to three matching chunks per page/file.",
     )
     retrieve_parser.add_argument(
         "--doc-kind",
@@ -470,20 +476,26 @@ def build_parser() -> argparse.ArgumentParser:
     evals_parser.add_argument(
         "--ranking-mode",
         choices=["file", "page", "chunk"],
-        default="file",
-        help="Final ranking mode. Default file mode deduplicates repository chunks by repo_path; page mode deduplicates website chunks by URL.",
+        default=None,
+        help="Final ranking mode. Default is namespace-aware: site-* uses page, other namespaces use file.",
     )
     evals_parser.add_argument(
         "--ranking-profile",
         choices=["repo-code", "none"],
-        default="repo-code",
-        help="Final ranking profile. Default repo-code gently demotes repository process/docs paths after file ranking.",
+        default=None,
+        help="Final ranking profile. Default is namespace-aware: site-* uses none, other namespaces use repo-code.",
     )
     evals_parser.add_argument(
         "--ranking-pool",
         type=positive_int,
-        default=DEFAULT_RANKING_POOL,
-        help="Number of fused candidates to consider during final file-level ranking.",
+        default=None,
+        help="Number of fused candidates to consider during final file/page ranking. Default is 20 for site-* and 100 otherwise.",
+    )
+    evals_parser.add_argument(
+        "--ranking-aggregation",
+        choices=["max", "capped-sum-3"],
+        default=None,
+        help="Group scoring for file/page ranking. Default max preserves existing behavior; capped-sum-3 rewards up to three matching chunks per page/file.",
     )
     evals_parser.add_argument(
         "--dataset",
@@ -557,6 +569,30 @@ def nonnegative_float(value: str) -> float:
 
 def ranking_profile_from_cli(value: str) -> str:
     return value.replace("-", "_")
+
+
+def ranking_aggregation_from_cli(value: str) -> str:
+    return value.replace("-", "_")
+
+
+def retrieval_options_from_args(
+    args: argparse.Namespace,
+    *,
+    config: RuntimeConfig,
+    doc_kind: str | None = None,
+) -> RetrievalOptions:
+    defaults = ranking_defaults_for_namespace(config.namespace)
+    ranking_profile = args.ranking_profile or str(defaults["ranking_profile"]).replace("_", "-")
+    ranking_aggregation = args.ranking_aggregation or str(defaults["ranking_aggregation"]).replace("_", "-")
+    return RetrievalOptions(
+        top_k=args.top_k,
+        candidates=args.candidates,
+        doc_kind=doc_kind,
+        ranking_mode=args.ranking_mode or str(defaults["ranking_mode"]),
+        ranking_profile=ranking_profile_from_cli(ranking_profile),
+        ranking_pool=args.ranking_pool or int(defaults["ranking_pool"]),
+        ranking_aggregation=ranking_aggregation_from_cli(ranking_aggregation),
+    )
 
 
 def _print_json(payload: dict[str, object]) -> None:
@@ -808,14 +844,7 @@ def _run_apply(args: argparse.Namespace) -> int:
 
 def _run_retrieve(args: argparse.Namespace) -> int:
     config = config_from_args(args)
-    options = RetrievalOptions(
-        top_k=args.top_k,
-        candidates=args.candidates,
-        doc_kind=args.doc_kind,
-        ranking_mode=args.ranking_mode,
-        ranking_profile=ranking_profile_from_cli(args.ranking_profile),
-        ranking_pool=args.ranking_pool,
-    )
+    options = retrieval_options_from_args(args, config=config, doc_kind=args.doc_kind)
     if args.dry_run and args.live:
         print("Choose either --live or --dry-run/--plan, not both.", file=sys.stderr)
         return 2
@@ -841,13 +870,7 @@ def _run_retrieve(args: argparse.Namespace) -> int:
 
 def _run_evals(args: argparse.Namespace) -> int:
     config = config_from_args(args)
-    options = RetrievalOptions(
-        top_k=args.top_k,
-        candidates=args.candidates,
-        ranking_mode=args.ranking_mode,
-        ranking_profile=ranking_profile_from_cli(args.ranking_profile),
-        ranking_pool=args.ranking_pool,
-    )
+    options = retrieval_options_from_args(args, config=config)
     if args.dry_run and args.live:
         print("Choose either --live or --dry-run/--list, not both.", file=sys.stderr)
         return 2
@@ -994,7 +1017,8 @@ def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:
             "  ranking: "
             f"mode={payload.get('ranking_mode')}; "
             f"profile={payload.get('ranking_profile')}; "
-            f"pool={payload.get('ranking_pool')}"
+            f"pool={payload.get('ranking_pool')}; "
+            f"aggregation={payload.get('ranking_aggregation')}"
         )
         print("  hybrid: ANN over vector + boosted BM25 over title/section_path/content + RRF")
         print("  live: pass --live to execute; TURBOPUFFER_API_KEY is read from the environment only")
@@ -1003,7 +1027,8 @@ def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:
     hits = payload.get("hits", [])
     print(
         f"Retrieved {len(hits)} chunks using {payload.get('fusion')} "
-        f"with ranking mode={payload.get('ranking_mode')} profile={payload.get('ranking_profile')}:"
+        f"with ranking mode={payload.get('ranking_mode')} profile={payload.get('ranking_profile')} "
+        f"aggregation={payload.get('ranking_aggregation')}:"
     )
     for index, hit in enumerate(hits, start=1):
         if not isinstance(hit, dict):
@@ -1031,7 +1056,8 @@ def print_eval_text(payload: dict[str, object]) -> None:
         print(
             f"  evals: {payload['total']}; top_k: {payload['top_k']}; "
             f"candidates: {payload['candidates']}; "
-            f"ranking: {payload.get('ranking_mode')}/{payload.get('ranking_profile')}"
+            f"ranking: {payload.get('ranking_mode')}/{payload.get('ranking_profile')}/"
+            f"{payload.get('ranking_aggregation')}"
         )
         print("  live: pass --live to execute; TURBOPUFFER_API_KEY is read from the environment only")
     else:

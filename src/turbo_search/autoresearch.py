@@ -25,7 +25,7 @@ from turbo_search.evals import (
     score_hits,
     score_repo_hits,
 )
-from turbo_search.retriever import RetrievalOptions
+from turbo_search.retriever import RetrievalOptions, ranking_defaults_for_namespace
 
 DEFAULT_MODE = "fixture"
 ALLOWED_MODES = {"fixture", "live"}
@@ -91,7 +91,10 @@ class AutoresearchExperiment:
             raise AutoresearchExperimentError(f"mode must be one of {sorted(ALLOWED_MODES)}, got {mode!r}.")
 
         config = runtime_config_from_payload(mapping_field(payload, "config", required=True))
-        options = retrieval_options_from_payload(mapping_field(payload, "retrieval_options", required=True))
+        options = retrieval_options_from_payload(
+            mapping_field(payload, "retrieval_options", required=True),
+            namespace=config.namespace,
+        )
         fixture_hits = fixture_hits_from_payload(payload.get("fixture_hits"))
         output_path_value = optional_string(payload, "output_path")
         notes = optional_string(payload, "notes") or ""
@@ -145,6 +148,7 @@ class AutoresearchExperiment:
                 "ranking_mode": self.retrieval_options.ranking_mode,
                 "ranking_profile": self.retrieval_options.ranking_profile,
                 "ranking_pool": self.retrieval_options.ranking_pool,
+                "ranking_aggregation": self.retrieval_options.ranking_aggregation,
             },
             "notes": self.notes,
         }
@@ -189,14 +193,16 @@ def runtime_config_from_payload(payload: Mapping[str, object]) -> RuntimeConfig:
     return RuntimeConfig(region=region, namespace=namespace, embedding_model=embedding_model)
 
 
-def retrieval_options_from_payload(payload: Mapping[str, object]) -> RetrievalOptions:
+def retrieval_options_from_payload(payload: Mapping[str, object], *, namespace: str) -> RetrievalOptions:
+    defaults = ranking_defaults_for_namespace(namespace)
     return RetrievalOptions(
         top_k=positive_int_field(payload, "top_k"),
         candidates=positive_int_field(payload, "candidates"),
         doc_kind=optional_string(payload, "doc_kind"),
-        ranking_mode=string_or_default(payload, "ranking_mode", "file"),
-        ranking_profile=string_or_default(payload, "ranking_profile", "repo_code").replace("-", "_"),
-        ranking_pool=positive_int_field(payload, "ranking_pool", default=100),
+        ranking_mode=string_or_default(payload, "ranking_mode", str(defaults["ranking_mode"])),
+        ranking_profile=string_or_default(payload, "ranking_profile", str(defaults["ranking_profile"])).replace("-", "_"),
+        ranking_pool=positive_int_field(payload, "ranking_pool", default=int(defaults["ranking_pool"])),
+        ranking_aggregation=string_or_default(payload, "ranking_aggregation", str(defaults["ranking_aggregation"])).replace("-", "_"),
     )
 
 
@@ -320,6 +326,7 @@ def run_fixture_evals(cases: Sequence[EvalCase], *, experiment: AutoresearchExpe
         ranking_mode=experiment.retrieval_options.ranking_mode,
         ranking_profile=experiment.retrieval_options.ranking_profile,
         ranking_pool=experiment.retrieval_options.ranking_pool,
+        ranking_aggregation=experiment.retrieval_options.ranking_aggregation,
         repo_metrics=aggregate_repo_scores(repo_scores) if repo_scores else None,
     )
 

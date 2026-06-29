@@ -111,6 +111,18 @@ class DuplicateUrlNamespace:
         }
 
 
+class PageAggregationNamespace:
+    def multi_query(self, **kwargs: object) -> dict[str, object]:
+        return {
+            "rows": [
+                {"id": "api-a", "attributes": {"title": "API", "url": "https://example.com/api", "content": "api chunk"}},
+                {"id": "docs-a", "attributes": {"title": "Docs A", "url": "https://example.com/docs#one", "content": "first docs chunk"}},
+                {"id": "docs-b", "attributes": {"title": "Docs B", "url": "https://example.com/docs#two", "content": "second docs chunk"}},
+                {"id": "docs-c", "attributes": {"title": "Docs C", "url": "https://example.com/docs#three", "content": "third docs chunk"}},
+            ]
+        }
+
+
 class RetrieverTests(unittest.TestCase):
     def test_builds_ann_and_boosted_bm25_subqueries_without_vectors_in_attributes(self) -> None:
         queries = build_multi_query_subqueries(
@@ -248,6 +260,62 @@ class RetrieverTests(unittest.TestCase):
         )
 
         self.assertEqual([hit.repo_path for hit in result.hits], ["docs/guide.md", "src/module.py", ".pi/skills/tool/SKILL.md"])
+        self.assertEqual(len({hit.repo_path for hit in result.hits}), 3)
+
+    def test_page_ranking_capped_sum_3_rewards_multi_chunk_page_evidence(self) -> None:
+        retriever = HybridRetriever(
+            namespace=PageAggregationNamespace(),
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        default_result = retriever.retrieve(
+            "website docs",
+            RetrievalOptions(top_k=2, candidates=10, ranking_mode="page", ranking_profile="none", ranking_pool=4),
+        )
+        aggregated_result = retriever.retrieve(
+            "website docs",
+            RetrievalOptions(
+                top_k=2,
+                candidates=10,
+                ranking_mode="page",
+                ranking_profile="none",
+                ranking_pool=4,
+                ranking_aggregation="capped_sum_3",
+            ),
+        )
+
+        self.assertEqual([hit.id for hit in default_result.hits], ["api-a", "docs-a"])
+        self.assertEqual([hit.id for hit in aggregated_result.hits], ["docs-a", "api-a"])
+        ranking_info = aggregated_result.hits[0].score_info["ranking"]
+        self.assertEqual(ranking_info["aggregation"], "capped_sum_3")
+        self.assertEqual(ranking_info["group_hit_count"], 3)
+        self.assertEqual(ranking_info["source_ranks"], [2, 3, 4])
+
+    def test_invalid_ranking_aggregation_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ranking_aggregation"):
+            RetrievalOptions(ranking_aggregation="sum")
+
+    def test_capped_sum_3_preserves_repo_path_grouping(self) -> None:
+        retriever = HybridRetriever(
+            namespace=DuplicateRepoPathNamespace(),
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        result = retriever.retrieve(
+            "repo code",
+            RetrievalOptions(
+                top_k=3,
+                candidates=10,
+                ranking_mode="page",
+                ranking_profile="none",
+                ranking_pool=10,
+                ranking_aggregation="capped_sum_3",
+            ),
+        )
+
+        self.assertEqual(result.hits[0].repo_path, "src/module.py")
         self.assertEqual(len({hit.repo_path for hit in result.hits}), 3)
 
     def test_live_retriever_retries_without_repo_path_for_website_schema(self) -> None:

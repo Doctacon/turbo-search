@@ -1,0 +1,189 @@
+{
+  "dataset_id": "pi-site-search-seed-evals",
+  "source": "https://pi.dev/",
+  "namespace": "site-pi-dev-v1",
+  "human_approved_ground_truth": false,
+  "notes": "Assistant-drafted seed labels for pi.dev website retrieval experiments. Use for cross-site calibration only until reviewed.",
+  "cases": [
+    {
+      "id": "quickstart-install-auth-project-instructions",
+      "question": "Where does Pi document quickstart installation, subscription login or API key setup, project instructions, and running shell commands?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/quickstart",
+          "grade": 3,
+          "reason": "Quickstart covers install options, subscription/API key auth, project instructions, shell commands, model switching, and non-interactive mode."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/usage",
+          "grade": 1,
+          "reason": "Usage is related to running Pi after setup."
+        }
+      ]
+    },
+    {
+      "id": "usage-cli-options-modes-tools-resources",
+      "question": "Which Pi page explains usage options such as modes, model options, session options, tool options, resource options, file arguments, and examples?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/usage",
+          "grade": 3,
+          "reason": "Using Pi page covers editor features, system prompt files, project trust, modes, model/session/tool/resource options, file arguments, and examples."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/settings",
+          "grade": 1,
+          "reason": "Settings is adjacent configuration material."
+        }
+      ]
+    },
+    {
+      "id": "providers-openai-claude-copilot-bedrock-azure",
+      "question": "Where are Pi model providers documented, including OpenAI Codex, Claude Pro or Max, GitHub Copilot, Azure OpenAI, and Amazon Bedrock?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/providers",
+          "grade": 3,
+          "reason": "Providers page documents built-in provider setup for OpenAI Codex, Claude, GitHub Copilot, Azure OpenAI, Amazon Bedrock, and auth sources."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/models",
+          "grade": 1,
+          "reason": "Custom models page is related model configuration material."
+        }
+      ]
+    },
+    {
+      "id": "settings-telemetry-network-retry-shell-sessions",
+      "question": "Which Pi docs page lists settings for telemetry, network, retry, shell, sessions, markdown, terminal images, and model cycling?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/settings",
+          "grade": 3,
+          "reason": "Settings page enumerates UI/display, telemetry/update checks, network, retry, shell, sessions, model cycling, markdown, and terminal/image settings."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/usage",
+          "grade": 1,
+          "reason": "Usage page covers runtime options that overlap with settings."
+        }
+      ]
+    },
+    {
+      "id": "keybindings-editor-kill-ring-selection-models",
+      "question": "Where does Pi document keybindings for TUI editor movement, deletion, input, kill ring, clipboard selection, sessions, models, and tree navigation?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/keybindings",
+          "grade": 3,
+          "reason": "Keybindings page lists editor movement/deletion/input, kill ring, clipboard/selection, sessions, models, display, tree navigation, and examples."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/tui",
+          "grade": 1,
+          "reason": "TUI components are adjacent UI documentation."
+        }
+      ]
+    },
+    {
+      "id": "extensions-lifecycle-events-resources-sessions",
+      "question": "Which Pi page explains extensions, async factory functions, long-lived resources, startup events, project_trust, resource discovery, and session lifecycle events?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/extensions",
+          "grade": 3,
+          "reason": "Extensions page covers async factory functions, long-lived resources, lifecycle overview, startup/project/resource/session events, and shutdown."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/sdk",
+          "grade": 1,
+          "reason": "SDK page is related integration material."
+        }
+      ]
+    },
+    {
+      "id": "skills-skill-md-format-name-description",
+      "question": "Where are Pi skills documented, including SKILL.md format, name rules, description best practices, setup, usage, and compatibility with other harnesses?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/skills",
+          "grade": 3,
+          "reason": "Skills page documents using skills, SKILL.md format, name rules, description best practices, setup, usage, and examples."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/packages",
+          "grade": 1,
+          "reason": "Packages can distribute skills and related extension artifacts."
+        }
+      ]
+    },
+    {
+      "id": "packages-npm-git-local-gallery-convention-directories",
+      "question": "Which Pi documentation covers packages from npm, git, ssh, version refs, local paths, gallery metadata, and convention directories?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/packages",
+          "grade": 3,
+          "reason": "Pi Packages page covers npm, git, ssh shorthand/protocols, version refs, local paths, gallery metadata, and convention directories."
+        },
+        {
+          "url": "https://pi.dev/packages",
+          "grade": 1,
+          "reason": "Packages gallery is related but not the documentation page."
+        }
+      ]
+    },
+    {
+      "id": "custom-providers-stream-tool-calls-registration",
+      "question": "Where does Pi explain custom providers, API types, auth headers, OAuth callbacks and credentials, stream patterns, tool calls, usage and cost, and registration?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/custom-provider",
+          "grade": 3,
+          "reason": "Custom Providers page covers API types, auth headers, OAuth callbacks/credentials, stream patterns, content blocks, tool calls, usage/cost, overflow, and registration."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/providers",
+          "grade": 1,
+          "reason": "Providers page is related provider configuration material."
+        }
+      ]
+    },
+    {
+      "id": "sdk-agent-session-runtime-tools-skills-events",
+      "question": "Which Pi SDK page documents createAgentSession, AgentSessionRuntime, prompting, message queueing, events, directories, tools, extensions, and skills?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://pi.dev/docs/latest/sdk",
+          "grade": 3,
+          "reason": "SDK page documents createAgentSession, AgentSession, runtime, prompting/message queueing, events, directories, tools, extensions, and skills."
+        },
+        {
+          "url": "https://pi.dev/docs/latest/extensions",
+          "grade": 1,
+          "reason": "Extensions page is adjacent SDK/integration documentation."
+        }
+      ]
+    }
+  ]
+}
