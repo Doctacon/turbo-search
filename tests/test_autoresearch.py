@@ -28,7 +28,7 @@ class AutoresearchRunnerTests(unittest.TestCase):
         self.assertEqual(experiment.retrieval_options.ranking_mode, "file")
         self.assertEqual(experiment.retrieval_options.ranking_profile, "repo_code")
         self.assertEqual(experiment.retrieval_options.ranking_pool, 100)
-        self.assertEqual(experiment.retrieval_options.ranking_aggregation, "max")
+        self.assertEqual(experiment.retrieval_options.ranking_aggregation, "adaptive_sum_3")
         self.assertEqual(experiment.fixture_hits["case-a"][0]["path"], "README.md")
 
     def test_load_experiment_uses_website_defaults_for_site_namespace(self) -> None:

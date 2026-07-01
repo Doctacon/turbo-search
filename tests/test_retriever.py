@@ -216,7 +216,7 @@ class RetrieverTests(unittest.TestCase):
         self.assertEqual(len({hit.repo_path for hit in result.hits}), 3)
         self.assertEqual(result.ranking_mode, "file")
         self.assertEqual(result.ranking_profile, "repo_code")
-        self.assertEqual(result.ranking_aggregation, "max")
+        self.assertEqual(result.ranking_aggregation, "adaptive_sum_3")
         self.assertEqual(result.hits[0].score_info["ranking"]["file_hit_count"], 2)
 
     def test_repo_code_profile_demotes_artifacts_and_boosts_tests(self) -> None:
@@ -318,6 +318,59 @@ class RetrieverTests(unittest.TestCase):
         self.assertEqual(ranked[0].repo_path, "src/requests/structures.py")
         self.assertEqual(ranked[0].score_info["ranking"]["file_hit_count"], 2)
 
+    def test_repo_role_diversification_promotes_matching_test_companion(self) -> None:
+        hits = [
+            SearchHit(id="utils", repo_path="src/requests/utils.py"),
+            SearchHit(id="internal", repo_path="src/requests/_internal_utils.py"),
+            SearchHit(id="types", repo_path="src/requests/_types.py"),
+            SearchHit(id="sessions", repo_path="src/requests/sessions.py"),
+            SearchHit(id="models", repo_path="src/requests/models.py"),
+            SearchHit(id="auth", repo_path="src/requests/auth.py"),
+            SearchHit(id="adapters", repo_path="src/requests/adapters.py"),
+            SearchHit(id="api", repo_path="src/requests/api.py"),
+            SearchHit(id="cookies", repo_path="src/requests/cookies.py"),
+            SearchHit(id="hooks", repo_path="src/requests/hooks.py"),
+            SearchHit(id="compat", repo_path="src/requests/compat.py"),
+            SearchHit(id="test-utils", repo_path="tests/test_utils.py"),
+        ]
+
+        ranked = rank_hits(
+            hits,
+            options=RetrievalOptions(top_k=5, ranking_pool=12),
+            query="Where are Requests utility helpers implemented for proxies and URI parsing?",
+        )
+
+        self.assertEqual(ranked[0].repo_path, "src/requests/utils.py")
+        self.assertEqual(ranked[4].repo_path, "tests/test_utils.py")
+
+    def test_repo_role_diversification_promotes_matching_doc_companion(self) -> None:
+        hits = [
+            SearchHit(id="exceptions", repo_path="src/requests/exceptions.py"),
+            SearchHit(id="adapters", repo_path="src/requests/adapters.py"),
+            SearchHit(id="init", repo_path="src/requests/__init__.py"),
+            SearchHit(id="models", repo_path="src/requests/models.py"),
+            SearchHit(id="types", repo_path="src/requests/_types.py"),
+            SearchHit(id="cookies", repo_path="src/requests/cookies.py"),
+            SearchHit(id="status", repo_path="src/requests/status_codes.py"),
+            SearchHit(
+                id="docs-api",
+                repo_path="docs/api.rst",
+                content=(
+                    "Exceptions RequestException HTTPError ConnectionError Timeout "
+                    "TooManyRedirects RequestsWarning warning classes"
+                ),
+            ),
+        ]
+
+        ranked = rank_hits(
+            hits,
+            options=RetrievalOptions(top_k=5, ranking_pool=8),
+            query="Where are exception and warning classes such as RequestException and HTTPError defined?",
+        )
+
+        self.assertEqual(ranked[0].repo_path, "src/requests/exceptions.py")
+        self.assertEqual(ranked[4].repo_path, "docs/api.rst")
+
     def test_chunk_ranking_preserves_raw_fused_order(self) -> None:
         retriever = HybridRetriever(
             namespace=DuplicateRepoPathNamespace(),
@@ -408,6 +461,31 @@ class RetrieverTests(unittest.TestCase):
         self.assertEqual(ranking_info["aggregation"], "capped_sum_3")
         self.assertEqual(ranking_info["group_hit_count"], 3)
         self.assertEqual(ranking_info["source_ranks"], [2, 3, 4])
+
+    def test_adaptive_sum_3_adds_small_bonus_for_close_same_file_chunks(self) -> None:
+        retriever = HybridRetriever(
+            namespace=PageAggregationNamespace(),
+            embedder=FakeEmbedder(),
+            config=RuntimeConfig(),
+        )
+
+        result = retriever.retrieve(
+            "website docs",
+            RetrievalOptions(
+                top_k=2,
+                candidates=10,
+                ranking_mode="page",
+                ranking_profile="none",
+                ranking_pool=4,
+                ranking_aggregation="adaptive_sum_3",
+            ),
+        )
+
+        self.assertEqual([hit.id for hit in result.hits], ["docs-a", "api-a"])
+        ranking_info = result.hits[0].score_info["ranking"]
+        self.assertEqual(ranking_info["aggregation"], "adaptive_sum_3")
+        self.assertEqual(ranking_info["group_hit_count"], 3)
+        self.assertLess(ranking_info["group_score"], 0.02)
 
     def test_invalid_ranking_aggregation_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "ranking_aggregation"):

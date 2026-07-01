@@ -422,9 +422,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retrieve_parser.add_argument(
         "--ranking-aggregation",
-        choices=["max", "capped-sum-3"],
+        choices=["max", "adaptive-sum-3", "capped-sum-3"],
         default=None,
-        help="Group scoring for file/page ranking. Default max uses the best chunk per page/file; capped-sum-3 is opt-in.",
+        help="Group scoring for file/page ranking. Repo default adaptive-sum-3 adds a small close-chunk bonus; site default max uses the best page chunk.",
     )
     retrieve_parser.add_argument(
         "--doc-kind",
@@ -493,9 +493,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     evals_parser.add_argument(
         "--ranking-aggregation",
-        choices=["max", "capped-sum-3"],
+        choices=["max", "adaptive-sum-3", "capped-sum-3"],
         default=None,
-        help="Group scoring for file/page ranking. Default max uses the best chunk per page/file; capped-sum-3 is opt-in.",
+        help="Group scoring for file/page ranking. Repo default adaptive-sum-3 adds a small close-chunk bonus; site default max uses the best page chunk.",
     )
     evals_parser.add_argument(
         "--dataset",

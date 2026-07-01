@@ -10,20 +10,30 @@ Updated: 2026-06-28
 
 - website rows need page-level deduplication by canonical URL;
 - GitHub repository rows need file-level grouping by `repo_path`;
-- repository files may have multiple matching chunks, but repeated evidence can also over-rank broad core files.
+- repository files may have multiple matching chunks, but repeated evidence can also over-rank broad core files;
+- current `repo_code` scoring also applies artifact demotion, query-intent handling, path/symbol boosts, and one-companion docs/tests role diversification.
 
-The prior repository default briefly promoted `capped_sum_3` aggregation after it improved the `turbo-search` seed eval. Cross-repo validation on `psf/requests` showed that result does not generalize as a universal default:
+Earlier evidence rejected universal `capped_sum_3` because it improved `turbo-search` but regressed `psf/requests`. Third-repo validation on `pallets/click` reopened the aggregation question: `capped_sum_3` was average-better across three repos, but still regressed `psf/requests`.
+
+A conservative adaptive aggregation rule was then tested: start with `max`, and add a 5% bonus for each of up to two additional chunks from the same file only when those chunks are close to the best file chunk (`score >= 0.80 * best_chunk_score`). This keeps single-best-file behavior as the base, rewards repeated same-file evidence lightly, and avoids the large full-sum jumps that caused Requests regressions.
+
+Three-repo live retrieval-only validation with the current scoring profile:
 
 ```text
-turbo-search clean namespace, max:          Score = 86.697
-turbo-search clean namespace, capped_sum_3: Score = 89.197
-psf/requests, max:                          Score = 81.809
-psf/requests, capped_sum_3:                 Score = 78.229
+max average:             Score = 79.457, P@5 = 0.440
+capped_sum_3 average:    Score = 81.411, P@5 = 0.460
+adaptive_sum_3 average:  Score = 81.553, P@5 = 0.453
 ```
 
-The generalized repository default should therefore stay with `max`, while `capped_sum_3` remains an opt-in knob for repositories where repeated same-file evidence is known to help.
+`adaptive_sum_3` improved every validation repo versus `max`:
 
-This decision supersedes `.10x/decisions/superseded/namespace-ranking-defaults-capped-sum-3.md` and preserves the website defaults from `.10x/decisions/superseded/website-ranking-defaults.md`.
+```text
+turbo-search: 87.126 -> 87.760
+psf/requests: 84.093 -> 84.426
+pallets/click: 67.150 -> 72.474
+```
+
+This decision supersedes `.10x/decisions/superseded/namespace-ranking-defaults-max-aggregation.md`. The older universal capped-sum decision remains superseded at `.10x/decisions/superseded/namespace-ranking-defaults-capped-sum-3.md`.
 
 ## Decision
 
@@ -46,22 +56,30 @@ candidates = 200
 ranking_mode = file
 ranking_profile = repo_code
 ranking_pool = 100
-ranking_aggregation = max
+ranking_aggregation = adaptive_sum_3
 ```
 
-User-supplied CLI/config ranking options continue to override namespace defaults. `--ranking-aggregation capped-sum-3` remains available for opt-in repo or website experiments.
+`adaptive_sum_3` uses the best chunk per file plus a small close-evidence bonus:
+
+```text
+score = best_chunk_score * (1 + 0.05 * close_extra_chunk_count)
+close_extra_chunk_count = count of chunks 2..3 where chunk_score >= 0.80 * best_chunk_score
+```
+
+User-supplied CLI/config ranking options continue to override namespace defaults. `--ranking-aggregation max` remains available for strict single-best-chunk file/page ranking, and `--ranking-aggregation capped-sum-3` remains available for opt-in repo or website experiments.
 
 ## Alternatives considered
 
-- Promote `capped_sum_3` for all repo namespaces: rejected after `psf/requests` cross-repo validation regressed composite score and Precision@5 versus `max`.
-- Use larger ranking pools: deferred because current evidence does not show a universal default win.
-- Use source-specific or learned aggregation defaults: deferred until there are more cross-repo labels.
+- Keep repo `max`: rejected after adaptive aggregation improved all three validation repos and preserved the no-regression property that made `max` attractive.
+- Promote `capped_sum_3` for all repo namespaces: rejected because it still regresses `psf/requests` versus `max` and `adaptive_sum_3` despite strong Click and turbo-search results.
+- Use learned/adaptive source-specific aggregation: deferred until there are more labels and repositories.
 
 ## Consequences
 
-- Repository retrieval/evals without explicit ranking flags use the safer single-best-file evidence default.
-- `turbo-search` can still use `--ranking-aggregation capped-sum-3` when optimizing that specific namespace.
-- Further repo score improvements should target index hygiene, path/symbol metadata, or an adaptive aggregation strategy validated across more repositories; scoring-only query intent and path/symbol boosts are now part of the `repo_code` profile.
+- Repository retrieval/evals without explicit ranking flags now use a conservative repeated-file evidence bonus.
+- Website defaults remain unchanged at page/max/pool20.
+- Strict `max` and full `capped_sum_3` remain inspectable CLI/config options.
+- Further repo score improvements should target index hygiene, richer path/symbol metadata, or learned/adaptive ranking after more labeled repos.
 
 ## Evidence
 
@@ -70,4 +88,7 @@ User-supplied CLI/config ranking options continue to override namespace defaults
 - `.10x/evidence/2026-06-28-cross-repo-requests-validation.md`
 - `.10x/evidence/2026-06-28-repo-query-intent-profile-validation.md`
 - `.10x/evidence/2026-06-28-repo-path-symbol-ranking-validation.md`
+- `.10x/evidence/2026-06-28-repo-role-diversification-validation.md`
+- `.10x/evidence/2026-06-28-cross-repo-click-validation.md`
+- `.10x/evidence/2026-06-28-repo-adaptive-aggregation-validation.md`
 - `.10x/evidence/2026-06-28-website-ranking-evidence-hardening.md`

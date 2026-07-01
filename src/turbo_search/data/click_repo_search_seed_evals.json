@@ -1,0 +1,261 @@
+{
+  "metadata": {
+    "id": "click-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "pallets/click",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for third-repo repository search validation on pallets/click. Source-backed from the planned repository corpus."
+  },
+  "cases": [
+    {
+      "id": "command-group-decorators",
+      "question": "Where does Click implement the command, group, option, argument, confirmation_option, password_option, version_option, and help_option decorators?",
+      "coverage_area": "decorators_public_api",
+      "judgments": [
+        {
+          "repo_path": "src/click/decorators.py",
+          "grade": 3,
+          "reason": "Defines command(), group(), argument(), option(), and the convenience option decorators."
+        },
+        {
+          "repo_path": "src/click/core.py",
+          "grade": 2,
+          "reason": "Provides the Command, Group, Option, Argument, Context, and Parameter classes used by decorators."
+        },
+        {
+          "repo_path": "tests/test_command_decorators.py",
+          "grade": 2,
+          "reason": "Validates command and group decorator behavior."
+        },
+        {
+          "repo_path": "docs/commands-and-groups.md",
+          "grade": 1,
+          "reason": "User-facing documentation for commands, groups, and decorator usage."
+        }
+      ]
+    },
+    {
+      "id": "command-context-invocation",
+      "question": "Where are Command, Group, Context, command invocation, subcommand resolution, parameter sources, and main() execution implemented?",
+      "coverage_area": "core_command_runtime",
+      "judgments": [
+        {
+          "repo_path": "src/click/core.py",
+          "grade": 3,
+          "reason": "Defines Context, Command, Group, CommandCollection, ParameterSource, main(), invoke(), parse_args(), and subcommand resolution."
+        },
+        {
+          "repo_path": "tests/test_commands.py",
+          "grade": 2,
+          "reason": "Validates command and group invocation behavior."
+        },
+        {
+          "repo_path": "tests/test_context.py",
+          "grade": 2,
+          "reason": "Validates Context, object/meta handling, cleanup, and related runtime behavior."
+        },
+        {
+          "repo_path": "docs/commands.md",
+          "grade": 1,
+          "reason": "Documents command behavior and invocation concepts."
+        }
+      ]
+    },
+    {
+      "id": "option-argument-parser",
+      "question": "Where does Click parse command-line options and arguments, including long and short option matching, argument unpacking, parser state, and option value processing?",
+      "coverage_area": "parser_and_parameters",
+      "judgments": [
+        {
+          "repo_path": "src/click/parser.py",
+          "grade": 3,
+          "reason": "Implements _OptionParser, _ParsingState, _Option, _Argument, long/short option matching, and argument unpacking."
+        },
+        {
+          "repo_path": "src/click/core.py",
+          "grade": 2,
+          "reason": "Command, Option, Argument, and Parameter integrate parser output with defaults, envvars, prompting, and value processing."
+        },
+        {
+          "repo_path": "tests/test_parser.py",
+          "grade": 2,
+          "reason": "Validates parser behavior."
+        },
+        {
+          "repo_path": "tests/test_options.py",
+          "grade": 1,
+          "reason": "Covers option parsing and value behavior from the public API."
+        }
+      ]
+    },
+    {
+      "id": "parameter-types-conversion",
+      "question": "Where are Click parameter types implemented, including Choice, DateTime, IntRange, FloatRange, BoolParamType, File, Path, Tuple, convert_type, and shell_complete?",
+      "coverage_area": "parameter_types",
+      "judgments": [
+        {
+          "repo_path": "src/click/types.py",
+          "grade": 3,
+          "reason": "Defines ParamType and concrete parameter type conversion, range, file/path, tuple, and shell completion behavior."
+        },
+        {
+          "repo_path": "tests/test_types.py",
+          "grade": 2,
+          "reason": "Validates parameter type conversion and related edge cases."
+        },
+        {
+          "repo_path": "docs/parameter-types.md",
+          "grade": 1,
+          "reason": "Documents Click parameter types."
+        }
+      ]
+    },
+    {
+      "id": "terminal-ui-prompts-progress-style",
+      "question": "Where does Click implement terminal UI helpers such as prompt, confirm, progressbar, echo_via_pager, style, unstyle, secho, edit, launch, getchar, and pause?",
+      "coverage_area": "terminal_ui",
+      "judgments": [
+        {
+          "repo_path": "src/click/termui.py",
+          "grade": 3,
+          "reason": "Defines prompt/confirm, progressbar, pager helpers, styling, editor/launcher, getchar, and pause."
+        },
+        {
+          "repo_path": "tests/test_termui.py",
+          "grade": 2,
+          "reason": "Validates terminal UI helper behavior."
+        },
+        {
+          "repo_path": "docs/prompts.md",
+          "grade": 1,
+          "reason": "Documents prompt and confirmation behavior."
+        },
+        {
+          "repo_path": "docs/utils.md",
+          "grade": 1,
+          "reason": "Documents utility helpers including terminal output helpers."
+        }
+      ]
+    },
+    {
+      "id": "cli-runner-testing-isolation",
+      "question": "Where is Click's CliRunner testing support implemented, including invoke(), isolation(), Result, stdin/stdout/stderr capture, environment overrides, and isolated_filesystem()?",
+      "coverage_area": "testing_support",
+      "judgments": [
+        {
+          "repo_path": "src/click/testing.py",
+          "grade": 3,
+          "reason": "Defines CliRunner, Result, isolation(), invoke(), stream capture, environment overrides, and isolated_filesystem()."
+        },
+        {
+          "repo_path": "tests/test_testing.py",
+          "grade": 2,
+          "reason": "Validates CliRunner behavior, prompt input, capture modes, environment handling, and isolated filesystem behavior."
+        },
+        {
+          "repo_path": "docs/testing.md",
+          "grade": 1,
+          "reason": "Documents CliRunner and testing patterns."
+        }
+      ]
+    },
+    {
+      "id": "shell-completion-system",
+      "question": "Where does Click implement shell completion for Bash, Zsh, and Fish, including CompletionItem, ShellComplete, source scripts, split_arg_string, and context resolution?",
+      "coverage_area": "shell_completion",
+      "judgments": [
+        {
+          "repo_path": "src/click/shell_completion.py",
+          "grade": 3,
+          "reason": "Defines shell_complete, CompletionItem, ShellComplete subclasses for Bash/Zsh/Fish, completion formatting, split_arg_string, and context/incomplete resolution."
+        },
+        {
+          "repo_path": "tests/test_shell_completion.py",
+          "grade": 2,
+          "reason": "Validates shell completion behavior and formatting."
+        },
+        {
+          "repo_path": "docs/shell-completion.md",
+          "grade": 1,
+          "reason": "Documents shell completion setup and behavior."
+        }
+      ]
+    },
+    {
+      "id": "exceptions-usage-errors",
+      "question": "Where are Click exceptions and usage errors implemented, including ClickException, UsageError, BadParameter, MissingParameter, NoSuchOption, NoSuchCommand, Abort, and FileError?",
+      "coverage_area": "exceptions_errors",
+      "judgments": [
+        {
+          "repo_path": "src/click/exceptions.py",
+          "grade": 3,
+          "reason": "Defines ClickException, usage/parameter/option/command errors, abort and file errors, and user-facing error formatting."
+        },
+        {
+          "repo_path": "docs/exceptions.md",
+          "grade": 2,
+          "reason": "Documents exception handling and error behavior."
+        },
+        {
+          "repo_path": "tests/test_options.py",
+          "grade": 1,
+          "reason": "Validates option-related error paths."
+        },
+        {
+          "repo_path": "tests/test_arguments.py",
+          "grade": 1,
+          "reason": "Validates argument-related error paths."
+        }
+      ]
+    },
+    {
+      "id": "help-formatting-output",
+      "question": "Where does Click format help and usage output, including HelpFormatter, wrap_text, write_usage, write_dl, join_options, and command help rendering?",
+      "coverage_area": "formatting_help",
+      "judgments": [
+        {
+          "repo_path": "src/click/formatting.py",
+          "grade": 3,
+          "reason": "Defines HelpFormatter, wrap_text, usage/options formatting helpers, definition lists, and option joining."
+        },
+        {
+          "repo_path": "src/click/core.py",
+          "grade": 2,
+          "reason": "Command and Group call formatting helpers to render help, usage, options, arguments, and command lists."
+        },
+        {
+          "repo_path": "tests/test_formatting.py",
+          "grade": 2,
+          "reason": "Validates formatting and wrapping behavior."
+        },
+        {
+          "repo_path": "docs/documentation.md",
+          "grade": 1,
+          "reason": "Documents help pages and command documentation behavior."
+        }
+      ]
+    },
+    {
+      "id": "utils-echo-files-appdir",
+      "question": "Where are Click utility helpers implemented, including echo, open_file, LazyFile, KeepOpenFile, get_text_stream, get_binary_stream, format_filename, get_app_dir, and argument expansion?",
+      "coverage_area": "utility_helpers",
+      "judgments": [
+        {
+          "repo_path": "src/click/utils.py",
+          "grade": 3,
+          "reason": "Defines echo, stream accessors, open_file, LazyFile, KeepOpenFile, format_filename, get_app_dir, and argument expansion helpers."
+        },
+        {
+          "repo_path": "tests/test_utils.py",
+          "grade": 2,
+          "reason": "Validates utility helper behavior."
+        },
+        {
+          "repo_path": "docs/utils.md",
+          "grade": 1,
+          "reason": "Documents Click utility helpers."
+        }
+      ]
+    }
+  ]
+}

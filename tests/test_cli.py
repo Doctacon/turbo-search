@@ -628,7 +628,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["ranking_mode"], "file")
         self.assertEqual(payload["ranking_profile"], "repo_code")
         self.assertEqual(payload["ranking_pool"], 100)
-        self.assertEqual(payload["ranking_aggregation"], "max")
+        self.assertEqual(payload["ranking_aggregation"], "adaptive_sum_3")
 
     def test_retrieve_command_accepts_page_ranking_mode_in_dry_run(self) -> None:
         stdout = StringIO()
@@ -752,7 +752,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["ranking_mode"], "file")
         self.assertEqual(payload["ranking_profile"], "repo_code")
         self.assertEqual(payload["ranking_pool"], 100)
-        self.assertEqual(payload["ranking_aggregation"], "max")
+        self.assertEqual(payload["ranking_aggregation"], "adaptive_sum_3")
 
     def test_evals_command_supports_scrapling_dataset_and_generic_runtime_overrides(self) -> None:
         stdout = StringIO()

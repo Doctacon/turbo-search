@@ -20,14 +20,14 @@ DEFAULT_CANDIDATES = 200
 DEFAULT_RANKING_POOL = 100
 DEFAULT_RANKING_MODE = "file"
 DEFAULT_RANKING_PROFILE = "repo_code"
-DEFAULT_RANKING_AGGREGATION = "max"
+DEFAULT_RANKING_AGGREGATION = "adaptive_sum_3"
 DEFAULT_WEBSITE_RANKING_MODE = "page"
 DEFAULT_WEBSITE_RANKING_PROFILE = "none"
 DEFAULT_WEBSITE_RANKING_POOL = 20
 DEFAULT_WEBSITE_RANKING_AGGREGATION = "max"
 RANKING_MODES = {"chunk", "file", "page"}
 RANKING_PROFILES = {"none", "repo_code"}
-RANKING_AGGREGATIONS = {"max", "capped_sum_3"}
+RANKING_AGGREGATIONS = {"max", "adaptive_sum_3", "capped_sum_3"}
 RRF_K = 60
 RETRIEVAL_ATTRIBUTES = [
     "title",
@@ -550,13 +550,18 @@ def rank_hits(hits: Sequence[SearchHit], *, options: RetrievalOptions, query: st
             )
         )
     ranked_groups.sort(key=lambda item: (-item[0], item[1], item[2]))
-    return [item[3] for item in ranked_groups]
+    ranked_hits = [item[3] for item in ranked_groups]
+    return diversify_repo_role_hits(ranked_hits, options=options, query=query)
 
 
 def ranking_group_score(group: Sequence[tuple[int, SearchHit]], aggregation: str) -> float:
     scores = sorted((1.0 / (RRF_K + rank) for rank, _hit in group), reverse=True)
+    max_score = scores[0]
     if aggregation == "max":
-        return scores[0]
+        return max_score
+    if aggregation == "adaptive_sum_3":
+        close_extra_hits = sum(1 for score in scores[1:3] if score >= max_score * 0.80)
+        return max_score * (1.0 + 0.05 * close_extra_hits)
     if aggregation == "capped_sum_3":
         return sum(scores[:3])
     raise ValueError(f"Unsupported ranking aggregation: {aggregation}")
@@ -734,9 +739,9 @@ def repo_path_symbol_multiplier(hit: SearchHit, *, query: str = "") -> float:
     query_tokens = ranking_signal_tokens(query)
     if not query_tokens:
         return 1.0
-    if path.startswith("docs/") and file_stem_matches_query(query_tokens, file_stem(path)):
+    if is_docs_path(path) and file_stem_matches_query(query_tokens, file_stem(path)):
         return 1.30
-    if not path.startswith("src/"):
+    if not is_source_path(path):
         return 1.0
     extra = 0.0
     if file_stem_matches_query(query_tokens, file_stem(path)):
@@ -744,6 +749,85 @@ def repo_path_symbol_multiplier(hit: SearchHit, *, query: str = "") -> float:
     if related_token_count(query_tokens, ranking_signal_tokens(" ".join(SYMBOL_DECLARATION_RE.findall(hit.content)))) >= 2:
         extra += 0.04
     return 1.0 + min(extra, 0.06)
+
+
+def diversify_repo_role_hits(hits: list[SearchHit], *, options: RetrievalOptions, query: str) -> list[SearchHit]:
+    """Promote one strong doc/test companion without replacing the top implementation hit."""
+
+    if options.ranking_profile != "repo_code" or options.top_k < 5:
+        return hits
+    target_window = 5
+    if len(hits) <= target_window:
+        return hits
+    paths = [normalize_path(hit.repo_path or hit.path) for hit in hits]
+    if not is_source_path(paths[0]) or any(is_repo_companion_path(path) for path in paths[:target_window]):
+        return hits
+    query_tokens = ranking_signal_tokens(query)
+    if not query_tokens:
+        return hits
+    top_source_stems = [file_stem(path) for path in paths[:3] if is_source_path(path)]
+    candidate = best_repo_role_companion(
+        hits,
+        paths=paths,
+        query_tokens=query_tokens,
+        top_source_stems=top_source_stems,
+        start_index=target_window,
+        stop_index=min(len(hits), 20),
+    )
+    if candidate is None:
+        return hits
+    promoted = list(hits)
+    hit = promoted.pop(candidate)
+    promoted.insert(target_window - 1, hit)
+    return promoted
+
+
+def best_repo_role_companion(
+    hits: Sequence[SearchHit],
+    *,
+    paths: Sequence[str],
+    query_tokens: set[str],
+    top_source_stems: Sequence[str],
+    start_index: int,
+    stop_index: int,
+) -> int | None:
+    best: tuple[int, int, int] | None = None
+    for index in range(start_index, stop_index):
+        strength = repo_role_companion_strength(
+            hits[index],
+            paths[index],
+            query_tokens=query_tokens,
+            top_source_stems=top_source_stems,
+        )
+        if strength <= 0:
+            continue
+        candidate = (strength, -index, index)
+        if best is None or candidate > best:
+            best = candidate
+    return best[2] if best is not None else None
+
+
+def repo_role_companion_strength(
+    hit: SearchHit,
+    path: str,
+    *,
+    query_tokens: set[str],
+    top_source_stems: Sequence[str],
+) -> int:
+    if is_tests_path(path):
+        stem = test_file_stem(path)
+        if file_stem_matches_query(query_tokens, stem) or (top_source_stems and stem == top_source_stems[0]):
+            return 3
+        return 0
+    if not is_docs_path(path):
+        return 0
+    content_strength = related_token_count(
+        query_tokens,
+        ranking_signal_tokens(" ".join((hit.title, hit.section_path, hit.content[:2000]))),
+    )
+    if file_stem_matches_query(query_tokens, file_stem(path)):
+        return max(12, content_strength)
+    return content_strength if content_strength >= 10 else 0
 
 
 def file_stem_matches_query(query_tokens: set[str], stem: str) -> bool:
@@ -784,6 +868,32 @@ def ranking_signal_tokens(value: str) -> set[str]:
         for token in tokens
         if len(token) >= 3 and token not in PATH_SYMBOL_STOP_TOKENS and token not in PATH_SYMBOL_GENERIC_TOKENS
     }
+
+
+def is_source_path(path: str) -> bool:
+    return path.startswith(("src/", "lib/"))
+
+
+def is_docs_path(path: str) -> bool:
+    return path.startswith("docs/")
+
+
+def is_tests_path(path: str) -> bool:
+    name = path.rsplit("/", 1)[-1]
+    return path.startswith("tests/") or name.startswith("test_") or name.endswith("_test.py")
+
+
+def is_repo_companion_path(path: str) -> bool:
+    return is_docs_path(path) or is_tests_path(path)
+
+
+def test_file_stem(path: str) -> str:
+    stem = file_stem(path)
+    if stem.startswith("test_"):
+        stem = stem.removeprefix("test_")
+    if stem.endswith("_test"):
+        stem = stem.removesuffix("_test")
+    return stem
 
 
 def file_stem(path: str) -> str:
