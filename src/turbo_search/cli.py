@@ -6,8 +6,10 @@ import argparse
 from dataclasses import replace
 import json
 from pathlib import Path
+import shutil
 import sys
-from typing import Sequence
+import time
+from typing import TextIO, Sequence
 
 from turbo_search import __version__
 from turbo_search.applied_state import AppliedStateError, load_applied_state
@@ -64,6 +66,60 @@ from turbo_search.retriever import (
     ranking_defaults_for_namespace,
     retrieval_plan,
 )
+
+
+class OneLineProgress:
+    """Tiny stderr progress renderer that reuses one terminal line."""
+
+    def __init__(
+        self,
+        *,
+        enabled: bool,
+        stream: TextIO | None = None,
+        min_interval: float = 0.2,
+        terminal_width: int | None = None,
+    ) -> None:
+        self.enabled = enabled
+        self.stream = stream or sys.stderr
+        self.min_interval = min_interval
+        self.terminal_width = terminal_width
+        self._last_update = 0.0
+        self._wrote = False
+
+    def update(self, message: str, *, force: bool = False) -> None:
+        if not self.enabled:
+            return
+        now = time.monotonic()
+        if not force and now - self._last_update < self.min_interval:
+            return
+        self._last_update = now
+        self._wrote = True
+        self.stream.write(f"\r\x1b[K{self._fit_message(message)}")
+        self.stream.flush()
+
+    def _fit_message(self, message: str) -> str:
+        width = self.terminal_width or shutil.get_terminal_size(fallback=(80, 20)).columns
+        max_width = max(1, width - 1)
+        if len(message) <= max_width:
+            return message
+        if max_width <= 3:
+            return message[:max_width]
+        return f"{message[: max_width - 3]}..."
+
+    def finish(self) -> None:
+        if not self.enabled or not self._wrote:
+            return
+        self.stream.write("\r\x1b[K")
+        self.stream.flush()
+        self._wrote = False
+
+
+def should_show_progress(args: argparse.Namespace) -> bool:
+    return (
+        not bool(getattr(args, "json", False))
+        and not bool(getattr(args, "no_progress", False))
+        and sys.stderr.isatty()
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -205,6 +261,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Print JSON output. Text summary is used by default.",
+    )
+    crawl_parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable the default one-line interactive progress indicator.",
     )
     crawl_parser.set_defaults(func=_run_crawl)
 
@@ -355,6 +416,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Print JSON output. Text summary is used by default.",
+    )
+    plan_parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable the default one-line interactive progress indicator.",
     )
     plan_parser.set_defaults(func=_run_plan)
 
@@ -659,6 +725,8 @@ def _run_crawl(args: argparse.Namespace) -> int:
 
     _apply_source_cap_defaults(args, source)
     out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url)
+    progress = OneLineProgress(enabled=should_show_progress(args))
+    progress.update(f"crawl: preparing {base_url}", force=True)
     options = CrawlOptions(
         base_url=base_url,
         out_dir=out_dir,
@@ -678,13 +746,16 @@ def _run_crawl(args: argparse.Namespace) -> int:
         css_selector=args.css_selector,
         target_tokens=args.target_tokens,
         overlap_sentences=args.overlap_sentences,
+        progress_callback=progress.update if progress.enabled else None,
     )
     try:
         summary = crawl_github_repo(source, options) if isinstance(source, GitHubRepoSource) else crawl_site(options)
     except (RuntimeError, GitHubRepoError) as exc:
+        progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
 
+    progress.finish()
     if args.json:
         _print_json(summary)
     else:
@@ -711,6 +782,8 @@ def _run_plan(args: argparse.Namespace) -> int:
     out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url).with_name(
         f"{default_out_dir(base_url).name}-plan"
     )
+    progress = OneLineProgress(enabled=should_show_progress(args))
+    progress.update(f"plan: preparing {base_url}", force=True)
     options = CrawlOptions(
         base_url=base_url,
         out_dir=out_dir,
@@ -730,10 +803,12 @@ def _run_plan(args: argparse.Namespace) -> int:
         css_selector=args.css_selector,
         target_tokens=args.target_tokens,
         overlap_sentences=args.overlap_sentences,
+        progress_callback=progress.update if progress.enabled else None,
     )
     try:
         crawl_summary = crawl_github_repo(source, options) if isinstance(source, GitHubRepoSource) else crawl_site(options)
         pages_dir = out_dir / "pages"
+        progress.update("plan: chunking generated pages", force=True)
         indexing_plan = process_corpus(
             pages_dir,
             limit_chunks=args.max_chunks,
@@ -741,6 +816,7 @@ def _run_plan(args: argparse.Namespace) -> int:
             overlap_sentences=args.overlap_sentences,
         )
         namespace = args.namespace or str(crawl_summary["namespace_candidate"])
+        progress.update("plan: building initial artifacts", force=True)
         initial_artifacts = build_plan_artifacts(
             indexing_plan=indexing_plan,
             base_url=base_url,
@@ -757,7 +833,9 @@ def _run_plan(args: argparse.Namespace) -> int:
             base_url=base_url,
             state_root=args.state_root,
         )
+        progress.update("plan: diffing against local state", force=True)
         diff = diff_manifest_against_state(initial_artifacts.manifest, state)
+        progress.update("plan: writing review artifacts", force=True)
         artifacts = build_plan_artifacts(
             indexing_plan=indexing_plan,
             base_url=base_url,
@@ -771,9 +849,11 @@ def _run_plan(args: argparse.Namespace) -> int:
         )
         write_plan_artifacts(artifacts, out_dir)
     except (RuntimeError, GitHubRepoError, OSError, ValueError, AppliedStateError, PlanDiffError, json.JSONDecodeError) as exc:
+        progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
 
+    progress.finish()
     summary = plan_summary(
         crawl_summary=crawl_summary,
         artifacts=artifacts,

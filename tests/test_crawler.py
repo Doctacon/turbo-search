@@ -34,8 +34,8 @@ from turbo_search.chunker import process_corpus
 
 class CrawlerHelperTests(unittest.TestCase):
     def test_default_caps_are_useful_for_site_plans(self) -> None:
-        self.assertEqual(DEFAULT_CRAWL_MAX_PAGES, 250)
-        self.assertEqual(DEFAULT_CRAWL_MAX_CHUNKS, 10000)
+        self.assertEqual(DEFAULT_CRAWL_MAX_PAGES, 3000)
+        self.assertEqual(DEFAULT_CRAWL_MAX_CHUNKS, 120000)
         self.assertEqual(DEFAULT_GITHUB_REPO_MAX_FILES, 5000)
         self.assertEqual(DEFAULT_GITHUB_REPO_MAX_CHUNKS, 100000)
 
@@ -308,6 +308,44 @@ class CrawlerHelperTests(unittest.TestCase):
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/pinning"])
         self.assertEqual(stats["requests_count"], 1)
         sitemap_mock.assert_not_called()
+
+    def test_crawl_pages_emits_high_level_progress_events(self) -> None:
+        class SitemapSpider:
+            pass
+
+        class LinkSpider:
+            pass
+
+        events: list[str] = []
+        sitemap_page = CrawledPage(url="https://example.com/docs/", title="Docs", status=200, markdown="Docs home")
+        link_page = CrawledPage(url="https://example.com/docs/pinning", title="Pinning", status=200, markdown="Pinning")
+
+        def fake_run(spider_cls):
+            if spider_cls is SitemapSpider:
+                return [sitemap_page], {"requests_count": 2}
+            if spider_cls is LinkSpider:
+                return [link_page], {"requests_count": 3}
+            raise AssertionError("unexpected spider")
+
+        options = CrawlOptions(
+            base_url="https://example.com/docs/",
+            out_dir=Path("unused"),
+            max_pages=10,
+            crawl_strategy="hybrid",
+            progress_callback=events.append,
+        )
+        with patch("turbo_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
+            with patch("turbo_search.crawler.build_link_spider_class", return_value=LinkSpider):
+                with patch("turbo_search.crawler.run_scrapling_spider", side_effect=fake_run):
+                    pages, _stats, strategy = crawl_pages(options)
+
+        self.assertEqual(strategy, "hybrid")
+        self.assertEqual(len(pages), 2)
+        self.assertIn("crawl: starting sitemap crawl for example.com", events)
+        self.assertIn("crawl: sitemap done pages=1; requests=2", events)
+        self.assertIn("crawl: starting link crawl for example.com", events)
+        self.assertIn("crawl: link done pages=1; requests=3", events)
+        self.assertIn("crawl: merged unique pages=2", events)
 
 
 if __name__ == "__main__":

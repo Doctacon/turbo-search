@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from turbo_search.applied_state import AppliedStateRow, build_applied_state, save_applied_state
-from turbo_search.cli import build_parser, main
+from turbo_search.cli import OneLineProgress, build_parser, main
 from turbo_search.crawler import CrawlOptions
 from turbo_search.chunker import process_corpus
 from turbo_search.plan_artifacts import build_plan_artifacts
@@ -38,6 +38,11 @@ def write_fake_crawl_page(pages_dir: Path) -> None:
         ),
         encoding="utf-8",
     )
+
+
+class TtyStringIO(StringIO):
+    def isatty(self) -> bool:
+        return True
 
 
 def write_fake_github_page(pages_dir: Path) -> None:
@@ -185,6 +190,30 @@ class CliTests(unittest.TestCase):
         self.assertIn("retrieve", help_text)
         self.assertIn("evals", help_text)
 
+    def test_one_line_progress_reuses_current_terminal_line(self) -> None:
+        stream = TtyStringIO()
+        progress = OneLineProgress(enabled=True, stream=stream, min_interval=0.0)
+
+        progress.update("crawl: pages=1")
+        progress.update("crawl: pages=2")
+        progress.finish()
+
+        output = stream.getvalue()
+        self.assertIn("\rcrawl: pages=1", output.replace("\x1b[K", ""))
+        self.assertIn("\rcrawl: pages=2", output.replace("\x1b[K", ""))
+        self.assertNotIn("\n", output)
+        self.assertTrue(output.endswith("\r\x1b[K"))
+
+    def test_one_line_progress_truncates_to_prevent_terminal_wrap(self) -> None:
+        stream = TtyStringIO()
+        progress = OneLineProgress(enabled=True, stream=stream, min_interval=0.0, terminal_width=20)
+
+        progress.update("crawl sitemap: https://example.com/really/long/url")
+
+        rendered = stream.getvalue().replace("\r\x1b[K", "")
+        self.assertLessEqual(len(rendered), 19)
+        self.assertEqual(rendered, "crawl sitemap: h...")
+
     def test_crawl_command_validates_base_url_before_crawling(self) -> None:
         stdout = StringIO()
         stderr = StringIO()
@@ -270,6 +299,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(options.exclude_paths, ())
         self.assertTrue(options.strip_trailing_slash)
         self.assertEqual(options.css_selector, ".md-content__inner")
+        self.assertIsNone(options.progress_callback)
 
     def test_crawl_text_output_warns_when_caps_are_hit(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -312,8 +342,8 @@ class CliTests(unittest.TestCase):
     def test_crawl_command_defaults_to_hybrid_strategy(self) -> None:
         def fake_crawl(options: CrawlOptions) -> dict[str, object]:
             self.assertEqual(options.crawl_strategy, "hybrid")
-            self.assertEqual(options.max_pages, 250)
-            self.assertEqual(options.max_chunks, 10000)
+            self.assertEqual(options.max_pages, 3000)
+            self.assertEqual(options.max_chunks, 120000)
             return fake_plan_crawl_summary(options)
 
         stdout = StringIO()

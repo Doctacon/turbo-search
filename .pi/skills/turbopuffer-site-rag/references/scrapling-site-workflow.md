@@ -24,7 +24,7 @@ base URL
 - Strip trailing slashes by default so `/docs/query` and `/docs/query/` canonicalize to one page; use `--keep-trailing-slash` only when variants must be preserved.
 - Obey robots.txt by default.
 - Restrict to the base URL host/domain unless the user approves otherwise.
-- Default planning caps are intentionally useful for ordinary sites: `250` pages and `10000` chunks.
+- Default planning caps are intentionally useful for larger docs sites: `3000` pages and `120000` chunks.
 - Lower caps for smoke tests when needed:
   - `--max-pages 10` or `25`
   - `--max-chunks 100` or `200`
@@ -53,6 +53,8 @@ uv run turbo-search plan \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
   --css-selector ".md-content__inner"
 ```
+
+Interactive text-mode `crawl` and `plan` runs show a one-line stderr progress indicator by default. It is suppressed for `--json`, non-TTY stderr, and `--no-progress`.
 
 Expected safety fields for crawl/plan:
 

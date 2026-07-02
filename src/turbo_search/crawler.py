@@ -14,7 +14,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
-from typing import Any, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence
 from urllib.parse import unquote, urlparse, urlunparse
 
 from turbo_search.chunker import (
@@ -25,8 +25,8 @@ from turbo_search.chunker import (
     sha256_text,
 )
 
-DEFAULT_CRAWL_MAX_PAGES = 250
-DEFAULT_CRAWL_MAX_CHUNKS = 10000
+DEFAULT_CRAWL_MAX_PAGES = 3000
+DEFAULT_CRAWL_MAX_CHUNKS = 120000
 DEFAULT_GITHUB_REPO_MAX_FILES = 5000
 DEFAULT_GITHUB_REPO_MAX_CHUNKS = 100000
 DEFAULT_GITHUB_REPO_MAX_FILE_BYTES = 50 * 1024
@@ -36,6 +36,7 @@ DEFAULT_CRAWL_DOWNLOAD_DELAY = 0.25
 DEFAULT_CRAWL_OUT_DIR = Path("artifacts/site-crawls")
 DEFAULT_CRAWL_STRATEGY = "hybrid"
 CRAWL_STRATEGIES = ("sitemap", "link", "hybrid")
+ProgressCallback = Callable[[str], None]
 GITHUB_HOSTS = {"github.com", "www.github.com"}
 GITHUB_NON_REPO_PATHS = {
     "about",
@@ -143,6 +144,19 @@ class CrawlOptions:
     css_selector: str | None = None
     target_tokens: int = DEFAULT_TARGET_TOKENS
     overlap_sentences: int = DEFAULT_OVERLAP_SENTENCES
+    progress_callback: ProgressCallback | None = None
+
+
+def emit_progress(callback: ProgressCallback | None, message: str) -> None:
+    if callback is not None:
+        callback(message)
+
+
+def progress_url_label(url: str, *, max_length: int = 80) -> str:
+    text = url.strip()
+    if len(text) <= max_length:
+        return text
+    return f"{text[: max_length - 1]}…"
 
 
 @dataclass(frozen=True)
@@ -461,6 +475,7 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
     _include_paths = options.include_paths
     _exclude_paths = options.exclude_paths
     _strip_trailing_slash = options.strip_trailing_slash
+    _progress_callback = options.progress_callback
 
     class SiteLinkDryRunSpider(Spider):
         name = "site_link_dry_crawl"
@@ -475,7 +490,9 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
 
         def __init__(self) -> None:
             self._scheduled_urls: set[str] = {page_identity_url(_base_url, strip_trailing_slash=_strip_trailing_slash)}
+            self._pages_scraped = 0
             self._links = LinkExtractor(allow_domains=_allowed_host)
+            emit_progress(_progress_callback, f"crawl link: queued=1/{_max_pages}; pages=0; {progress_url_label(_base_url)}")
             super().__init__()
 
         async def parse(self, response):
@@ -491,6 +508,11 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
                 strip_trailing_slash=_strip_trailing_slash,
             ) if page_allowed else None
             if page:
+                self._pages_scraped += 1
+                emit_progress(
+                    _progress_callback,
+                    f"crawl link: pages={self._pages_scraped}/{_max_pages}; queued={len(self._scheduled_urls)}; {progress_url_label(page.url)}",
+                )
                 yield page.__dict__
 
             if len(self._scheduled_urls) >= _max_pages:
@@ -510,6 +532,10 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
                 if url_key in self._scheduled_urls:
                     continue
                 self._scheduled_urls.add(url_key)
+                emit_progress(
+                    _progress_callback,
+                    f"crawl link: pages={self._pages_scraped}/{_max_pages}; queued={len(self._scheduled_urls)}; {progress_url_label(url)}",
+                )
                 yield response.follow(url, callback=self.parse)
 
     return SiteLinkDryRunSpider
@@ -528,6 +554,7 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
     _include_paths = options.include_paths
     _exclude_paths = options.exclude_paths
     _strip_trailing_slash = options.strip_trailing_slash
+    _progress_callback = options.progress_callback
 
     class SiteSitemapDryRunSpider(SitemapSpider):
         name = "site_sitemap_dry_crawl"
@@ -542,7 +569,9 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
 
         def __init__(self) -> None:
             self._scheduled_page_urls: set[str] = set()
+            self._pages_scraped = 0
             self._allowed_links = LinkExtractor(allow_domains=_allowed_host)
+            emit_progress(_progress_callback, f"crawl sitemap: discovering up to {_max_pages} pages")
             super().__init__()
 
         def _dispatch(self, response, url, rules):  # noqa: ANN001 - matches Scrapling template hook.
@@ -561,6 +590,10 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
             if url_key in self._scheduled_page_urls:
                 return None
             self._scheduled_page_urls.add(url_key)
+            emit_progress(
+                _progress_callback,
+                f"crawl sitemap: queued={len(self._scheduled_page_urls)}/{_max_pages}; {progress_url_label(url)}",
+            )
             return response.follow(url, callback=self.parse)
 
         async def parse(self, response):
@@ -570,6 +603,11 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
                 strip_trailing_slash=_strip_trailing_slash,
             )
             if page:
+                self._pages_scraped += 1
+                emit_progress(
+                    _progress_callback,
+                    f"crawl sitemap: pages={self._pages_scraped}/{_max_pages}; queued={len(self._scheduled_page_urls)}; {progress_url_label(page.url)}",
+                )
                 yield page.__dict__
 
     return SiteSitemapDryRunSpider
@@ -612,24 +650,39 @@ def crawl_pages(options: CrawlOptions) -> tuple[list[CrawledPage], dict[str, obj
 
     allowed_host = host_from_url(options.base_url)
     if options.crawl_strategy == "link":
+        emit_progress(options.progress_callback, f"crawl: starting link crawl for {allowed_host}")
         link_spider = build_link_spider_class(options, allowed_host)
         pages, stats = run_scrapling_spider(link_spider)
+        emit_progress(options.progress_callback, f"crawl: link done pages={len(pages)}; requests={stats.get('requests_count', 0)}")
         return pages[: options.max_pages], stats, "link"
 
+    emit_progress(options.progress_callback, f"crawl: starting sitemap crawl for {allowed_host}")
     sitemap_spider = build_sitemap_spider_class(options, allowed_host)
     sitemap_pages, sitemap_stats = run_scrapling_spider(sitemap_spider)
+    emit_progress(
+        options.progress_callback,
+        f"crawl: sitemap done pages={len(sitemap_pages)}; requests={sitemap_stats.get('requests_count', 0)}",
+    )
     if options.crawl_strategy == "sitemap":
         if sitemap_pages:
             return sitemap_pages[: options.max_pages], sitemap_stats, "sitemap"
+        emit_progress(options.progress_callback, "crawl: sitemap empty; starting link fallback")
         link_spider = build_link_spider_class(options, allowed_host)
         fallback_pages, fallback_stats = run_scrapling_spider(link_spider)
         combined_stats = combine_stats(sitemap_stats, fallback_stats)
+        emit_progress(
+            options.progress_callback,
+            f"crawl: link fallback done pages={len(fallback_pages)}; requests={fallback_stats.get('requests_count', 0)}",
+        )
         return fallback_pages[: options.max_pages], combined_stats, "link_fallback"
 
+    emit_progress(options.progress_callback, f"crawl: starting link crawl for {allowed_host}")
     link_spider = build_link_spider_class(options, allowed_host)
     link_pages, link_stats = run_scrapling_spider(link_spider)
+    emit_progress(options.progress_callback, f"crawl: link done pages={len(link_pages)}; requests={link_stats.get('requests_count', 0)}")
     combined_stats = combine_stats(sitemap_stats, link_stats)
     merged_pages = merge_unique_pages(sitemap_pages, link_pages, strip_trailing_slash=options.strip_trailing_slash)
+    emit_progress(options.progress_callback, f"crawl: merged unique pages={len(merged_pages)}")
     return merged_pages[: options.max_pages], combined_stats, "hybrid"
 
 
@@ -765,10 +818,13 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         css_selector=options.css_selector,
         target_tokens=options.target_tokens,
         overlap_sentences=options.overlap_sentences,
+        progress_callback=options.progress_callback,
     )
     pages, stats, crawl_strategy = crawl_pages(options)
     pages_dir = options.out_dir / "pages"
+    emit_progress(options.progress_callback, f"crawl: writing {len(pages)} markdown pages")
     write_markdown_corpus(pages, pages_dir)
+    emit_progress(options.progress_callback, "crawl: chunking pages")
     plan = process_corpus(
         pages_dir,
         limit_chunks=options.max_chunks,
@@ -785,4 +841,5 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
     )
     options.out_dir.mkdir(parents=True, exist_ok=True)
     (options.out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    emit_progress(options.progress_callback, f"crawl: done pages={summary['pages_scraped']}; chunks={summary['chunks_generated']}")
     return summary

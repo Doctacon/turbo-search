@@ -72,8 +72,8 @@ Defaults are source-aware:
 
 ```text
 crawl_strategy: hybrid
-website max_pages: 250
-website max_chunks: 10000
+website max_pages: 3000
+website max_chunks: 120000
 GitHub repo max_files: 5000
 GitHub repo max_chunks: 100000
 GitHub repo max_file_bytes: 51200

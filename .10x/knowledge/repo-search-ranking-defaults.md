@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-06-28
-Updated: 2026-07-01
+Updated: 2026-07-02
 
 # Repo and Website Ranking Defaults
 
@@ -90,6 +90,8 @@ Conventional entrypoint routing passed the 13-repo distribution policy and met t
 
 A per-repo portfolio/routing candidate passed the next +2.0 target but is not a universal default: average score `74.874 -> 77.761` (`+2.887`), P@5 `0.478 -> 0.500`, positive gains on all 13 repos, no score/P@5 regressions, and largest gain share 21.2%. It combines selected file-card/metadata/oversize-card namespaces, candidate-depth tuning, and aggregation routing. Treat it as evidence for a future automatic selector or explicit retrieval profile, not as the current default. Evidence: `.10x/evidence/2026-07-01-repo-portfolio-routing-validation.md`.
 
+A routed profile portfolio passed the next +2.0 target from the `77.761` baseline but is not a universal default: average score `77.761 -> 80.316` (`+2.555`), P@5 `0.500 -> 0.517`, positive gains on 11 repos, no score/P@5 regressions, and largest gain share 31.3%. Universal source/path/stem/test/crate variants regressed some repos; the passing result depends on per-repo profile routing. Treat it as evidence for a future automatic selector or explicit retrieval profile, not as the current default. Evidence: `.10x/evidence/2026-07-02-repo-routed-profile-portfolio-validation.md`.
+
 Oversize file-card indexing (`--repo-oversize-file-cards`) remains opt-in only. It improved Click but regressed turbo-search, Requests, pytest, and Typer in five-repo validation. Evidence: `.10x/evidence/2026-06-28-repo-oversize-file-card-indexing-validation.md`.
 
 Evidence:
@@ -116,3 +118,4 @@ Evidence:
 - `.10x/evidence/2026-06-28-repo-source-fixture-routing-validation.md`
 - `.10x/evidence/2026-07-01-repo-conventional-entrypoint-routing-validation.md`
 - `.10x/evidence/2026-07-01-repo-portfolio-routing-validation.md`
+- `.10x/evidence/2026-07-02-repo-routed-profile-portfolio-validation.md`
