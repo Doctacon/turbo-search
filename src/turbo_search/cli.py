@@ -30,10 +30,12 @@ from turbo_search.crawler import (
     DEFAULT_CRAWL_MAX_PAGES,
     DEFAULT_CRAWL_STRATEGY,
     DEFAULT_DOCS_VERSION_POLICY,
+    DEFAULT_LANGUAGE_POLICY,
     DEFAULT_GITHUB_REPO_MAX_CHUNKS,
     DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
     DEFAULT_GITHUB_REPO_MAX_FILES,
     DOCS_VERSION_POLICIES,
+    LANGUAGE_POLICIES,
     GitHubRepoSource,
     CrawlOptions,
     crawl_site,
@@ -216,8 +218,8 @@ def build_parser() -> argparse.ArgumentParser:
         choices=CRAWL_STRATEGIES,
         default=DEFAULT_CRAWL_STRATEGY,
         help=(
-            "Discovery mode. Default: hybrid, which merges sitemap pages with same-site link discovery. "
-            "sitemap trusts sitemap pages with link fallback only when empty; link ignores sitemaps."
+            "Discovery mode. Default: sitemap, which uses sitemap pages and falls back to link crawl only when empty. "
+            "hybrid merges sitemap pages with same-site link discovery; link ignores sitemaps."
         ),
     )
     crawl_parser.add_argument(
@@ -228,6 +230,15 @@ def build_parser() -> argparse.ArgumentParser:
             "Website sitemap docs-version handling. Default: warn detects repeated /docs/{version}/ "
             "families and stops before crawling; latest, stable-latest, and latest-nightly add effective excludes; "
             "all keeps every version."
+        ),
+    )
+    crawl_parser.add_argument(
+        "--language-policy",
+        choices=LANGUAGE_POLICIES,
+        default=DEFAULT_LANGUAGE_POLICY,
+        help=(
+            "Website sitemap language handling. Default: english keeps unprefixed/en pages and excludes "
+            "detected non-English locale prefixes; all keeps every language."
         ),
     )
     crawl_parser.add_argument(
@@ -381,8 +392,8 @@ def build_parser() -> argparse.ArgumentParser:
         choices=CRAWL_STRATEGIES,
         default=DEFAULT_CRAWL_STRATEGY,
         help=(
-            "Discovery mode. Default: hybrid, which merges sitemap pages with same-site link discovery. "
-            "sitemap trusts sitemap pages with link fallback only when empty; link ignores sitemaps."
+            "Discovery mode. Default: sitemap, which uses sitemap pages and falls back to link crawl only when empty. "
+            "hybrid merges sitemap pages with same-site link discovery; link ignores sitemaps."
         ),
     )
     plan_parser.add_argument(
@@ -393,6 +404,15 @@ def build_parser() -> argparse.ArgumentParser:
             "Website sitemap docs-version handling. Default: warn detects repeated /docs/{version}/ "
             "families and stops before crawling; latest, stable-latest, and latest-nightly add effective excludes; "
             "all keeps every version."
+        ),
+    )
+    plan_parser.add_argument(
+        "--language-policy",
+        choices=LANGUAGE_POLICIES,
+        default=DEFAULT_LANGUAGE_POLICY,
+        help=(
+            "Website sitemap language handling. Default: english keeps unprefixed/en pages and excludes "
+            "detected non-English locale prefixes; all keeps every language."
         ),
     )
     plan_parser.add_argument(
@@ -763,6 +783,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
         download_delay=args.download_delay,
         crawl_strategy=args.crawl_strategy,
         docs_version_policy=args.docs_version_policy,
+        language_policy=args.language_policy,
         include_paths=tuple(args.include_path),
         exclude_paths=tuple(args.exclude_path),
         strip_trailing_slash=args.strip_trailing_slash,
@@ -821,6 +842,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         download_delay=args.download_delay,
         crawl_strategy=args.crawl_strategy,
         docs_version_policy=args.docs_version_policy,
+        language_policy=args.language_policy,
         include_paths=tuple(args.include_path),
         exclude_paths=tuple(args.exclude_path),
         strip_trailing_slash=args.strip_trailing_slash,
@@ -905,6 +927,7 @@ def plan_crawl_options(args: argparse.Namespace, crawl_summary: dict[str, object
         "download_delay": args.download_delay,
         "crawl_strategy": args.crawl_strategy,
         "docs_version_policy": getattr(args, "docs_version_policy", DEFAULT_DOCS_VERSION_POLICY),
+        "language_policy": getattr(args, "language_policy", DEFAULT_LANGUAGE_POLICY),
         "include_paths": list(crawl_summary.get("include_paths", args.include_path)) if crawl_summary else list(args.include_path),
         "exclude_paths": list(crawl_summary.get("exclude_paths", args.exclude_path)) if crawl_summary else list(args.exclude_path),
         "strip_trailing_slash": args.strip_trailing_slash,
@@ -1077,6 +1100,7 @@ def print_crawl_text(payload: dict[str, object]) -> None:
     print_limit_summary(payload)
     print_filter_summary(payload)
     print_docs_version_summary(payload)
+    print_language_summary(payload)
     print(f"  out_dir: {payload['out_dir']}")
     print("  live writes: not supported by this command")
 
@@ -1102,6 +1126,7 @@ def print_plan_text(payload: dict[str, object]) -> None:
     print_limit_summary(payload)
     print_filter_summary(payload)
     print_docs_version_summary(payload)
+    print_language_summary(payload)
     diff = payload.get("diff", {}) if isinstance(payload.get("diff"), dict) else {}
     print(
         "  diff: "
@@ -1176,6 +1201,26 @@ def print_docs_version_summary(payload: dict[str, object]) -> None:
                 f"--docs-version-policy {suggested} to keep current docs and prune old versions, "
                 "or --docs-version-policy all to keep/suppress this warning."
             )
+
+
+def print_language_summary(payload: dict[str, object]) -> None:
+    report = payload.get("language_report")
+    if not isinstance(report, dict) or not report.get("detected"):
+        return
+    if report.get("applied"):
+        print(
+            "  languages: "
+            f"policy={report.get('policy')}; "
+            f"localized_urls={report.get('localized_url_count')}; "
+            f"non_english_urls={report.get('non_english_url_count')}; "
+            f"excluded={list(report.get('excluded_languages') or [])}"
+        )
+    else:
+        print(
+            "  languages: "
+            f"detected non_english={list(report.get('non_english_locales') or [])}; "
+            f"policy={report.get('policy')}"
+        )
 
 
 def print_apply_text(payload: dict[str, object]) -> None:

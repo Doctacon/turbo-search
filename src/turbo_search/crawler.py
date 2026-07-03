@@ -7,7 +7,7 @@ functions and tests can run without network access.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from fnmatch import fnmatchcase
 from gzip import GzipFile
@@ -38,14 +38,26 @@ DEFAULT_CRAWL_CONCURRENT_REQUESTS = 2
 DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN = 1
 DEFAULT_CRAWL_DOWNLOAD_DELAY = 0.25
 DEFAULT_CRAWL_OUT_DIR = Path("artifacts/site-crawls")
-DEFAULT_CRAWL_STRATEGY = "hybrid"
+DEFAULT_CRAWL_STRATEGY = "sitemap"
 CRAWL_STRATEGIES = ("sitemap", "link", "hybrid")
 DEFAULT_DOCS_VERSION_POLICY = "warn"
 DOCS_VERSION_POLICIES = ("warn", "all", "latest", "stable-latest", "latest-nightly")
+DEFAULT_LANGUAGE_POLICY = "english"
+LANGUAGE_POLICIES = ("english", "all")
 DOCS_VERSION_CURRENT_ALIASES = {"latest", "current", "stable"}
 DOCS_VERSION_PREVIEW_ALIASES = {"nightly", "main", "master", "dev", "snapshot"}
 DOCS_VERSION_MIN_VERSION_COUNT = 3
 DOCS_VERSION_MIN_URL_COUNT = 30
+LANGUAGE_POLICY_MIN_NON_ENGLISH_URL_COUNT = 20
+LANGUAGE_POLICY_MIN_UNPREFIXED_URL_COUNT = 10
+LANGUAGE_POLICY_MIN_NON_ENGLISH_LOCALE_COUNT = 2
+LANGUAGE_POLICY_MIN_TAIL_OVERLAP_COUNT = 5
+ENGLISH_LANGUAGE_PRIMARY_CODES = {"en"}
+SUPPORTED_LANGUAGE_PRIMARY_CODES = {
+    "ar", "bg", "ca", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "he", "hi",
+    "hr", "hu", "id", "it", "ja", "ko", "lt", "lv", "nl", "no", "pl", "pt", "ro", "ru",
+    "sk", "sl", "sv", "th", "tr", "uk", "vi", "zh",
+}
 MAX_SITEMAP_ANALYSIS_URLS = 100
 MAX_SITEMAP_ANALYSIS_PAGE_URLS = 100_000
 SITEMAP_ANALYSIS_TIMEOUT_SECONDS = 10
@@ -152,6 +164,7 @@ class CrawlOptions:
     download_delay: float = DEFAULT_CRAWL_DOWNLOAD_DELAY
     crawl_strategy: str = DEFAULT_CRAWL_STRATEGY
     docs_version_policy: str = DEFAULT_DOCS_VERSION_POLICY
+    language_policy: str = DEFAULT_LANGUAGE_POLICY
     include_paths: tuple[str, ...] = ()
     exclude_paths: tuple[str, ...] = ()
     strip_trailing_slash: bool = True
@@ -609,6 +622,91 @@ def path_docs_version_parts(path: str) -> tuple[str, str] | None:
     return None
 
 
+def normalize_language_prefix(segment: str) -> str | None:
+    value = segment.lower().replace("_", "-")
+    if not re.fullmatch(r"[a-z]{2}(?:-[a-z]{2}|-[a-z]{4}|-\d{3})?", value):
+        return None
+    primary = value.split("-", 1)[0]
+    if primary not in SUPPORTED_LANGUAGE_PRIMARY_CODES:
+        return None
+    return value
+
+
+def language_prefix_and_tail_for_path(path: str) -> tuple[str | None, str]:
+    normalized_path = normalize_url_path(path)
+    segments = [segment for segment in normalized_path.split("/") if segment]
+    if not segments:
+        return None, "/"
+    prefix = normalize_language_prefix(unquote(segments[0]))
+    if prefix is None:
+        return None, normalized_path
+    tail = "/" + "/".join(segments[1:]) if len(segments) > 1 else "/"
+    return prefix, tail
+
+
+def language_prefix_for_path(path: str) -> str | None:
+    prefix, _tail = language_prefix_and_tail_for_path(path)
+    return prefix
+
+
+def is_english_language_prefix(prefix: str) -> bool:
+    return prefix.split("-", 1)[0] in ENGLISH_LANGUAGE_PRIMARY_CODES
+
+
+def analyze_language_urls(urls: Sequence[str], *, policy: str) -> dict[str, object]:
+    if policy not in LANGUAGE_POLICIES:
+        raise ValueError(f"language policy must be one of: {', '.join(LANGUAGE_POLICIES)}")
+
+    url_count_by_language: dict[str, int] = {}
+    tail_paths_by_language: dict[str, set[str]] = {}
+    english_tail_paths: set[str] = set()
+    unprefixed_url_count = 0
+    for url in urls:
+        prefix, tail_path = language_prefix_and_tail_for_path(urlparse(url).path)
+        if prefix is None:
+            unprefixed_url_count += 1
+            english_tail_paths.add(tail_path)
+            continue
+        url_count_by_language[prefix] = url_count_by_language.get(prefix, 0) + 1
+        tail_paths_by_language.setdefault(prefix, set()).add(tail_path)
+        if is_english_language_prefix(prefix):
+            english_tail_paths.add(tail_path)
+
+    english_locales = sorted(prefix for prefix in url_count_by_language if is_english_language_prefix(prefix))
+    non_english_locales = sorted(prefix for prefix in url_count_by_language if not is_english_language_prefix(prefix))
+    non_english_url_count = sum(url_count_by_language[prefix] for prefix in non_english_locales)
+    overlap_count_by_language = {
+        prefix: len(tail_paths_by_language.get(prefix, set()) & english_tail_paths)
+        for prefix in non_english_locales
+    }
+    has_english_content = bool(english_locales) or unprefixed_url_count >= LANGUAGE_POLICY_MIN_UNPREFIXED_URL_COUNT
+    has_language_family_signal = len(non_english_locales) >= LANGUAGE_POLICY_MIN_NON_ENGLISH_LOCALE_COUNT or any(
+        count >= LANGUAGE_POLICY_MIN_TAIL_OVERLAP_COUNT for count in overlap_count_by_language.values()
+    )
+    detected = bool(
+        non_english_locales
+        and has_english_content
+        and non_english_url_count >= LANGUAGE_POLICY_MIN_NON_ENGLISH_URL_COUNT
+        and has_language_family_signal
+    )
+    added_excludes = [f"/{prefix}/**" for prefix in non_english_locales] if detected and policy == "english" else []
+    return {
+        "detected": detected,
+        "policy": policy,
+        "applied": bool(added_excludes),
+        "english_locales": english_locales,
+        "excluded_languages": non_english_locales if added_excludes else [],
+        "non_english_locales": non_english_locales,
+        "localized_url_count": sum(url_count_by_language.values()),
+        "non_english_url_count": non_english_url_count,
+        "unprefixed_url_count": unprefixed_url_count,
+        "url_count_by_language": dict(sorted(url_count_by_language.items())),
+        "tail_overlap_count_by_language": dict(sorted(overlap_count_by_language.items())),
+        "selected_languages": ["unprefixed"] + english_locales if detected and policy == "english" else [],
+        "added_exclude_paths": added_excludes,
+    }
+
+
 def analyze_docs_version_urls(urls: Sequence[str], *, policy: str) -> dict[str, object]:
     groups: dict[str, dict[str, set[str]]] = {}
     for url in urls:
@@ -666,14 +764,18 @@ def docs_version_block_message(report: dict[str, object]) -> str | None:
     )
 
 
-def apply_docs_version_policy(options: CrawlOptions) -> tuple[CrawlOptions, dict[str, object]]:
+def apply_docs_version_policy(
+    options: CrawlOptions,
+    *,
+    sitemap_page_urls: Sequence[str] | None = None,
+) -> tuple[CrawlOptions, dict[str, object]]:
     policy = options.docs_version_policy
     if policy not in DOCS_VERSION_POLICIES:
         raise ValueError(f"docs version policy must be one of: {', '.join(DOCS_VERSION_POLICIES)}")
     if policy == "all" or options.crawl_strategy == "link":
         return options, {"detected": False, "policy": policy}
 
-    urls = discover_sitemap_page_urls(options)
+    urls = list(sitemap_page_urls) if sitemap_page_urls is not None else discover_sitemap_page_urls(options)
     report = analyze_docs_version_urls(urls, policy=policy)
     if not report.get("applied"):
         return options, report
@@ -683,28 +785,31 @@ def apply_docs_version_policy(options: CrawlOptions) -> tuple[CrawlOptions, dict
     for pattern in added_excludes:
         if pattern not in existing_excludes:
             existing_excludes.append(pattern)
-    return CrawlOptions(
-        base_url=options.base_url,
-        out_dir=options.out_dir,
-        max_pages=options.max_pages,
-        max_chunks=options.max_chunks,
-        repo_max_file_bytes=options.repo_max_file_bytes,
-        repo_search_metadata=options.repo_search_metadata,
-        repo_file_cards=options.repo_file_cards,
-        repo_oversize_file_cards=options.repo_oversize_file_cards,
-        concurrent_requests=options.concurrent_requests,
-        concurrent_requests_per_domain=options.concurrent_requests_per_domain,
-        download_delay=options.download_delay,
-        crawl_strategy=options.crawl_strategy,
-        docs_version_policy=options.docs_version_policy,
-        include_paths=options.include_paths,
-        exclude_paths=tuple(existing_excludes),
-        strip_trailing_slash=options.strip_trailing_slash,
-        css_selector=options.css_selector,
-        target_tokens=options.target_tokens,
-        overlap_sentences=options.overlap_sentences,
-        progress_callback=options.progress_callback,
-    ), report
+    return replace(options, exclude_paths=tuple(existing_excludes)), report
+
+
+def apply_language_policy(
+    options: CrawlOptions,
+    *,
+    sitemap_page_urls: Sequence[str] | None = None,
+) -> tuple[CrawlOptions, dict[str, object]]:
+    policy = options.language_policy
+    if policy not in LANGUAGE_POLICIES:
+        raise ValueError(f"language policy must be one of: {', '.join(LANGUAGE_POLICIES)}")
+    if policy == "all" or options.crawl_strategy == "link":
+        return options, {"detected": False, "policy": policy}
+
+    urls = list(sitemap_page_urls) if sitemap_page_urls is not None else discover_sitemap_page_urls(options)
+    report = analyze_language_urls(urls, policy=policy)
+    if not report.get("applied"):
+        return options, report
+
+    existing_excludes = list(options.exclude_paths)
+    added_excludes = [str(pattern) for pattern in report.get("added_exclude_paths", [])]
+    for pattern in added_excludes:
+        if pattern not in existing_excludes:
+            existing_excludes.append(pattern)
+    return replace(options, exclude_paths=tuple(existing_excludes)), report
 
 
 def yaml_scalar(value: object) -> str:
@@ -1077,6 +1182,7 @@ def build_summary(
     plan: IndexingPlan,
     pages_dir: Path,
     docs_version_report: dict[str, object],
+    language_report: dict[str, object],
 ) -> dict[str, object]:
     return {
         "command": "crawl",
@@ -1091,6 +1197,8 @@ def build_summary(
         "requested_crawl_strategy": options.crawl_strategy,
         "docs_version_policy": options.docs_version_policy,
         "docs_version_report": docs_version_report,
+        "language_policy": options.language_policy,
+        "language_report": language_report,
         "sitemap_seed_urls": sitemap_seed_urls(options.base_url),
         "out_dir": str(options.out_dir),
         "pages_dir": str(pages_dir),
@@ -1130,6 +1238,7 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         download_delay=options.download_delay,
         crawl_strategy=options.crawl_strategy,
         docs_version_policy=options.docs_version_policy,
+        language_policy=options.language_policy,
         include_paths=options.include_paths,
         exclude_paths=options.exclude_paths,
         strip_trailing_slash=options.strip_trailing_slash,
@@ -1138,7 +1247,10 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         overlap_sentences=options.overlap_sentences,
         progress_callback=options.progress_callback,
     )
-    options, docs_version_report = apply_docs_version_policy(options)
+    sitemap_page_urls = None
+    if options.crawl_strategy != "link" and (options.docs_version_policy != "all" or options.language_policy != "all"):
+        sitemap_page_urls = discover_sitemap_page_urls(options)
+    options, docs_version_report = apply_docs_version_policy(options, sitemap_page_urls=sitemap_page_urls)
     block_message = docs_version_block_message(docs_version_report)
     if block_message:
         raise RuntimeError(block_message)
@@ -1158,6 +1270,14 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
                 f"detected {docs_version_report.get('version_count')} versions under "
                 f"{docs_version_report.get('root_path')}; policy={docs_version_report.get('policy')}",
             )
+    options, language_report = apply_language_policy(options, sitemap_page_urls=sitemap_page_urls)
+    if language_report.get("applied"):
+        emit_progress(
+            options.progress_callback,
+            "crawl languages: "
+            f"policy={language_report.get('policy')}; "
+            f"excluded={len(language_report.get('excluded_languages', []))}",
+        )
     pages, stats, crawl_strategy = crawl_pages(options)
     pages_dir = options.out_dir / "pages"
     emit_progress(options.progress_callback, f"crawl: writing {len(pages)} markdown pages")
@@ -1177,6 +1297,7 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         plan=plan,
         pages_dir=pages_dir,
         docs_version_report=docs_version_report,
+        language_report=language_report,
     )
     options.out_dir.mkdir(parents=True, exist_ok=True)
     (options.out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")

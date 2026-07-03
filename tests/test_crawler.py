@@ -16,6 +16,8 @@ from turbo_search.crawler import (
     WebsiteSource,
     analyze_docs_version_urls,
     apply_docs_version_policy,
+    apply_language_policy,
+    analyze_language_urls,
     build_sitemap_spider_class,
     docs_version_block_message,
     canonicalize_page_url,
@@ -189,6 +191,53 @@ class CrawlerHelperTests(unittest.TestCase):
         self.assertTrue(report["applied"])
         self.assertEqual(report["selected_versions"], ["latest"])
         self.assertEqual(effective.exclude_paths, ("/private/**", "/docs/1.0.0/**", "/docs/1.1.0/**"))
+
+    def test_analyze_language_urls_detects_multilingual_locale_prefixes(self) -> None:
+        urls = [f"https://blowfish.page/samples/page-{page}/" for page in range(12)]
+        for locale in ("de", "fr", "it", "pt-br", "zh-cn"):
+            for page in range(10):
+                urls.append(f"https://blowfish.page/{locale}/samples/page-{page}/")
+
+        report = analyze_language_urls(urls, policy="english")
+
+        self.assertTrue(report["detected"])
+        self.assertTrue(report["applied"])
+        self.assertEqual(report["non_english_url_count"], 50)
+        self.assertEqual(report["selected_languages"], ["unprefixed"])
+        self.assertEqual(report["added_exclude_paths"], ["/de/**", "/fr/**", "/it/**", "/pt-br/**", "/zh-cn/**"])
+
+    def test_apply_language_policy_adds_effective_excludes(self) -> None:
+        urls = [f"https://example.com/docs/page-{page}/" for page in range(12)]
+        for locale in ("de", "fr", "es"):
+            for page in range(8):
+                urls.append(f"https://example.com/{locale}/docs/page-{page}/")
+        options = CrawlOptions(
+            base_url="https://example.com/",
+            out_dir=Path("unused"),
+            language_policy="english",
+            exclude_paths=("/private/**",),
+        )
+
+        with patch("turbo_search.crawler.discover_sitemap_page_urls", return_value=urls):
+            effective, report = apply_language_policy(options)
+
+        self.assertTrue(report["applied"])
+        self.assertEqual(effective.exclude_paths, ("/private/**", "/de/**", "/es/**", "/fr/**"))
+
+    def test_language_policy_all_keeps_localized_paths(self) -> None:
+        urls = [f"https://example.com/de/docs/page-{page}/" for page in range(20)]
+        options = CrawlOptions(
+            base_url="https://example.com/",
+            out_dir=Path("unused"),
+            language_policy="all",
+        )
+
+        with patch("turbo_search.crawler.discover_sitemap_page_urls", return_value=urls) as discover_mock:
+            effective, report = apply_language_policy(options)
+
+        self.assertFalse(report["detected"])
+        self.assertEqual(effective.exclude_paths, ())
+        discover_mock.assert_not_called()
 
     def test_docs_version_block_message_recommends_explicit_policy(self) -> None:
         message = docs_version_block_message(
@@ -400,6 +449,76 @@ class CrawlerHelperTests(unittest.TestCase):
         self.assertEqual(strategy, "hybrid")
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/", "https://example.com/docs/pinning"])
         self.assertEqual(stats["requests_count"], 5)
+
+    def test_default_sitemap_strategy_skips_link_crawl_when_sitemap_has_pages(self) -> None:
+        class SitemapSpider:
+            pass
+
+        class LinkSpider:
+            pass
+
+        sitemap_page = CrawledPage(
+            url="https://example.com/docs/",
+            title="Docs",
+            status=200,
+            markdown="Docs home",
+        )
+
+        def fake_run(spider_cls):
+            if spider_cls is SitemapSpider:
+                return [sitemap_page], {"requests_count": 2}
+            raise AssertionError("link spider should not run when sitemap has pages")
+
+        options = CrawlOptions(
+            base_url="https://example.com/docs/",
+            out_dir=Path("unused"),
+            max_pages=10,
+        )
+        with patch("turbo_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
+            with patch("turbo_search.crawler.build_link_spider_class", return_value=LinkSpider) as link_mock:
+                with patch("turbo_search.crawler.run_scrapling_spider", side_effect=fake_run):
+                    pages, stats, strategy = crawl_pages(options)
+
+        self.assertEqual(strategy, "sitemap")
+        self.assertEqual([page.url for page in pages], ["https://example.com/docs/"])
+        self.assertEqual(stats["requests_count"], 2)
+        link_mock.assert_not_called()
+
+    def test_sitemap_strategy_falls_back_to_link_crawl_when_sitemap_is_empty(self) -> None:
+        class SitemapSpider:
+            pass
+
+        class LinkSpider:
+            pass
+
+        link_page = CrawledPage(
+            url="https://example.com/docs/pinning",
+            title="Pinning",
+            status=200,
+            markdown="Pinning documentation",
+        )
+
+        def fake_run(spider_cls):
+            if spider_cls is SitemapSpider:
+                return [], {"requests_count": 1}
+            if spider_cls is LinkSpider:
+                return [link_page], {"requests_count": 3}
+            raise AssertionError("unexpected spider")
+
+        options = CrawlOptions(
+            base_url="https://example.com/docs/",
+            out_dir=Path("unused"),
+            max_pages=10,
+            crawl_strategy="sitemap",
+        )
+        with patch("turbo_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
+            with patch("turbo_search.crawler.build_link_spider_class", return_value=LinkSpider):
+                with patch("turbo_search.crawler.run_scrapling_spider", side_effect=fake_run):
+                    pages, stats, strategy = crawl_pages(options)
+
+        self.assertEqual(strategy, "link_fallback")
+        self.assertEqual([page.url for page in pages], ["https://example.com/docs/pinning"])
+        self.assertEqual(stats["requests_count"], 4)
 
     def test_link_crawl_strategy_skips_sitemap(self) -> None:
         class SitemapSpider:

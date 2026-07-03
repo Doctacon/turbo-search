@@ -47,13 +47,15 @@ The plan compares generated chunks to local applied state under `.turbo-search/s
 
 `plan` and `crawl` support `--crawl-strategy`:
 
-- `hybrid` (default): merge robots/sitemap pages with same-site link crawling from the base URL. This is best for RAG completeness and catches partial sitemaps.
-- `sitemap`: use robots/sitemap discovery; fall back to link crawling only when the sitemap path yields no pages. Use this for a lighter, sitemap-trusting crawl.
+- `sitemap` (default): use robots/sitemap discovery; fall back to link crawling only when the sitemap path yields no pages.
 - `link`: ignore sitemap URLs and crawl same-site links from the base URL.
+- `hybrid`: merge robots/sitemap pages with same-site link crawling from the base URL. Use this explicit exhaustive mode when a sitemap is known to be partial.
 
-Hybrid/link crawling still obeys robots.txt, host restrictions, page caps, concurrency, and delay settings. Default website planning caps are `3000` pages and `120000` chunks; default GitHub repository caps are `5000` repo files, `100000` chunks, and `51200` bytes per text file. Lower them for smoke tests or raise them for unusually large sources. Interactive progress uses `cap=` for crawl limits and, during sitemap crawl, shows a sitemap-derived page estimate after matching sitemap URLs are discovered.
+All crawl strategies obey robots.txt, host restrictions, page caps, concurrency, and delay settings. Default website planning caps are `3000` pages and `120000` chunks; default GitHub repository caps are `5000` repo files, `100000` chunks, and `51200` bytes per text file. Lower them for smoke tests or raise them for unusually large sources. Interactive progress uses `cap=` for crawl limits and, during sitemap crawl, shows a sitemap-derived page estimate after matching sitemap URLs are discovered.
 
 For sitemap-heavy versioned docs sites, the default docs version policy is `warn`: detect repeated `/docs/{version}/...` families and stop before page crawling so the user chooses intentionally. Use `--docs-version-policy latest` to keep moving current docs such as `/docs/latest/**`, `--docs-version-policy stable-latest` to keep the highest semantic version, `--docs-version-policy latest-nightly` to keep current plus preview docs, or `--docs-version-policy all` to keep every version.
+
+For sitemap-heavy multilingual sites, the default language policy is `english`: detect locale-prefixed URL families such as `/de/**`, `/fr/**`, `/pt-br/**`, or `/zh-cn/**`, then add effective excludes for non-English locale prefixes while keeping unprefixed and `/en/**` pages. Use `--language-policy all` when every language should be indexed.
 
 ### Path filters and URL canonicalization
 

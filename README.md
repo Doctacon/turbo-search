@@ -71,10 +71,11 @@ Plan artifacts are written under `artifacts/site-crawls/...` and local applied s
 Defaults are source-aware:
 
 ```text
-crawl_strategy: hybrid
+crawl_strategy: sitemap
 website max_pages: 3000
 website max_chunks: 120000
 website docs_version_policy: warn
+website language_policy: english
 GitHub repo max_files: 5000
 GitHub repo max_chunks: 100000
 GitHub repo max_file_bytes: 51200
@@ -97,15 +98,23 @@ uv run turbo-search plan https://example.com/ --max-pages 1000 --max-chunks 5000
 
 # Versioned docs site: keep current docs and exclude old version folders
 uv run turbo-search plan https://example.com/ --docs-version-policy latest
+
+# Multilingual site: keep every language instead of the default English-only filter
+uv run turbo-search plan https://example.com/ --language-policy all
 ```
 
 For sites with repeated `/docs/{version}/...` pages, the default `warn` policy stops before page crawling and asks you to choose. Use `--docs-version-policy latest`, `stable-latest`, or `latest-nightly` to add effective excludes for older docs versions while keeping non-versioned pages like blogs/specs eligible. Use `--docs-version-policy all` to keep every version.
 
+For multilingual sites with locale prefixes such as `/de/**`, `/fr/**`, or `/pt-br/**`, the default `--language-policy english` keeps unprefixed and `/en/**` pages while adding effective excludes for detected non-English locale prefixes. Use `--language-policy all` when you intentionally want every language.
+
 Other crawl strategies:
 
 ```bash
-uv run turbo-search plan https://example.com/ --crawl-strategy sitemap
+# Crawl links from the base URL only.
 uv run turbo-search plan https://example.com/ --crawl-strategy link
+
+# Exhaustive mode: crawl sitemap URLs, then same-site links, and merge both.
+uv run turbo-search plan https://example.com/ --crawl-strategy hybrid
 ```
 
 ## Incremental updates

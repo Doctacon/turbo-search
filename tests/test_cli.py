@@ -154,6 +154,8 @@ def fake_plan_crawl_summary(options: CrawlOptions) -> dict[str, object]:
         "requested_crawl_strategy": options.crawl_strategy,
         "docs_version_policy": options.docs_version_policy,
         "docs_version_report": {"detected": False, "policy": options.docs_version_policy},
+        "language_policy": options.language_policy,
+        "language_report": {"detected": False, "policy": options.language_policy},
         "sitemap_seed_urls": [],
         "out_dir": str(options.out_dir),
         "pages_dir": str(options.out_dir / "pages"),
@@ -238,8 +240,8 @@ class CliTests(unittest.TestCase):
                 "base_url": "https://scrapling.readthedocs.io/en/latest/",
                 "allowed_host": "scrapling.readthedocs.io",
                 "namespace_candidate": "site-scrapling-readthedocs-io-v1",
-                "crawl_strategy": "hybrid",
-                "requested_crawl_strategy": "hybrid",
+                "crawl_strategy": "sitemap",
+                "requested_crawl_strategy": "sitemap",
                 "out_dir": str(out_dir),
                 "pages_dir": str(out_dir / "pages"),
                 "max_pages": 3,
@@ -296,7 +298,8 @@ class CliTests(unittest.TestCase):
         self.assertIsInstance(options, CrawlOptions)
         self.assertEqual(options.max_pages, 3)
         self.assertEqual(options.max_chunks, 5)
-        self.assertEqual(options.crawl_strategy, "hybrid")
+        self.assertEqual(options.crawl_strategy, "sitemap")
+        self.assertEqual(options.language_policy, "english")
         self.assertEqual(options.include_paths, ())
         self.assertEqual(options.exclude_paths, ())
         self.assertTrue(options.strip_trailing_slash)
@@ -315,7 +318,7 @@ class CliTests(unittest.TestCase):
                 "base_url": "https://example.com/",
                 "allowed_host": "example.com",
                 "namespace_candidate": "site-example-com-v1",
-                "crawl_strategy": "hybrid",
+                "crawl_strategy": "sitemap",
                 "out_dir": str(out_dir),
                 "pages_dir": str(out_dir / "pages"),
                 "max_pages": 3,
@@ -341,10 +344,11 @@ class CliTests(unittest.TestCase):
         self.assertIn("caps: max_pages=3; max_chunks=5; chunk_limit_reached=True", output)
         self.assertIn("warning: reached page cap, chunk cap", output)
 
-    def test_crawl_command_defaults_to_hybrid_strategy(self) -> None:
+    def test_crawl_command_defaults_to_sitemap_strategy(self) -> None:
         def fake_crawl(options: CrawlOptions) -> dict[str, object]:
-            self.assertEqual(options.crawl_strategy, "hybrid")
+            self.assertEqual(options.crawl_strategy, "sitemap")
             self.assertEqual(options.docs_version_policy, "warn")
+            self.assertEqual(options.language_policy, "english")
             self.assertEqual(options.max_pages, 3000)
             self.assertEqual(options.max_chunks, 120000)
             return fake_plan_crawl_summary(options)
@@ -363,7 +367,7 @@ class CliTests(unittest.TestCase):
 
         payload = json.loads(stdout.getvalue())
         self.assertEqual(result, 0)
-        self.assertEqual(payload["crawl_strategy"], "hybrid")
+        self.assertEqual(payload["crawl_strategy"], "sitemap")
 
     def test_crawl_command_routes_github_repo_urls_to_repo_crawler(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -431,6 +435,8 @@ class CliTests(unittest.TestCase):
                         "/llms-full.txt",
                         "--docs-version-policy",
                         "latest",
+                        "--language-policy",
+                        "all",
                         "--css-selector",
                         "main",
                         "--json",
@@ -449,8 +455,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["diff"]["chunks_to_embed"], 1)
         self.assertEqual(payload["diff"]["stale_rows"], 0)
         self.assertEqual(payload["namespace"], "site-example-com-v1")
-        self.assertEqual(payload["crawl_strategy"], "hybrid")
+        self.assertEqual(payload["crawl_strategy"], "sitemap")
         self.assertEqual(payload["docs_version_policy"], "latest")
+        self.assertEqual(payload["language_policy"], "all")
         self.assertEqual(payload["include_paths"], ["/docs/**"])
         self.assertEqual(payload["exclude_paths"], ["/llms-full.txt"])
         self.assertTrue(payload["strip_trailing_slash"])
@@ -463,8 +470,9 @@ class CliTests(unittest.TestCase):
         manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
         chunks = [json.loads(line) for line in (out_dir / "chunks.jsonl").read_text(encoding="utf-8").splitlines()]
         self.assertEqual(plan["diff"]["rows_to_upsert"], 1)
-        self.assertEqual(plan["crawl_options"]["crawl_strategy"], "hybrid")
+        self.assertEqual(plan["crawl_options"]["crawl_strategy"], "sitemap")
         self.assertEqual(plan["crawl_options"]["docs_version_policy"], "latest")
+        self.assertEqual(plan["crawl_options"]["language_policy"], "all")
         self.assertEqual(plan["crawl_options"]["include_paths"], ["/docs/**"])
         self.assertEqual(plan["crawl_options"]["exclude_paths"], ["/llms-full.txt"])
         self.assertTrue(plan["crawl_options"]["strip_trailing_slash"])
