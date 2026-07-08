@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
+import hashlib
 import json
 import tempfile
 from pathlib import Path
@@ -403,6 +404,44 @@ class CliTests(unittest.TestCase):
         github_mock.assert_called_once()
         site_mock.assert_not_called()
 
+    def test_crawl_command_accepts_local_pdf_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf_path = root / "Local Handbook.pdf"
+            pdf_bytes = b"%PDF-1.4 local handbook bytes"
+            pdf_path.write_bytes(pdf_bytes)
+            sha16 = hashlib.sha256(pdf_bytes).hexdigest()[:16]
+            out_dir = root / "pdf-crawl"
+
+            stdout = StringIO()
+            with patch(
+                "turbo_search.crawler.markitdown_pdf_to_markdown",
+                return_value="# Local Handbook\n\nUseful PDF content for retrieval.",
+            ):
+                with patch("turbo_search.cli.crawl_site") as site_mock:
+                    with redirect_stdout(stdout):
+                        result = main(
+                            [
+                                "crawl",
+                                "--base-url",
+                                str(pdf_path),
+                                "--out-dir",
+                                str(out_dir),
+                                "--json",
+                            ]
+                        )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(payload["source_kind"], "pdf")
+            self.assertEqual(payload["base_url"], f"pdf://pdf-local-handbook-{sha16}")
+            self.assertEqual(payload["namespace_candidate"], f"pdf-local-handbook-{sha16}-v1")
+            self.assertEqual(payload["pdf_filename"], "Local Handbook.pdf")
+            self.assertEqual(payload["pages_scraped"], 1)
+            self.assertEqual(payload["chunks_generated"], 1)
+            self.assertFalse(payload["turbopuffer_api_calls"])
+            site_mock.assert_not_called()
+
     def test_plan_command_writes_artifacts_and_first_apply_diff_without_credentials(self) -> None:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -575,6 +614,73 @@ class CliTests(unittest.TestCase):
         github_mock.assert_called_once()
         site_mock.assert_not_called()
 
+    def test_plan_command_writes_pdf_artifacts_without_source_path(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        out_dir = root / "pdf-plan"
+        state_root = root / "state"
+        pdf_path = root / "Research Notes.pdf"
+        pdf_bytes = b"%PDF-1.4 research notes bytes"
+        pdf_path.write_bytes(pdf_bytes)
+        pdf_sha256 = hashlib.sha256(pdf_bytes).hexdigest()
+        source_id = f"pdf-research-notes-{pdf_sha256[:16]}"
+
+        stdout = StringIO()
+        with patch(
+            "turbo_search.crawler.markitdown_pdf_to_markdown",
+            return_value="# Research Notes\n\nUseful PDF text for retrieval and planning.",
+        ):
+            with patch("turbo_search.cli.crawl_site") as site_mock:
+                with patch("turbo_search.cli.crawl_github_repo") as github_mock:
+                    with redirect_stdout(stdout):
+                        result = main(
+                            [
+                                "plan",
+                                str(pdf_path),
+                                "--out-dir",
+                                str(out_dir),
+                                "--state-root",
+                                str(state_root),
+                                "--json",
+                            ]
+                        )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["source_kind"], "pdf")
+        self.assertEqual(payload["base_url"], f"pdf://{source_id}")
+        self.assertEqual(payload["namespace"], f"{source_id}-v1")
+        self.assertEqual(payload["namespace_candidate"], f"{source_id}-v1")
+        self.assertEqual(payload["site_id"], source_id)
+        self.assertEqual(payload["pdf_filename"], "Research Notes.pdf")
+        self.assertEqual(payload["pdf_sha256"], pdf_sha256)
+        self.assertFalse(payload["credentials_required"])
+        self.assertFalse(payload["turbopuffer_api_calls"])
+        self.assertEqual(payload["diff"]["rows_to_upsert"], 1)
+        self.assertEqual(payload["state_path"], str(state_root / "state" / source_id / f"{source_id}-v1" / "last-applied.json"))
+        self.assertTrue((out_dir / "plan.json").exists())
+        self.assertTrue((out_dir / "manifest.json").exists())
+        self.assertTrue((out_dir / "chunks.jsonl").exists())
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        chunk = manifest["chunks"][0]
+        self.assertEqual(manifest["base_url"], f"pdf://{source_id}")
+        self.assertEqual(manifest["pages"][0]["canonical_url"], f"pdf://{source_id}/Research%20Notes.pdf")
+        self.assertEqual(chunk["source_metadata"]["source_kind"], "pdf")
+        self.assertEqual(chunk["source_metadata"]["pdf_filename"], "Research Notes.pdf")
+        self.assertEqual(chunk["source_metadata"]["pdf_sha256"], pdf_sha256)
+        serialized_artifacts = "\n".join(
+            [
+                (out_dir / "plan.json").read_text(encoding="utf-8"),
+                (out_dir / "manifest.json").read_text(encoding="utf-8"),
+                (out_dir / "chunks.jsonl").read_text(encoding="utf-8"),
+                (out_dir / "summary.json").read_text(encoding="utf-8"),
+            ]
+        )
+        self.assertNotIn(str(pdf_path), serialized_artifacts)
+        site_mock.assert_not_called()
+        github_mock.assert_not_called()
+
     def test_plan_command_loads_existing_state_and_reports_unchanged_diff(self) -> None:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -671,7 +777,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result, 2)
         self.assertEqual(stdout.getvalue(), "")
-        self.assertIn("base URL is required", stderr.getvalue())
+        self.assertIn("source URL/path is required", stderr.getvalue())
 
     def test_retrieve_command_dry_run_plan_needs_no_credentials(self) -> None:
         stdout = StringIO()
@@ -727,6 +833,27 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["ranking_profile"], "repo_code")
         self.assertEqual(payload["ranking_pool"], 100)
         self.assertEqual(payload["ranking_aggregation"], "adaptive_sum_3")
+
+    def test_retrieve_command_uses_document_defaults_for_pdf_namespace_in_dry_run(self) -> None:
+        stdout = StringIO()
+        with redirect_stdout(stdout):
+            result = main(
+                [
+                    "retrieve",
+                    "What does the PDF say?",
+                    "--dry-run",
+                    "--namespace",
+                    "pdf-research-notes-abc123-v1",
+                    "--json",
+                ]
+            )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["ranking_mode"], "page")
+        self.assertEqual(payload["ranking_profile"], "none")
+        self.assertEqual(payload["ranking_pool"], 20)
+        self.assertEqual(payload["ranking_aggregation"], "max")
 
     def test_retrieve_command_accepts_page_ranking_mode_in_dry_run(self) -> None:
         stdout = StringIO()

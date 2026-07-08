@@ -42,6 +42,9 @@ GENERIC_SITE_TURBOPUFFER_SCHEMA = {
     "commit_sha": {"type": "string"},
     "repo_path": {"type": "string"},
     "language": {"type": "string"},
+    "pdf_filename": {"type": "string"},
+    "pdf_sha256": {"type": "string"},
+    "pdf_source_id": {"type": "string"},
 }
 SOURCE_METADATA_ROW_FIELDS = (
     "source_kind",
@@ -52,6 +55,9 @@ SOURCE_METADATA_ROW_FIELDS = (
     "commit_sha",
     "repo_path",
     "language",
+    "pdf_filename",
+    "pdf_sha256",
+    "pdf_source_id",
 )
 
 JsonObject = dict[str, Any]

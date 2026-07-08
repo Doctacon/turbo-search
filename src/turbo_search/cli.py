@@ -37,7 +37,9 @@ from turbo_search.crawler import (
     DOCS_VERSION_POLICIES,
     LANGUAGE_POLICIES,
     GitHubRepoSource,
+    PdfSource,
     CrawlOptions,
+    crawl_pdf,
     crawl_site,
     default_out_dir,
     detect_source,
@@ -129,7 +131,7 @@ def should_show_progress(args: argparse.Namespace) -> bool:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="turbo-search",
-        description="Local site/repository RAG utilities. Planning is local-only by default unless explicitly documented otherwise.",
+        description="Local site/repository/PDF RAG utilities. Planning is local-only by default unless explicitly documented otherwise.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
@@ -137,10 +139,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     crawl_parser = subparsers.add_parser(
         "crawl",
-        help="crawl a website or public GitHub repo and chunk locally; always dry-run",
+        help="crawl a website, public GitHub repo, or local PDF and chunk locally; always dry-run",
         description=(
-            "Crawl a public website with Scrapling or ingest a public GitHub repository via git, "
-            "generate a local Markdown corpus, and chunk it for namespace planning. This command "
+            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, or "
+            "convert one local PDF with MarkItDown, generate a local Markdown corpus, and chunk it for namespace planning. This command "
             "is local-only with respect to turbopuffer: it does not read turbopuffer credentials, "
             "embed text, create namespaces, or call turbopuffer."
         ),
@@ -148,7 +150,8 @@ def build_parser() -> argparse.ArgumentParser:
     crawl_parser.add_argument(
         "--base-url",
         required=True,
-        help="Absolute http(s) URL to crawl.",
+        metavar="SOURCE",
+        help="Absolute http(s) URL or local PDF filepath to crawl.",
     )
     crawl_parser.add_argument(
         "--out-dir",
@@ -294,10 +297,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     plan_parser = subparsers.add_parser(
         "plan",
-        help="crawl a website or public GitHub repo and write local review/apply plan artifacts; no live writes",
+        help="crawl a website, public GitHub repo, or local PDF and write local review/apply plan artifacts; no live writes",
         description=(
-            "Crawl a public website with Scrapling or ingest a public GitHub repository via git, "
-            "generate a local Markdown corpus, chunk it, compare it to local applied state, and "
+            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, or "
+            "convert one local PDF with MarkItDown, generate a local Markdown corpus, chunk it, compare it to local applied state, and "
             "write reviewable plan artifacts. This command is local-only with respect to turbopuffer: "
             "it does not read turbopuffer credentials, embed text, create namespaces, or call turbopuffer."
         ),
@@ -305,13 +308,14 @@ def build_parser() -> argparse.ArgumentParser:
     plan_parser.add_argument(
         "url",
         nargs="?",
-        help="Absolute http(s) URL to crawl and plan.",
+        metavar="SOURCE",
+        help="Absolute http(s) URL or local PDF filepath to crawl and plan.",
     )
     plan_parser.add_argument(
         "--base-url",
         dest="base_url",
         default=None,
-        help="Absolute http(s) URL to crawl and plan. Kept for backwards compatibility; positional URL is preferred.",
+        help="Absolute http(s) URL or local PDF filepath to crawl and plan. Kept for backwards compatibility; positional source is preferred.",
     )
     plan_parser.add_argument(
         "--out-dir",
@@ -757,6 +761,14 @@ def _apply_source_cap_defaults(args: argparse.Namespace, source: object) -> None
         args.max_chunks = DEFAULT_GITHUB_REPO_MAX_CHUNKS if isinstance(source, GitHubRepoSource) else DEFAULT_CRAWL_MAX_CHUNKS
 
 
+def crawl_source(source: object, options: CrawlOptions) -> dict[str, object]:
+    if isinstance(source, GitHubRepoSource):
+        return crawl_github_repo(source, options)
+    if isinstance(source, PdfSource):
+        return crawl_pdf(source, options)
+    return crawl_site(options)
+
+
 def _run_crawl(args: argparse.Namespace) -> int:
     try:
         source = detect_source(args.base_url)
@@ -793,7 +805,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
         progress_callback=progress.update if progress.enabled else None,
     )
     try:
-        summary = crawl_github_repo(source, options) if isinstance(source, GitHubRepoSource) else crawl_site(options)
+        summary = crawl_source(source, options)
     except (RuntimeError, GitHubRepoError) as exc:
         progress.finish()
         print(str(exc), file=sys.stderr)
@@ -813,7 +825,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         return 2
     requested_url = args.base_url or args.url
     if not requested_url:
-        print("base URL is required; pass it as `turbo-search plan <url>` or with --base-url.", file=sys.stderr)
+        print("source URL/path is required; pass it as `turbo-search plan <source>` or with --base-url.", file=sys.stderr)
         return 2
     try:
         source = detect_source(requested_url)
@@ -852,7 +864,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         progress_callback=progress.update if progress.enabled else None,
     )
     try:
-        crawl_summary = crawl_github_repo(source, options) if isinstance(source, GitHubRepoSource) else crawl_site(options)
+        crawl_summary = crawl_source(source, options)
         pages_dir = out_dir / "pages"
         progress.update("plan: chunking generated pages", force=True)
         indexing_plan = process_corpus(
@@ -1094,6 +1106,8 @@ def print_crawl_text(payload: dict[str, object]) -> None:
             f"binary={payload.get('files_skipped_binary')}; "
             f"oversize={payload.get('files_skipped_oversize')}"
         )
+    if source_kind == "pdf":
+        print(f"  pdf: {payload.get('pdf_filename')} ({str(payload.get('pdf_sha256', ''))[:16]})")
     print(f"  namespace_candidate: {payload['namespace_candidate']}")
     print(f"  strategy: {payload['crawl_strategy']}")
     print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
@@ -1120,6 +1134,8 @@ def print_plan_text(payload: dict[str, object]) -> None:
             f"binary={payload.get('files_skipped_binary')}; "
             f"oversize={payload.get('files_skipped_oversize')}"
         )
+    if source_kind == "pdf":
+        print(f"  pdf: {payload.get('pdf_filename')} ({str(payload.get('pdf_sha256', ''))[:16]})")
     print(f"  namespace: {payload['namespace']}")
     print(f"  plan_id: {payload['plan_id']}")
     print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")

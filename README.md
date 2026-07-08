@@ -1,6 +1,6 @@
 # turbo-search
 <img src="images/puffin.png" height="120" alt="turbo-search puffin" />
-Tiny CLI for turning public websites into turbopuffer-backed hybrid RAG indexes.
+Tiny CLI for turning public websites, public GitHub repositories, and local text PDFs into turbopuffer-backed hybrid RAG indexes.
 
 The main workflow is intentionally Terraform-like:
 
@@ -8,7 +8,7 @@ The main workflow is intentionally Terraform-like:
 2. **apply**: preflight the latest plan; still local-only.
 3. **apply --approve**: embed and upsert only the approved diff.
 
-It uses Scrapling for crawling/extraction, local `BAAI/bge-small-en-v1.5` embeddings, and turbopuffer hybrid retrieval with ANN + BM25 + RRF.
+It uses Scrapling for website crawling/extraction, git for public repository ingestion, MarkItDown for local PDF-to-Markdown conversion, local `BAAI/bge-small-en-v1.5` embeddings, and turbopuffer hybrid retrieval with ANN + BM25 + RRF.
 
 ## Setup
 
@@ -65,6 +65,39 @@ https://example.com/ -> site-example-com-v1
 ```
 
 Plan artifacts are written under `artifacts/site-crawls/...` and local applied state is written under `.turbo-search/state/...`. Both are local/generated paths and are gitignored.
+
+## Index a local PDF
+
+v1 PDF ingestion supports one local text PDF filepath. It uses Microsoft MarkItDown locally, does not do OCR, and cites the document URL/filename rather than PDF page numbers.
+
+```bash
+# 1. Create a local plan. No credentials, embeddings, or live writes.
+uv run turbo-search plan ./Research\ Notes.pdf
+
+# 2. Review locally.
+uv run turbo-search apply
+
+# 3. Explicitly apply when ready.
+export TURBOPUFFER_API_KEY="..."
+uv run turbo-search apply --approve
+```
+
+The default namespace is derived from the filename plus file hash, for example:
+
+```text
+./Research Notes.pdf -> pdf-research-notes-<sha16>-v1
+```
+
+Generated artifacts store the filename, file hash, and synthetic `pdf://...` document URL; they do not need the absolute source filepath.
+
+Search after an approved apply:
+
+```bash
+uv run turbo-search retrieve \
+  "What does the research note say about onboarding?" \
+  --live \
+  --namespace pdf-research-notes-<sha16>-v1
+```
 
 ## Shape the crawl
 

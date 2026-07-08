@@ -1,12 +1,12 @@
-# Generic site/repository RAG plan/apply workflow
+# Generic site/repository/PDF RAG plan/apply workflow
 
-This workflow is the Terraform-like path for turning a public website crawl or public GitHub repository into a reviewed, incremental turbopuffer index.
+This workflow is the Terraform-like path for turning a public website crawl, public GitHub repository, or local text PDF into a reviewed, incremental turbopuffer index.
 
 ## Safety model
 
 There are three distinct modes:
 
-1. **Plan**: local-only preview. Crawls, extracts, chunks, compares with local applied state, and writes review artifacts. It does not read credentials, load embeddings, create namespaces, or call turbopuffer.
+1. **Plan**: local-only preview. Crawls or converts, extracts, chunks, compares with local applied state, and writes review artifacts. It does not read credentials, load embeddings, create namespaces, or call turbopuffer.
 2. **Apply preflight**: local-only verification of a saved plan. It recomputes artifact hashes and local diff state. It does not read credentials, load embeddings, or call turbopuffer.
 3. **Approved apply**: explicit live mutation. It requires `--approve` and `TURBOPUFFER_API_KEY` in the environment. It embeds/upserts only new or changed chunks from the recomputed diff.
 
@@ -30,6 +30,14 @@ uv run turbo-search plan https://github.com/Doctacon/open-streaming-lab
 ```
 
 GitHub repository URLs are detected automatically and ingested from git-tracked repository contents, not rendered GitHub UI pages. The default namespace is repo-specific, e.g. `github-doctacon-open-streaming-lab-v1`.
+
+Local PDF example:
+
+```bash
+uv run turbo-search plan ./Research\ Notes.pdf
+```
+
+PDF paths are detected automatically when the path points to one existing `.pdf` file. v1 converts the whole document with Microsoft MarkItDown, supports text PDFs only, does not do OCR, and does not emit page-number citations. The default namespace is filename-plus-hash based, e.g. `pdf-research-notes-<sha16>-v1`; generated artifacts use a synthetic `pdf://...` document URL plus filename/hash metadata rather than the absolute local source filepath.
 
 Plan artifacts:
 
@@ -210,5 +218,6 @@ update local applied state.
 ## What is still not automatic
 
 - Remote/shared state is not implemented; state is local-first.
+- PDF OCR, page-number citations, and multi-PDF directory ingestion are not implemented.
 - Live generic applies/deletes/retrievals/evals should only be run when explicitly approved for the current site/namespace.
 - Live SDK compatibility should be validated on a disposable namespace before relying on generic apply for production use.

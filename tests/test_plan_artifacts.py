@@ -108,6 +108,60 @@ class PlanArtifactTests(unittest.TestCase):
         self.assertIn("Useful documentation", chunk["content"])
         self.assertIn("Useful documentation", chunk["content_preview"])
 
+    def test_pdf_source_metadata_is_preserved_in_manifest_chunks_and_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            corpus = root / "pages"
+            corpus.mkdir()
+            (corpus / "pdf-page.md").write_text(
+                "\n".join(
+                    [
+                        "---",
+                        'url: "pdf://pdf-research-notes-abc123/Research%20Notes.pdf"',
+                        'title: "Research Notes.pdf"',
+                        'status: "200"',
+                        'content_type: "application/pdf"',
+                        'source_kind: "pdf"',
+                        'pdf_filename: "Research Notes.pdf"',
+                        'pdf_sha256: "abc123"',
+                        'pdf_source_id: "pdf-research-notes-abc123"',
+                        'source_hash: "raw-source-hash"',
+                        'crawl_timestamp: "2026-07-08T00:00:00+00:00"',
+                        'fetcher: "markitdown"',
+                        "---",
+                        "",
+                        "# Research Notes",
+                        "",
+                        "Useful PDF text for retrieval.",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            artifacts = build_plan_artifacts(
+                indexing_plan=process_corpus(corpus),
+                base_url="pdf://pdf-research-notes-abc123",
+                out_dir=root / "plan",
+            )
+
+        self.assertEqual(artifacts.plan.base_url, "pdf://pdf-research-notes-abc123")
+        self.assertEqual(artifacts.plan.site_id, "pdf-research-notes-abc123")
+        self.assertEqual(artifacts.plan.namespace_candidate, "pdf-research-notes-abc123-v1")
+        self.assertIn("pdf_filename", GENERIC_SITE_TURBOPUFFER_SCHEMA)
+        page = artifacts.manifest.pages[0]
+        self.assertEqual(page.source_metadata["source_kind"], "pdf")
+        self.assertEqual(page.source_metadata["pdf_filename"], "Research Notes.pdf")
+        self.assertEqual(page.source_metadata["pdf_sha256"], "abc123")
+        self.assertNotIn("crawl_timestamp", page.source_metadata)
+        chunk = artifacts.manifest.chunks[0]
+        self.assertEqual(chunk.source_metadata["pdf_source_id"], "pdf-research-notes-abc123")
+        row = build_generic_site_row(chunk, [0.0], plan_id=artifacts.plan.plan_id, applied_at="2026-07-08T00:00:00+00:00")
+        self.assertEqual(row["source_kind"], "pdf")
+        self.assertEqual(row["pdf_filename"], "Research Notes.pdf")
+        self.assertEqual(row["pdf_sha256"], "abc123")
+        self.assertEqual(row["pdf_source_id"], "pdf-research-notes-abc123")
+
     def test_artifact_hash_is_deterministic_for_same_content_and_options(self) -> None:
         first = self.build_artifacts()
         second = self.build_artifacts()
