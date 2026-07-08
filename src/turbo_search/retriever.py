@@ -46,7 +46,7 @@ SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES = [attribute for attribute in RETRIEVAL_ATT
 def namespace_uses_website_defaults(namespace: str) -> bool:
     """Return true when a namespace should use document/page ranking defaults."""
 
-    return namespace.startswith(("site-", "pdf-"))
+    return namespace.startswith(("site-", "pdf-", "file-"))
 
 
 def ranking_defaults_for_namespace(namespace: str) -> dict[str, object]:

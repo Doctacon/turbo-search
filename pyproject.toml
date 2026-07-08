@@ -12,7 +12,7 @@ dependencies = [
     "PyYAML",
     "scrapling[fetchers]>=0.4.9",
     "markdownify>=1.2.0",
-    "markitdown[pdf]",
+    "markitdown[docx,pdf,pptx,xls,xlsx]",
 ]
 
 [project.scripts]

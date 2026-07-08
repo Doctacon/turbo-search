@@ -1,6 +1,6 @@
-# Generic site/repository/PDF RAG plan/apply workflow
+# Generic site/repository/local-document RAG plan/apply workflow
 
-This workflow is the Terraform-like path for turning a public website crawl, public GitHub repository, or local text PDF into a reviewed, incremental turbopuffer index.
+This workflow is the Terraform-like path for turning a public website crawl, public GitHub repository, or supported local document file into a reviewed, incremental turbopuffer index.
 
 ## Safety model
 
@@ -31,13 +31,17 @@ uv run turbo-search plan https://github.com/Doctacon/open-streaming-lab
 
 GitHub repository URLs are detected automatically and ingested from git-tracked repository contents, not rendered GitHub UI pages. The default namespace is repo-specific, e.g. `github-doctacon-open-streaming-lab-v1`.
 
-Local PDF example:
+Local document example:
 
 ```bash
-uv run turbo-search plan ./Research\ Notes.pdf
+uv run turbo-search plan ./Research\ Notes.csv
 ```
 
-PDF paths are detected automatically when the path points to one existing `.pdf` file. v1 converts the whole document with Microsoft MarkItDown, supports text PDFs only, does not do OCR, and does not emit page-number citations. The default namespace is filename-plus-hash based, e.g. `pdf-research-notes-<sha16>-v1`; generated artifacts use a synthetic `pdf://...` document URL plus filename/hash metadata rather than the absolute local source filepath.
+Local document paths are detected automatically when the path points to one existing supported file. v1 converts the whole file with Microsoft MarkItDown and does not emit page, slide, sheet, cell, line, or notebook-cell citations.
+
+Supported extensions are `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.xls`, `.csv`, `.html`, `.htm`, `.txt`, `.text`, `.md`, `.markdown`, `.json`, `.jsonl`, `.xml`, `.ipynb`, and `.epub`.
+
+PDF namespaces stay backward-compatible, e.g. `pdf-research-notes-<sha16>-v1`. Non-PDF local documents use `file-<ext>-<filename-slug>-<sha16>-v1`, e.g. `file-csv-research-notes-<sha16>-v1`. Generated artifacts use a synthetic `pdf://...` or `file://...` document URL plus filename/extension/hash metadata rather than the absolute local source filepath.
 
 Plan artifacts:
 
@@ -177,7 +181,7 @@ uv run turbo-search evals \
 
 Do not run live retrieval/evals unless the namespace has been applied and the user explicitly approves live validation.
 
-Retrieval defaults to namespace-aware final ranking after hybrid ANN + BM25 + RRF. `site-*` namespaces use page-level website ranking by default (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). GitHub repository namespaces use file-level `repo-code` ranking by default (`--ranking-mode file --ranking-profile repo-code --ranking-pool 100 --ranking-aggregation adaptive-sum-3`), deduplicating by `repo_path`, using the best chunk per file plus a small close-chunk evidence bonus, gently demoting process/docs/eval-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `autoresearch/`, `docs/`, Markdown files, and eval fixture JSON, lightly boosting `tests/` files, applying conservative query-aware path/symbol boosts for exact source/doc filename or Python def/class matches, and optionally promoting one strong doc/test companion into the top five without replacing the top implementation hit. Pass `--ranking-aggregation max` for strict single-best-chunk file ranking, `--ranking-aggregation capped-sum-3` to fully reward up to three matching chunks from the same file, or `--ranking-mode chunk --ranking-profile none` when validating raw fused chunk order.
+Retrieval defaults to namespace-aware final ranking after hybrid ANN + BM25 + RRF. `site-*`, `pdf-*`, and `file-*` namespaces use page/document-level ranking by default (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). GitHub repository namespaces use file-level `repo-code` ranking by default (`--ranking-mode file --ranking-profile repo-code --ranking-pool 100 --ranking-aggregation adaptive-sum-3`), deduplicating by `repo_path`, using the best chunk per file plus a small close-chunk evidence bonus, gently demoting process/docs/eval-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `autoresearch/`, `docs/`, Markdown files, and eval fixture JSON, lightly boosting `tests/` files, applying conservative query-aware path/symbol boosts for exact source/doc filename or Python def/class matches, and optionally promoting one strong doc/test companion into the top five without replacing the top implementation hit. Pass `--ranking-aggregation max` for strict single-best-chunk file ranking, `--ranking-aggregation capped-sum-3` to fully reward up to three matching chunks from the same file, or `--ranking-mode chunk --ranking-profile none` when validating raw fused chunk order.
 
 ### Repository composite evals and config autoresearch
 
@@ -218,6 +222,6 @@ update local applied state.
 ## What is still not automatic
 
 - Remote/shared state is not implemented; state is local-first.
-- PDF OCR, page-number citations, and multi-PDF directory ingestion are not implemented.
+- Local document OCR/image captioning, audio/video transcription, YouTube, remote file URLs, Azure/cloud converters, archives/directories, MarkItDown plugins, and page/slide/sheet/cell/line citations are not implemented.
 - Live generic applies/deletes/retrievals/evals should only be run when explicitly approved for the current site/namespace.
 - Live SDK compatibility should be validated on a disposable namespace before relying on generic apply for production use.

@@ -15,6 +15,7 @@ from turbo_search.crawler import (
     CrawledPage,
     CrawlOptions,
     GitHubRepoSource,
+    LocalFileSource,
     PdfSource,
     WebsiteSource,
     analyze_docs_version_urls,
@@ -27,6 +28,7 @@ from turbo_search.crawler import (
     allowed_domains_for_url,
     crawl_pages,
     crawl_pdf,
+    crawl_local_document,
     crawl_site,
     crawled_page_from_response,
     default_out_dir,
@@ -93,11 +95,48 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertEqual(source_id_for_url(str(pdf_path)), source.source_id)
             self.assertEqual(default_out_dir(str(pdf_path)), Path("artifacts/site-crawls") / source.source_id)
 
+    def test_local_file_path_defaults_are_extension_filename_and_hash_based(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = Path(tmp) / "Quarterly Report.csv"
+            csv_bytes = b"metric,value\nrevenue,42\n"
+            csv_path.write_bytes(csv_bytes)
+            sha256 = hashlib.sha256(csv_bytes).hexdigest()
+
+            source = detect_source(str(csv_path))
+
+            self.assertIsInstance(source, LocalFileSource)
+            assert isinstance(source, LocalFileSource)
+            self.assertEqual(source.kind, "local_file")
+            self.assertEqual(source.filename, "Quarterly Report.csv")
+            self.assertEqual(source.file_extension, "csv")
+            self.assertEqual(source.file_sha256, sha256)
+            self.assertEqual(source.source_id, f"file-csv-quarterly-report-{sha256[:16]}")
+            self.assertEqual(source.base_url, f"file://file-csv-quarterly-report-{sha256[:16]}")
+            self.assertEqual(source.document_url, f"file://file-csv-quarterly-report-{sha256[:16]}/Quarterly%20Report.csv")
+            self.assertEqual(source.namespace_candidate, f"file-csv-quarterly-report-{sha256[:16]}-v1")
+            self.assertEqual(namespace_candidate(str(csv_path)), source.namespace_candidate)
+            self.assertEqual(source_id_for_url(str(csv_path)), source.source_id)
+            self.assertEqual(default_out_dir(str(csv_path)), Path("artifacts/site-crawls") / source.source_id)
+
+    def test_local_file_unsupported_existing_extension_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            image_path = Path(tmp) / "diagram.png"
+            image_path.write_bytes(b"not indexed")
+
+            with self.assertRaisesRegex(ValueError, "unsupported local file type '.png'"):
+                detect_source(str(image_path))
+
     def test_pdf_internal_base_url_supports_plan_artifact_identity(self) -> None:
         self.assertEqual(namespace_candidate("pdf://pdf-quarterly-report-abc123"), "pdf-quarterly-report-abc123-v1")
         self.assertEqual(source_id_for_url("pdf://pdf-quarterly-report-abc123"), "pdf-quarterly-report-abc123")
         self.assertEqual(default_out_dir("pdf://pdf-quarterly-report-abc123"), Path("artifacts/site-crawls/pdf-quarterly-report-abc123"))
         self.assertEqual(validate_base_url("pdf://pdf-quarterly-report-abc123#ignored"), "pdf://pdf-quarterly-report-abc123")
+
+    def test_local_file_internal_base_url_supports_plan_artifact_identity(self) -> None:
+        self.assertEqual(namespace_candidate("file://file-csv-quarterly-report-abc123"), "file-csv-quarterly-report-abc123-v1")
+        self.assertEqual(source_id_for_url("file://file-csv-quarterly-report-abc123"), "file-csv-quarterly-report-abc123")
+        self.assertEqual(default_out_dir("file://file-csv-quarterly-report-abc123"), Path("artifacts/site-crawls/file-csv-quarterly-report-abc123"))
+        self.assertEqual(validate_base_url("file://file-csv-quarterly-report-abc123#ignored"), "file://file-csv-quarterly-report-abc123")
 
     def test_github_repo_url_root_defaults_are_repo_specific(self) -> None:
         url = "https://github.com/Doctacon/open-streaming-lab"
@@ -459,6 +498,43 @@ class CrawlerHelperTests(unittest.TestCase):
             serialized = json.dumps(summary, sort_keys=True) + page_text
             self.assertNotIn(str(pdf_path), serialized)
 
+    def test_crawl_local_file_uses_markitdown_output_without_storing_source_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csv_path = root / "Annual Plan.csv"
+            csv_path.write_bytes(b"metric,value\nrevenue,42\n")
+            source = detect_source(str(csv_path))
+            assert isinstance(source, LocalFileSource)
+            options = CrawlOptions(base_url=source.base_url, out_dir=root / "crawl", max_chunks=10)
+
+            with patch(
+                "turbo_search.crawler.markitdown_file_to_markdown",
+                return_value="| metric | value |\n| --- | --- |\n| revenue | 42 |",
+            ):
+                summary = crawl_local_document(source, options)
+
+            self.assertEqual(summary["source_kind"], "local_file")
+            self.assertEqual(summary["base_url"], source.base_url)
+            self.assertEqual(summary["document_url"], source.document_url)
+            self.assertEqual(summary["file_filename"], "Annual Plan.csv")
+            self.assertEqual(summary["file_extension"], "csv")
+            self.assertEqual(summary["file_sha256"], source.file_sha256)
+            self.assertEqual(summary["namespace_candidate"], source.namespace_candidate)
+            self.assertEqual(summary["crawl_strategy"], "markitdown-local-file")
+            self.assertEqual(summary["documents_converted"], 1)
+            self.assertEqual(summary["pages_scraped"], 1)
+            self.assertEqual(summary["chunks_generated"], 1)
+            page_files = list((root / "crawl" / "pages").glob("*.md"))
+            self.assertEqual(len(page_files), 1)
+            page_text = page_files[0].read_text(encoding="utf-8")
+            self.assertIn('source_kind: "local_file"', page_text)
+            self.assertIn('file_filename: "Annual Plan.csv"', page_text)
+            self.assertIn('file_extension: "csv"', page_text)
+            self.assertIn(f'file_sha256: "{source.file_sha256}"', page_text)
+            self.assertNotIn("pdf_filename", page_text)
+            serialized = json.dumps(summary, sort_keys=True) + page_text
+            self.assertNotIn(str(csv_path), serialized)
+
     def test_crawl_pdf_rejects_empty_markitdown_extraction(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -471,6 +547,21 @@ class CrawlerHelperTests(unittest.TestCase):
             with patch("turbo_search.crawler.markitdown_pdf_to_markdown", return_value=" \n"):
                 with self.assertRaisesRegex(RuntimeError, "No text was extracted"):
                     crawl_pdf(source, options)
+
+            self.assertFalse((root / "crawl" / "summary.json").exists())
+
+    def test_crawl_local_file_rejects_empty_markitdown_extraction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            text_path = root / "empty.txt"
+            text_path.write_text("", encoding="utf-8")
+            source = detect_source(str(text_path))
+            assert isinstance(source, LocalFileSource)
+            options = CrawlOptions(base_url=source.base_url, out_dir=root / "crawl")
+
+            with patch("turbo_search.crawler.markitdown_file_to_markdown", return_value=" \n"):
+                with self.assertRaisesRegex(RuntimeError, "No text was extracted"):
+                    crawl_local_document(source, options)
 
             self.assertFalse((root / "crawl" / "summary.json").exists())
 

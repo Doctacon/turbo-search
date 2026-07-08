@@ -14,6 +14,7 @@ from gzip import GzipFile
 import hashlib
 from io import BytesIO
 import json
+import mimetypes
 from pathlib import Path
 import re
 from typing import Any, Callable, Literal, Sequence
@@ -83,6 +84,51 @@ GITHUB_NON_REPO_PATHS = {
     "settings",
     "sponsors",
     "topics",
+}
+SUPPORTED_LOCAL_FILE_EXTENSIONS = (
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".xls",
+    ".csv",
+    ".html",
+    ".htm",
+    ".txt",
+    ".text",
+    ".md",
+    ".markdown",
+    ".json",
+    ".jsonl",
+    ".xml",
+    ".ipynb",
+    ".epub",
+)
+LOCAL_FILE_CONTENT_TYPES = {
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls": "application/vnd.ms-excel",
+    ".csv": "text/csv",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".txt": "text/plain",
+    ".text": "text/plain",
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    ".json": "application/json",
+    ".jsonl": "application/jsonl",
+    ".xml": "application/xml",
+    ".ipynb": "application/x-ipynb+json",
+    ".epub": "application/epub+zip",
+}
+MARKITDOWN_EXTRA_BY_EXTENSION = {
+    ".pdf": "pdf",
+    ".docx": "docx",
+    ".pptx": "pptx",
+    ".xlsx": "xlsx",
+    ".xls": "xls",
 }
 
 
@@ -164,8 +210,40 @@ class PdfSource:
     def document_url(self) -> str:
         return f"pdf://{self.source_id}/{quote(self.filename, safe='')}"
 
+    @property
+    def file_extension(self) -> str:
+        return "pdf"
 
-Source = WebsiteSource | GitHubRepoSource | PdfSource
+    @property
+    def content_type(self) -> str:
+        return "application/pdf"
+
+
+@dataclass(frozen=True)
+class LocalFileSource:
+    """A single non-PDF local file parsed into stable, path-private identity defaults."""
+
+    kind: Literal["local_file"]
+    path: Path
+    filename: str
+    file_extension: str
+    content_type: str
+    file_sha256: str
+    source_id: str
+    namespace_candidate: str
+    default_out_dir: Path
+
+    @property
+    def base_url(self) -> str:
+        return f"file://{self.source_id}"
+
+    @property
+    def document_url(self) -> str:
+        return f"file://{self.source_id}/{quote(self.filename, safe='')}"
+
+
+LocalDocumentSource = PdfSource | LocalFileSource
+Source = WebsiteSource | GitHubRepoSource | LocalDocumentSource
 
 
 @dataclass(frozen=True)
@@ -256,6 +334,10 @@ def validate_base_url(url: str) -> str:
         if not parsed.netloc or parsed.path not in {"", "/"} or parsed.params or parsed.query:
             raise ValueError("PDF base URL must be an internal pdf://<source-id> URI")
         return urlunparse(parsed._replace(path="", params="", query="", fragment=""))
+    if parsed.scheme == "file":
+        if not parsed.netloc or parsed.path not in {"", "/"} or parsed.params or parsed.query:
+            raise ValueError("local file base URL must be an internal file://<source-id> URI")
+        return urlunparse(parsed._replace(path="", params="", query="", fragment=""))
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError("base URL must be an absolute http(s) URL")
     normalized = parsed._replace(fragment="")
@@ -286,10 +368,10 @@ def origin_from_url(url: str) -> str:
 def namespace_candidate(base_url: str) -> str:
     """Return the deterministic dry-run namespace candidate for a source."""
 
-    if is_pdf_base_url(base_url):
+    if is_local_document_base_url(base_url):
         return f"{source_id_for_url(base_url)}-v1"
     source = detect_source(base_url)
-    if isinstance(source, (GitHubRepoSource, PdfSource)):
+    if isinstance(source, (GitHubRepoSource, PdfSource, LocalFileSource)):
         return source.namespace_candidate
     host = host_from_url(source.url)
     slug = re.sub(r"[^a-z0-9]+", "-", host).strip("-")
@@ -297,21 +379,23 @@ def namespace_candidate(base_url: str) -> str:
 
 
 def source_id_for_url(base_url: str) -> str:
-    """Return the deterministic local source/site ID for a supported URL or local PDF path."""
+    """Return the deterministic local source/site ID for a supported URL or local file path."""
 
     if is_pdf_base_url(base_url):
         return safe_slug(urlparse(validate_base_url(base_url)).netloc, fallback="pdf")
+    if is_file_base_url(base_url):
+        return safe_slug(urlparse(validate_base_url(base_url)).netloc, fallback="file")
     source = detect_source(base_url)
     if isinstance(source, GitHubRepoSource):
         return source.site_id
-    if isinstance(source, PdfSource):
+    if isinstance(source, (PdfSource, LocalFileSource)):
         return source.source_id
     return safe_slug(host_from_url(source.url), fallback="site")
 
 
 def default_out_dir(base_url: str) -> Path:
-    source = detect_source(base_url) if not is_pdf_base_url(base_url) else None
-    if isinstance(source, (GitHubRepoSource, PdfSource)):
+    source = detect_source(base_url) if not is_local_document_base_url(base_url) else None
+    if isinstance(source, (GitHubRepoSource, PdfSource, LocalFileSource)):
         return source.default_out_dir
     return DEFAULT_CRAWL_OUT_DIR / source_id_for_url(base_url)
 
@@ -337,11 +421,44 @@ def is_pdf_base_url(value: str) -> bool:
     return parsed.scheme == "pdf" and bool(parsed.netloc)
 
 
+def is_file_base_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme == "file" and bool(parsed.netloc)
+
+
+def is_local_document_base_url(value: str) -> bool:
+    return is_pdf_base_url(value) or is_file_base_url(value)
+
+
+def is_supported_local_file_extension(extension: str) -> bool:
+    return extension.lower() in SUPPORTED_LOCAL_FILE_EXTENSIONS
+
+
 def looks_like_local_pdf_path(value: str) -> bool:
     parsed = urlparse(value)
-    if parsed.scheme in {"http", "https", "pdf"}:
+    if parsed.scheme in {"http", "https", "pdf", "file"}:
         return False
     return Path(value).expanduser().suffix.lower() == ".pdf"
+
+
+def looks_like_supported_local_file_path(value: str) -> bool:
+    parsed = urlparse(value)
+    if parsed.scheme in {"http", "https", "pdf", "file"}:
+        return False
+    return is_supported_local_file_extension(Path(value).expanduser().suffix)
+
+
+def unsupported_local_file_error(path: Path) -> str:
+    suffix = path.suffix.lower() or "<none>"
+    supported = ", ".join(SUPPORTED_LOCAL_FILE_EXTENSIONS)
+    return f"unsupported local file type {suffix!r}; supported extensions: {supported}"
+
+
+def local_file_content_type(path: Path) -> str:
+    extension = path.suffix.lower()
+    if extension in LOCAL_FILE_CONTENT_TYPES:
+        return LOCAL_FILE_CONTENT_TYPES[extension]
+    return mimetypes.guess_type(path.name)[0] or "application/octet-stream"
 
 
 def sha256_file(path: Path) -> str:
@@ -370,14 +487,46 @@ def pdf_source_from_path(value: str | Path) -> PdfSource:
     )
 
 
-def detect_source(url: str) -> Source:
-    """Classify a source as a website, public GitHub repository, or local PDF file."""
+def local_file_source_from_path(value: str | Path) -> LocalDocumentSource:
+    path = Path(value).expanduser()
+    extension = path.suffix.lower()
+    if not is_supported_local_file_extension(extension):
+        raise ValueError(unsupported_local_file_error(path))
+    if extension == ".pdf":
+        return pdf_source_from_path(path)
+    if not path.is_file():
+        raise ValueError(f"local file path must point to an existing regular file: {value}")
+    file_sha256 = sha256_file(path)
+    filename_slug = safe_slug(path.stem, fallback="document")
+    extension_slug = safe_slug(extension.lstrip("."), fallback="file")
+    source_id = f"file-{extension_slug}-{filename_slug}-{file_sha256[:16]}"
+    return LocalFileSource(
+        kind="local_file",
+        path=path,
+        filename=path.name,
+        file_extension=extension_slug,
+        content_type=local_file_content_type(path),
+        file_sha256=file_sha256,
+        source_id=source_id,
+        namespace_candidate=f"{source_id}-v1",
+        default_out_dir=DEFAULT_CRAWL_OUT_DIR / source_id,
+    )
 
-    if looks_like_local_pdf_path(url):
-        return pdf_source_from_path(url)
+
+def detect_source(url: str) -> Source:
+    """Classify a source as a website, public GitHub repository, or local file."""
+
+    parsed = urlparse(url)
+    if looks_like_supported_local_file_path(url):
+        return local_file_source_from_path(url)
+    local_path = Path(url).expanduser()
+    if parsed.scheme not in {"http", "https", "pdf", "file"} and local_path.is_file():
+        raise ValueError(unsupported_local_file_error(local_path))
     normalized = validate_base_url(url)
     if is_pdf_base_url(normalized):
         raise ValueError("pass the local PDF filepath, not the internal pdf:// source URI")
+    if is_file_base_url(normalized):
+        raise ValueError("pass the local file filepath, not the internal file:// source URI")
     github_source = parse_github_repo_url(normalized)
     if github_source is not None:
         return github_source
@@ -1236,25 +1385,68 @@ def write_markdown_corpus(pages: Sequence[CrawledPage], pages_dir: Path) -> None
         path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def markitdown_pdf_to_markdown(path: Path) -> str:
-    """Convert one local PDF to Markdown with MarkItDown's documented package interface."""
+def markitdown_file_to_markdown(path: Path) -> str:
+    """Convert one local file to Markdown with MarkItDown's package-facing interface."""
 
     try:
         from markitdown import MarkItDown
     except ImportError as exc:
-        raise RuntimeError("MarkItDown PDF support is not installed; install the markitdown[pdf] extra.") from exc
-
-    try:
-        result = MarkItDown().convert(path)
-    except Exception as exc:  # pragma: no cover - exact converter exceptions depend on markitdown/pdf stack.
         raise RuntimeError(
-            f"MarkItDown failed to convert PDF {path.name!r}; ensure it is a readable text PDF. "
+            "MarkItDown local file support is not installed; install markitdown with the needed local document extras."
+        ) from exc
+
+    extension = path.suffix.lower()
+    extra = MARKITDOWN_EXTRA_BY_EXTENSION.get(extension)
+    dependency_hint = f" Install markitdown[{extra}] for {extension} support if needed." if extra else ""
+    try:
+        result = MarkItDown(enable_plugins=False).convert(path)
+    except Exception as exc:  # pragma: no cover - exact converter exceptions depend on markitdown stack.
+        raise RuntimeError(
+            f"MarkItDown failed to convert local file {path.name!r}.{dependency_hint} "
             f"Converter error: {type(exc).__name__}"
         ) from exc
     return str(getattr(result, "markdown", "") or "")
 
 
-def write_pdf_corpus(source: PdfSource, markdown: str, pages_dir: Path) -> CrawledPage:
+def markitdown_pdf_to_markdown(path: Path) -> str:
+    """Convert one local PDF to Markdown with MarkItDown's package-facing interface."""
+
+    return markitdown_file_to_markdown(path)
+
+
+def convert_local_document_to_markdown(source: LocalDocumentSource) -> str:
+    if isinstance(source, PdfSource):
+        return markitdown_pdf_to_markdown(source.path)
+    return markitdown_file_to_markdown(source.path)
+
+
+def local_document_frontmatter(source: LocalDocumentSource, page: CrawledPage) -> dict[str, object]:
+    frontmatter: dict[str, object] = {
+        "url": page.url,
+        "title": page.title,
+        "status": page.status,
+        "content_type": page.content_type,
+        "source_kind": source.kind,
+        "file_filename": source.filename,
+        "file_extension": source.file_extension,
+        "file_sha256": source.file_sha256,
+        "file_source_id": source.source_id,
+        "source_hash": page.source_hash,
+        "crawl_timestamp": datetime.now(timezone.utc).isoformat(),
+        "fetcher": page.fetcher,
+    }
+    if isinstance(source, PdfSource):
+        frontmatter.update(
+            {
+                "pdf_filename": source.filename,
+                "pdf_sha256": source.file_sha256,
+                "pdf_source_id": source.source_id,
+            }
+        )
+    return frontmatter
+
+
+def write_local_document_corpus(source: LocalDocumentSource, markdown: str, pages_dir: Path) -> CrawledPage:
     pages_dir.mkdir(parents=True, exist_ok=True)
     for stale_page in pages_dir.glob("*.md"):
         stale_page.unlink()
@@ -1264,30 +1456,20 @@ def write_pdf_corpus(source: PdfSource, markdown: str, pages_dir: Path) -> Crawl
         title=source.filename,
         markdown=markdown,
         status=200,
-        content_type="application/pdf",
+        content_type=source.content_type,
         source_hash=sha256_text(markdown),
         fetcher="markitdown",
     ).with_hash()
-    crawl_timestamp = datetime.now(timezone.utc).isoformat()
-    frontmatter = {
-        "url": page.url,
-        "title": page.title,
-        "status": page.status,
-        "content_type": page.content_type,
-        "source_kind": "pdf",
-        "pdf_filename": source.filename,
-        "pdf_sha256": source.file_sha256,
-        "pdf_source_id": source.source_id,
-        "source_hash": page.source_hash,
-        "crawl_timestamp": crawl_timestamp,
-        "fetcher": page.fetcher,
-    }
     path = pages_dir / page_filename(page.url, page.title, 1)
     lines = ["---"]
-    lines.extend(f"{key}: {yaml_scalar(value)}" for key, value in frontmatter.items())
+    lines.extend(f"{key}: {yaml_scalar(value)}" for key, value in local_document_frontmatter(source, page).items())
     lines.extend(["---", "", page.markdown.strip(), ""])
     path.write_text("\n".join(lines), encoding="utf-8")
     return page
+
+
+def write_pdf_corpus(source: PdfSource, markdown: str, pages_dir: Path) -> CrawledPage:
+    return write_local_document_corpus(source, markdown, pages_dir)
 
 
 def summarize_sample_chunks(plan: IndexingPlan, sample_size: int = 3) -> list[dict[str, object]]:
@@ -1355,28 +1537,29 @@ def build_summary(
     }
 
 
-def build_pdf_summary(
+def build_local_document_summary(
     *,
-    source: PdfSource,
+    source: LocalDocumentSource,
     options: CrawlOptions,
     plan: IndexingPlan,
     pages_dir: Path,
 ) -> dict[str, object]:
-    return {
+    summary: dict[str, object] = {
         "command": "crawl",
         "dry_run": True,
         "credentials_required": False,
         "turbopuffer_api_calls": False,
         "api_calls_occurred": False,
-        "source_kind": "pdf",
+        "source_kind": source.kind,
         "base_url": source.base_url,
         "document_url": source.document_url,
-        "pdf_filename": source.filename,
-        "pdf_sha256": source.file_sha256,
-        "pdf_source_id": source.source_id,
+        "file_filename": source.filename,
+        "file_extension": source.file_extension,
+        "file_sha256": source.file_sha256,
+        "file_source_id": source.source_id,
         "allowed_host": "",
         "namespace_candidate": source.namespace_candidate,
-        "crawl_strategy": "markitdown-pdf",
+        "crawl_strategy": "markitdown-pdf" if isinstance(source, PdfSource) else "markitdown-local-file",
         "requested_crawl_strategy": options.crawl_strategy,
         "docs_version_policy": options.docs_version_policy,
         "docs_version_report": {"detected": False, "policy": options.docs_version_policy},
@@ -1394,6 +1577,8 @@ def build_pdf_summary(
         "target_tokens": options.target_tokens,
         "overlap_sentences": options.overlap_sentences,
         "pages_scraped": 1,
+        "documents_converted": 1,
+        "generated_documents": 1,
         "requests_count": 0,
         "robots_disallowed_count": 0,
         "blocked_requests_count": 0,
@@ -1406,30 +1591,59 @@ def build_pdf_summary(
         "sample_chunks": summarize_sample_chunks(plan),
         "errors": [error.__dict__ for error in plan.stats.errors[:10]],
     }
-
-
-def crawl_pdf(source: PdfSource, options: CrawlOptions) -> dict[str, object]:
-    """Convert one local PDF with MarkItDown and return a local-only dry-run summary."""
-
-    emit_progress(options.progress_callback, f"crawl pdf: converting {source.filename} with MarkItDown")
-    markdown = markitdown_pdf_to_markdown(source.path).strip()
-    if not markdown:
-        raise RuntimeError(
-            f"No text was extracted from PDF {source.filename!r}; scanned/image-only PDFs require OCR, "
-            "which is outside local PDF v1 scope."
+    if isinstance(source, PdfSource):
+        summary.update(
+            {
+                "pdf_filename": source.filename,
+                "pdf_sha256": source.file_sha256,
+                "pdf_source_id": source.source_id,
+            }
         )
+    return summary
+
+
+def build_pdf_summary(
+    *,
+    source: PdfSource,
+    options: CrawlOptions,
+    plan: IndexingPlan,
+    pages_dir: Path,
+) -> dict[str, object]:
+    return build_local_document_summary(source=source, options=options, plan=plan, pages_dir=pages_dir)
+
+
+def empty_local_document_message(source: LocalDocumentSource) -> str:
+    if isinstance(source, PdfSource):
+        return (
+            f"No text was extracted from PDF {source.filename!r}; scanned/image-only PDFs require OCR, "
+            "which is outside local document v1 scope."
+        )
+    return (
+        f"No text was extracted from local file {source.filename!r}; "
+        "OCR, image captions, audio transcription, and cloud extraction are outside local document v1 scope."
+    )
+
+
+def crawl_local_document(source: LocalDocumentSource, options: CrawlOptions) -> dict[str, object]:
+    """Convert one local document with MarkItDown and return a local-only dry-run summary."""
+
+    label = "pdf" if isinstance(source, PdfSource) else "local file"
+    emit_progress(options.progress_callback, f"crawl {label}: converting {source.filename} with MarkItDown")
+    markdown = convert_local_document_to_markdown(source).strip()
+    if not markdown:
+        raise RuntimeError(empty_local_document_message(source))
 
     pages_dir = options.out_dir / "pages"
-    emit_progress(options.progress_callback, "crawl pdf: writing markdown page")
-    write_pdf_corpus(source, markdown, pages_dir)
-    emit_progress(options.progress_callback, "crawl pdf: chunking page")
+    emit_progress(options.progress_callback, f"crawl {label}: writing markdown document")
+    write_local_document_corpus(source, markdown, pages_dir)
+    emit_progress(options.progress_callback, f"crawl {label}: chunking document")
     plan = process_corpus(
         pages_dir,
         limit_chunks=options.max_chunks,
         target_tokens=options.target_tokens,
         overlap_sentences=options.overlap_sentences,
     )
-    summary = build_pdf_summary(
+    summary = build_local_document_summary(
         source=source,
         options=options,
         plan=plan,
@@ -1437,8 +1651,14 @@ def crawl_pdf(source: PdfSource, options: CrawlOptions) -> dict[str, object]:
     )
     options.out_dir.mkdir(parents=True, exist_ok=True)
     (options.out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
-    emit_progress(options.progress_callback, f"crawl pdf: done pages=1; chunks={summary['chunks_generated']}")
+    emit_progress(options.progress_callback, f"crawl {label}: done documents=1; chunks={summary['chunks_generated']}")
     return summary
+
+
+def crawl_pdf(source: PdfSource, options: CrawlOptions) -> dict[str, object]:
+    """Convert one local PDF with MarkItDown and return a local-only dry-run summary."""
+
+    return crawl_local_document(source, options)
 
 
 def crawl_site(options: CrawlOptions) -> dict[str, object]:

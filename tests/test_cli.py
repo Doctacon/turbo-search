@@ -437,6 +437,49 @@ class CliTests(unittest.TestCase):
             self.assertEqual(payload["base_url"], f"pdf://pdf-local-handbook-{sha16}")
             self.assertEqual(payload["namespace_candidate"], f"pdf-local-handbook-{sha16}-v1")
             self.assertEqual(payload["pdf_filename"], "Local Handbook.pdf")
+            self.assertEqual(payload["file_filename"], "Local Handbook.pdf")
+            self.assertEqual(payload["file_extension"], "pdf")
+            self.assertEqual(payload["documents_converted"], 1)
+            self.assertEqual(payload["pages_scraped"], 1)
+            self.assertEqual(payload["chunks_generated"], 1)
+            self.assertFalse(payload["turbopuffer_api_calls"])
+            site_mock.assert_not_called()
+
+    def test_crawl_command_accepts_supported_local_file_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csv_path = root / "Local Handbook.csv"
+            csv_bytes = b"topic,value\nonboarding,ready\n"
+            csv_path.write_bytes(csv_bytes)
+            sha16 = hashlib.sha256(csv_bytes).hexdigest()[:16]
+            out_dir = root / "file-crawl"
+
+            stdout = StringIO()
+            with patch(
+                "turbo_search.crawler.markitdown_file_to_markdown",
+                return_value="| topic | value |\n| --- | --- |\n| onboarding | ready |",
+            ):
+                with patch("turbo_search.cli.crawl_site") as site_mock:
+                    with redirect_stdout(stdout):
+                        result = main(
+                            [
+                                "crawl",
+                                "--base-url",
+                                str(csv_path),
+                                "--out-dir",
+                                str(out_dir),
+                                "--json",
+                            ]
+                        )
+
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(payload["source_kind"], "local_file")
+            self.assertEqual(payload["base_url"], f"file://file-csv-local-handbook-{sha16}")
+            self.assertEqual(payload["namespace_candidate"], f"file-csv-local-handbook-{sha16}-v1")
+            self.assertEqual(payload["file_filename"], "Local Handbook.csv")
+            self.assertEqual(payload["file_extension"], "csv")
+            self.assertEqual(payload["documents_converted"], 1)
             self.assertEqual(payload["pages_scraped"], 1)
             self.assertEqual(payload["chunks_generated"], 1)
             self.assertFalse(payload["turbopuffer_api_calls"])
@@ -681,6 +724,76 @@ class CliTests(unittest.TestCase):
         site_mock.assert_not_called()
         github_mock.assert_not_called()
 
+    def test_plan_command_writes_local_file_artifacts_without_source_path(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        out_dir = root / "file-plan"
+        state_root = root / "state"
+        csv_path = root / "Research Notes.csv"
+        csv_bytes = b"topic,value\nonboarding,ready\n"
+        csv_path.write_bytes(csv_bytes)
+        file_sha256 = hashlib.sha256(csv_bytes).hexdigest()
+        source_id = f"file-csv-research-notes-{file_sha256[:16]}"
+
+        stdout = StringIO()
+        with patch(
+            "turbo_search.crawler.markitdown_file_to_markdown",
+            return_value="| topic | value |\n| --- | --- |\n| onboarding | ready |",
+        ):
+            with patch("turbo_search.cli.crawl_site") as site_mock:
+                with patch("turbo_search.cli.crawl_github_repo") as github_mock:
+                    with redirect_stdout(stdout):
+                        result = main(
+                            [
+                                "plan",
+                                str(csv_path),
+                                "--out-dir",
+                                str(out_dir),
+                                "--state-root",
+                                str(state_root),
+                                "--json",
+                            ]
+                        )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["source_kind"], "local_file")
+        self.assertEqual(payload["base_url"], f"file://{source_id}")
+        self.assertEqual(payload["namespace"], f"{source_id}-v1")
+        self.assertEqual(payload["namespace_candidate"], f"{source_id}-v1")
+        self.assertEqual(payload["site_id"], source_id)
+        self.assertEqual(payload["file_filename"], "Research Notes.csv")
+        self.assertEqual(payload["file_extension"], "csv")
+        self.assertEqual(payload["file_sha256"], file_sha256)
+        self.assertFalse(payload["credentials_required"])
+        self.assertFalse(payload["turbopuffer_api_calls"])
+        self.assertEqual(payload["diff"]["rows_to_upsert"], 1)
+        self.assertEqual(payload["state_path"], str(state_root / "state" / source_id / f"{source_id}-v1" / "last-applied.json"))
+        self.assertTrue((out_dir / "plan.json").exists())
+        self.assertTrue((out_dir / "manifest.json").exists())
+        self.assertTrue((out_dir / "chunks.jsonl").exists())
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        chunk = manifest["chunks"][0]
+        self.assertEqual(manifest["base_url"], f"file://{source_id}")
+        self.assertEqual(manifest["pages"][0]["canonical_url"], f"file://{source_id}/Research%20Notes.csv")
+        self.assertEqual(chunk["source_metadata"]["source_kind"], "local_file")
+        self.assertEqual(chunk["source_metadata"]["file_filename"], "Research Notes.csv")
+        self.assertEqual(chunk["source_metadata"]["file_extension"], "csv")
+        self.assertEqual(chunk["source_metadata"]["file_sha256"], file_sha256)
+        self.assertNotIn("pdf_filename", chunk["source_metadata"])
+        serialized_artifacts = "\n".join(
+            [
+                (out_dir / "plan.json").read_text(encoding="utf-8"),
+                (out_dir / "manifest.json").read_text(encoding="utf-8"),
+                (out_dir / "chunks.jsonl").read_text(encoding="utf-8"),
+                (out_dir / "summary.json").read_text(encoding="utf-8"),
+            ]
+        )
+        self.assertNotIn(str(csv_path), serialized_artifacts)
+        site_mock.assert_not_called()
+        github_mock.assert_not_called()
+
     def test_plan_command_loads_existing_state_and_reports_unchanged_diff(self) -> None:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -844,6 +957,27 @@ class CliTests(unittest.TestCase):
                     "--dry-run",
                     "--namespace",
                     "pdf-research-notes-abc123-v1",
+                    "--json",
+                ]
+            )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["ranking_mode"], "page")
+        self.assertEqual(payload["ranking_profile"], "none")
+        self.assertEqual(payload["ranking_pool"], 20)
+        self.assertEqual(payload["ranking_aggregation"], "max")
+
+    def test_retrieve_command_uses_document_defaults_for_file_namespace_in_dry_run(self) -> None:
+        stdout = StringIO()
+        with redirect_stdout(stdout):
+            result = main(
+                [
+                    "retrieve",
+                    "What does the file say?",
+                    "--dry-run",
+                    "--namespace",
+                    "file-csv-research-notes-abc123-v1",
                     "--json",
                 ]
             )

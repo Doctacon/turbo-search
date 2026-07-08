@@ -1,6 +1,6 @@
 # turbo-search
 <img src="images/puffin.png" height="120" alt="turbo-search puffin" />
-Tiny CLI for turning public websites, public GitHub repositories, and local text PDFs into turbopuffer-backed hybrid RAG indexes.
+Tiny CLI for turning public websites, public GitHub repositories, and local document files into turbopuffer-backed hybrid RAG indexes.
 
 The main workflow is intentionally Terraform-like:
 
@@ -8,7 +8,7 @@ The main workflow is intentionally Terraform-like:
 2. **apply**: preflight the latest plan; still local-only.
 3. **apply --approve**: embed and upsert only the approved diff.
 
-It uses Scrapling for website crawling/extraction, git for public repository ingestion, MarkItDown for local PDF-to-Markdown conversion, local `BAAI/bge-small-en-v1.5` embeddings, and turbopuffer hybrid retrieval with ANN + BM25 + RRF.
+It uses Scrapling for website crawling/extraction, git for public repository ingestion, MarkItDown for local document-to-Markdown conversion, local `BAAI/bge-small-en-v1.5` embeddings, and turbopuffer hybrid retrieval with ANN + BM25 + RRF.
 
 ## Setup
 
@@ -66,13 +66,17 @@ https://example.com/ -> site-example-com-v1
 
 Plan artifacts are written under `artifacts/site-crawls/...` and local applied state is written under `.turbo-search/state/...`. Both are local/generated paths and are gitignored.
 
-## Index a local PDF
+## Index a local document file
 
-v1 PDF ingestion supports one local text PDF filepath. It uses Microsoft MarkItDown locally, does not do OCR, and cites the document URL/filename rather than PDF page numbers.
+v1 local document ingestion supports one filepath at a time. It uses Microsoft MarkItDown locally and cites the document URL/filename, not page/slide/sheet/cell positions.
+
+Supported extensions: `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.xls`, `.csv`, `.html`, `.htm`, `.txt`, `.text`, `.md`, `.markdown`, `.json`, `.jsonl`, `.xml`, `.ipynb`, `.epub`.
+
+Explicitly out of scope for v1: directories, archives, OCR/image captioning, audio/video transcription, YouTube, remote file URLs, Azure/cloud converters, and MarkItDown plugins.
 
 ```bash
 # 1. Create a local plan. No credentials, embeddings, or live writes.
-uv run turbo-search plan ./Research\ Notes.pdf
+uv run turbo-search plan ./Research\ Notes.csv
 
 # 2. Review locally.
 uv run turbo-search apply
@@ -82,13 +86,14 @@ export TURBOPUFFER_API_KEY="..."
 uv run turbo-search apply --approve
 ```
 
-The default namespace is derived from the filename plus file hash, for example:
+The default namespace is derived from the filename plus file hash:
 
 ```text
 ./Research Notes.pdf -> pdf-research-notes-<sha16>-v1
+./Research Notes.csv -> file-csv-research-notes-<sha16>-v1
 ```
 
-Generated artifacts store the filename, file hash, and synthetic `pdf://...` document URL; they do not need the absolute source filepath.
+Generated artifacts store the filename, extension, file hash, and synthetic `pdf://...` or `file://...` document URL; they do not need the absolute source filepath.
 
 Search after an approved apply:
 
@@ -96,7 +101,7 @@ Search after an approved apply:
 uv run turbo-search retrieve \
   "What does the research note say about onboarding?" \
   --live \
-  --namespace pdf-research-notes-<sha16>-v1
+  --namespace file-csv-research-notes-<sha16>-v1
 ```
 
 ## Shape the crawl
@@ -184,7 +189,7 @@ uv run turbo-search retrieve \
   --top-k 5
 ```
 
-Retrieval defaults to hybrid ANN + BM25 + RRF, then namespace-aware final ranking. `site-*` namespaces default to page-level website ranking (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). Repository namespaces default to file-level ranking (`--ranking-mode file --ranking-profile repo-code --ranking-pool 100 --ranking-aggregation adaptive-sum-3`), which deduplicates chunks by `repo_path`, uses the best chunk per file plus a small close-chunk evidence bonus, gently demotes repository process/docs/eval-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `autoresearch/`, `docs/`, Markdown files, and eval fixture JSON, lightly boosts `tests/` files, applies conservative query-aware path/symbol boosts for exact source/doc filename or Python def/class matches, and may promote one strong doc/test companion into the top five without replacing the top implementation hit. Use `--ranking-aggregation max` for strict single-best-chunk file ranking, `--ranking-aggregation capped-sum-3` to fully reward up to three matching chunks from the same file, or `--ranking-mode chunk --ranking-profile none` to inspect raw chunk-level fused order.
+Retrieval defaults to hybrid ANN + BM25 + RRF, then namespace-aware final ranking. `site-*`, `pdf-*`, and `file-*` namespaces default to page/document-level ranking (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). Repository namespaces default to file-level ranking (`--ranking-mode file --ranking-profile repo-code --ranking-pool 100 --ranking-aggregation adaptive-sum-3`), which deduplicates chunks by `repo_path`, uses the best chunk per file plus a small close-chunk evidence bonus, gently demotes repository process/docs/eval-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `autoresearch/`, `docs/`, Markdown files, and eval fixture JSON, lightly boosts `tests/` files, applies conservative query-aware path/symbol boosts for exact source/doc filename or Python def/class matches, and may promote one strong doc/test companion into the top five without replacing the top implementation hit. Use `--ranking-aggregation max` for strict single-best-chunk file ranking, `--ranking-aggregation capped-sum-3` to fully reward up to three matching chunks from the same file, or `--ranking-mode chunk --ranking-profile none` to inspect raw chunk-level fused order.
 
 Dry-run retrieval is the default and does not contact turbopuffer:
 
