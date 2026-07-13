@@ -36,7 +36,7 @@ DEFAULT_GITHUB_REPO_MAX_FILES = 5000
 DEFAULT_GITHUB_REPO_MAX_CHUNKS = 100000
 DEFAULT_GITHUB_REPO_MAX_FILE_BYTES = 50 * 1024
 DEFAULT_CRAWL_CONCURRENT_REQUESTS = 2
-DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN = 1
+DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN = 4
 DEFAULT_CRAWL_DOWNLOAD_DELAY = 0.25
 DEFAULT_CRAWL_OUT_DIR = Path("artifacts/site-crawls")
 DEFAULT_CRAWL_STRATEGY = "sitemap"
@@ -55,9 +55,42 @@ LANGUAGE_POLICY_MIN_NON_ENGLISH_LOCALE_COUNT = 2
 LANGUAGE_POLICY_MIN_TAIL_OVERLAP_COUNT = 5
 ENGLISH_LANGUAGE_PRIMARY_CODES = {"en"}
 SUPPORTED_LANGUAGE_PRIMARY_CODES = {
-    "ar", "bg", "ca", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "he", "hi",
-    "hr", "hu", "id", "it", "ja", "ko", "lt", "lv", "nl", "no", "pl", "pt", "ro", "ru",
-    "sk", "sl", "sv", "th", "tr", "uk", "vi", "zh",
+    "ar",
+    "bg",
+    "ca",
+    "cs",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "et",
+    "fi",
+    "fr",
+    "he",
+    "hi",
+    "hr",
+    "hu",
+    "id",
+    "it",
+    "ja",
+    "ko",
+    "lt",
+    "lv",
+    "nl",
+    "no",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "sv",
+    "th",
+    "tr",
+    "uk",
+    "vi",
+    "zh",
 }
 MAX_SITEMAP_ANALYSIS_URLS = 100
 MAX_SITEMAP_ANALYSIS_PAGE_URLS = 100_000
@@ -291,7 +324,9 @@ def sitemap_attempt_total(sitemap_url_count: int, cap: int) -> int | None:
     return min(sitemap_url_count, cap)
 
 
-def sitemap_page_progress_label(pages_scraped: int, *, sitemap_url_count: int, cap: int) -> str:
+def sitemap_page_progress_label(
+    pages_scraped: int, *, sitemap_url_count: int, cap: int
+) -> str:
     total = sitemap_attempt_total(sitemap_url_count, cap)
     if total is None:
         return f"{pages_scraped}; cap={cap}"
@@ -331,12 +366,24 @@ def validate_base_url(url: str) -> str:
 
     parsed = urlparse(url)
     if parsed.scheme == "pdf":
-        if not parsed.netloc or parsed.path not in {"", "/"} or parsed.params or parsed.query:
+        if (
+            not parsed.netloc
+            or parsed.path not in {"", "/"}
+            or parsed.params
+            or parsed.query
+        ):
             raise ValueError("PDF base URL must be an internal pdf://<source-id> URI")
         return urlunparse(parsed._replace(path="", params="", query="", fragment=""))
     if parsed.scheme == "file":
-        if not parsed.netloc or parsed.path not in {"", "/"} or parsed.params or parsed.query:
-            raise ValueError("local file base URL must be an internal file://<source-id> URI")
+        if (
+            not parsed.netloc
+            or parsed.path not in {"", "/"}
+            or parsed.params
+            or parsed.query
+        ):
+            raise ValueError(
+                "local file base URL must be an internal file://<source-id> URI"
+            )
         return urlunparse(parsed._replace(path="", params="", query="", fragment=""))
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError("base URL must be an absolute http(s) URL")
@@ -394,7 +441,9 @@ def source_id_for_url(base_url: str) -> str:
 
 
 def default_out_dir(base_url: str) -> Path:
-    source = detect_source(base_url) if not is_local_document_base_url(base_url) else None
+    source = (
+        detect_source(base_url) if not is_local_document_base_url(base_url) else None
+    )
     if isinstance(source, (GitHubRepoSource, PdfSource, LocalFileSource)):
         return source.default_out_dir
     return DEFAULT_CRAWL_OUT_DIR / source_id_for_url(base_url)
@@ -472,7 +521,9 @@ def sha256_file(path: Path) -> str:
 def pdf_source_from_path(value: str | Path) -> PdfSource:
     path = Path(value).expanduser()
     if not path.is_file():
-        raise ValueError(f"local PDF path must point to an existing regular file: {value}")
+        raise ValueError(
+            f"local PDF path must point to an existing regular file: {value}"
+        )
     file_sha256 = sha256_file(path)
     filename_slug = safe_slug(path.stem, fallback="document")
     source_id = f"pdf-{filename_slug}-{file_sha256[:16]}"
@@ -495,7 +546,9 @@ def local_file_source_from_path(value: str | Path) -> LocalDocumentSource:
     if extension == ".pdf":
         return pdf_source_from_path(path)
     if not path.is_file():
-        raise ValueError(f"local file path must point to an existing regular file: {value}")
+        raise ValueError(
+            f"local file path must point to an existing regular file: {value}"
+        )
     file_sha256 = sha256_file(path)
     filename_slug = safe_slug(path.stem, fallback="document")
     extension_slug = safe_slug(extension.lstrip("."), fallback="file")
@@ -524,9 +577,13 @@ def detect_source(url: str) -> Source:
         raise ValueError(unsupported_local_file_error(local_path))
     normalized = validate_base_url(url)
     if is_pdf_base_url(normalized):
-        raise ValueError("pass the local PDF filepath, not the internal pdf:// source URI")
+        raise ValueError(
+            "pass the local PDF filepath, not the internal pdf:// source URI"
+        )
     if is_file_base_url(normalized):
-        raise ValueError("pass the local file filepath, not the internal file:// source URI")
+        raise ValueError(
+            "pass the local file filepath, not the internal file:// source URI"
+        )
     github_source = parse_github_repo_url(normalized)
     if github_source is not None:
         return github_source
@@ -554,14 +611,18 @@ def parse_github_repo_url(url: str) -> GitHubRepoSource | None:
     if segments[0].lower() in GITHUB_NON_REPO_PATHS:
         return None
     if len(segments) < 2:
-        raise ValueError("GitHub repository URL must include both owner and repo, e.g. https://github.com/owner/repo")
+        raise ValueError(
+            "GitHub repository URL must include both owner and repo, e.g. https://github.com/owner/repo"
+        )
 
     owner = segments[0]
     repo = segments[1]
     if repo.endswith(".git"):
         repo = repo[:-4]
     if not owner or not repo or owner in {".", ".."} or repo in {".", ".."}:
-        raise ValueError("GitHub repository URL must include non-empty owner and repo segments")
+        raise ValueError(
+            "GitHub repository URL must include non-empty owner and repo segments"
+        )
 
     repo_root_url = f"https://github.com/{owner}/{repo}"
     repo_full_name = f"{owner}/{repo}"
@@ -585,7 +646,9 @@ def parse_github_repo_url(url: str) -> GitHubRepoSource | None:
     qualifier = remaining[0]
     if qualifier == "tree":
         if len(remaining) < 2 or not remaining[1]:
-            raise ValueError("GitHub tree URL must include a branch or ref after /tree/")
+            raise ValueError(
+                "GitHub tree URL must include a branch or ref after /tree/"
+            )
         return GitHubRepoSource(
             kind="github_repo",
             original_url=normalized,
@@ -601,7 +664,9 @@ def parse_github_repo_url(url: str) -> GitHubRepoSource | None:
         )
     if qualifier == "blob":
         if len(remaining) < 3 or not remaining[1] or not remaining[2]:
-            raise ValueError("GitHub blob URL must include a branch/ref and file path after /blob/")
+            raise ValueError(
+                "GitHub blob URL must include a branch/ref and file path after /blob/"
+            )
         return GitHubRepoSource(
             kind="github_repo",
             original_url=normalized,
@@ -663,10 +728,22 @@ def url_allowed_by_path_filters(
     exclude_paths: Sequence[str] = (),
     strip_trailing_slash: bool = True,
 ) -> bool:
-    path = normalize_url_path(urlparse(url).path, strip_trailing_slash=strip_trailing_slash)
-    includes = [normalize_path_pattern(pattern) for pattern in include_paths if normalize_path_pattern(pattern)]
-    excludes = [normalize_path_pattern(pattern) for pattern in exclude_paths if normalize_path_pattern(pattern)]
-    if includes and not any(path_matches_pattern(path, pattern) for pattern in includes):
+    path = normalize_url_path(
+        urlparse(url).path, strip_trailing_slash=strip_trailing_slash
+    )
+    includes = [
+        normalize_path_pattern(pattern)
+        for pattern in include_paths
+        if normalize_path_pattern(pattern)
+    ]
+    excludes = [
+        normalize_path_pattern(pattern)
+        for pattern in exclude_paths
+        if normalize_path_pattern(pattern)
+    ]
+    if includes and not any(
+        path_matches_pattern(path, pattern) for pattern in includes
+    ):
         return False
     return not any(path_matches_pattern(path, pattern) for pattern in excludes)
 
@@ -675,9 +752,13 @@ def local_xml_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def fetch_url_bytes(url: str, *, timeout: int = SITEMAP_ANALYSIS_TIMEOUT_SECONDS) -> bytes | None:
+def fetch_url_bytes(
+    url: str, *, timeout: int = SITEMAP_ANALYSIS_TIMEOUT_SECONDS
+) -> bytes | None:
     try:
-        request = Request(url, headers={"User-Agent": "turbo-search-sitemap-analysis/0.1"})
+        request = Request(
+            url, headers={"User-Agent": "turbo-search-sitemap-analysis/0.1"}
+        )
         with urlopen(request, timeout=timeout) as response:
             return response.read()
     except (HTTPError, URLError, TimeoutError, OSError, ValueError):
@@ -723,7 +804,11 @@ def sitemap_locations_from_xml(body: bytes, url: str) -> tuple[list[str], list[s
             if local_xml_name(url_el.tag) != "url":
                 continue
             for child in url_el:
-                if local_xml_name(child.tag) == "loc" and child.text and child.text.strip():
+                if (
+                    local_xml_name(child.tag) == "loc"
+                    and child.text
+                    and child.text.strip()
+                ):
                     page_urls.append(child.text.strip())
                     break
     elif root_name == "sitemapindex":
@@ -731,7 +816,11 @@ def sitemap_locations_from_xml(body: bytes, url: str) -> tuple[list[str], list[s
             if local_xml_name(sitemap_el.tag) != "sitemap":
                 continue
             for child in sitemap_el:
-                if local_xml_name(child.tag) == "loc" and child.text and child.text.strip():
+                if (
+                    local_xml_name(child.tag) == "loc"
+                    and child.text
+                    and child.text.strip()
+                ):
                     child_sitemaps.append(child.text.strip())
                     break
     return page_urls, child_sitemaps
@@ -739,7 +828,10 @@ def sitemap_locations_from_xml(body: bytes, url: str) -> tuple[list[str], list[s
 
 def same_host_url(url: str, allowed_host: str) -> bool:
     parsed = urlparse(url)
-    return parsed.scheme in {"http", "https"} and (parsed.hostname or parsed.netloc).lower() == allowed_host
+    return (
+        parsed.scheme in {"http", "https"}
+        and (parsed.hostname or parsed.netloc).lower() == allowed_host
+    )
 
 
 def discover_sitemap_page_urls(options: CrawlOptions) -> list[str]:
@@ -749,7 +841,11 @@ def discover_sitemap_page_urls(options: CrawlOptions) -> list[str]:
     page_urls: list[str] = []
     seen_pages: set[str] = set()
 
-    while queue and len(visited) < MAX_SITEMAP_ANALYSIS_URLS and len(page_urls) < MAX_SITEMAP_ANALYSIS_PAGE_URLS:
+    while (
+        queue
+        and len(visited) < MAX_SITEMAP_ANALYSIS_URLS
+        and len(page_urls) < MAX_SITEMAP_ANALYSIS_PAGE_URLS
+    ):
         url = queue.pop(0)
         if url in visited or not same_host_url(url, allowed_host):
             continue
@@ -758,11 +854,17 @@ def discover_sitemap_page_urls(options: CrawlOptions) -> list[str]:
         if body is None:
             continue
         if urlparse(url).path.endswith("/robots.txt"):
-            queue.extend(sitemap_url for sitemap_url in sitemap_urls_from_robots(body) if sitemap_url not in visited)
+            queue.extend(
+                sitemap_url
+                for sitemap_url in sitemap_urls_from_robots(body)
+                if sitemap_url not in visited
+            )
             continue
 
         pages, child_sitemaps = sitemap_locations_from_xml(body, url)
-        queue.extend(sitemap_url for sitemap_url in child_sitemaps if sitemap_url not in visited)
+        queue.extend(
+            sitemap_url for sitemap_url in child_sitemaps if sitemap_url not in visited
+        )
         for page_url in pages:
             if not same_host_url(page_url, allowed_host):
                 continue
@@ -773,7 +875,9 @@ def discover_sitemap_page_urls(options: CrawlOptions) -> list[str]:
                 strip_trailing_slash=options.strip_trailing_slash,
             ):
                 continue
-            canonical = page_identity_url(page_url, strip_trailing_slash=options.strip_trailing_slash)
+            canonical = page_identity_url(
+                page_url, strip_trailing_slash=options.strip_trailing_slash
+            )
             if canonical in seen_pages:
                 continue
             seen_pages.add(canonical)
@@ -811,7 +915,9 @@ def version_sort_key(version: str) -> tuple[int, tuple[int, ...] | str]:
 
 def highest_semver_version(versions: Sequence[str]) -> str | None:
     semver_versions = [(parse_docs_semver(version), version) for version in versions]
-    semver_versions = [(key, version) for key, version in semver_versions if key is not None]
+    semver_versions = [
+        (key, version) for key, version in semver_versions if key is not None
+    ]
     if not semver_versions:
         return None
     return max(semver_versions, key=lambda item: item[0])[1]
@@ -880,7 +986,9 @@ def is_english_language_prefix(prefix: str) -> bool:
 
 def analyze_language_urls(urls: Sequence[str], *, policy: str) -> dict[str, object]:
     if policy not in LANGUAGE_POLICIES:
-        raise ValueError(f"language policy must be one of: {', '.join(LANGUAGE_POLICIES)}")
+        raise ValueError(
+            f"language policy must be one of: {', '.join(LANGUAGE_POLICIES)}"
+        )
 
     url_count_by_language: dict[str, int] = {}
     tail_paths_by_language: dict[str, set[str]] = {}
@@ -897,16 +1005,30 @@ def analyze_language_urls(urls: Sequence[str], *, policy: str) -> dict[str, obje
         if is_english_language_prefix(prefix):
             english_tail_paths.add(tail_path)
 
-    english_locales = sorted(prefix for prefix in url_count_by_language if is_english_language_prefix(prefix))
-    non_english_locales = sorted(prefix for prefix in url_count_by_language if not is_english_language_prefix(prefix))
-    non_english_url_count = sum(url_count_by_language[prefix] for prefix in non_english_locales)
+    english_locales = sorted(
+        prefix for prefix in url_count_by_language if is_english_language_prefix(prefix)
+    )
+    non_english_locales = sorted(
+        prefix
+        for prefix in url_count_by_language
+        if not is_english_language_prefix(prefix)
+    )
+    non_english_url_count = sum(
+        url_count_by_language[prefix] for prefix in non_english_locales
+    )
     overlap_count_by_language = {
         prefix: len(tail_paths_by_language.get(prefix, set()) & english_tail_paths)
         for prefix in non_english_locales
     }
-    has_english_content = bool(english_locales) or unprefixed_url_count >= LANGUAGE_POLICY_MIN_UNPREFIXED_URL_COUNT
-    has_language_family_signal = len(non_english_locales) >= LANGUAGE_POLICY_MIN_NON_ENGLISH_LOCALE_COUNT or any(
-        count >= LANGUAGE_POLICY_MIN_TAIL_OVERLAP_COUNT for count in overlap_count_by_language.values()
+    has_english_content = (
+        bool(english_locales)
+        or unprefixed_url_count >= LANGUAGE_POLICY_MIN_UNPREFIXED_URL_COUNT
+    )
+    has_language_family_signal = len(
+        non_english_locales
+    ) >= LANGUAGE_POLICY_MIN_NON_ENGLISH_LOCALE_COUNT or any(
+        count >= LANGUAGE_POLICY_MIN_TAIL_OVERLAP_COUNT
+        for count in overlap_count_by_language.values()
     )
     detected = bool(
         non_english_locales
@@ -914,7 +1036,11 @@ def analyze_language_urls(urls: Sequence[str], *, policy: str) -> dict[str, obje
         and non_english_url_count >= LANGUAGE_POLICY_MIN_NON_ENGLISH_URL_COUNT
         and has_language_family_signal
     )
-    added_excludes = [f"/{prefix}/**" for prefix in non_english_locales] if detected and policy == "english" else []
+    added_excludes = (
+        [f"/{prefix}/**" for prefix in non_english_locales]
+        if detected and policy == "english"
+        else []
+    )
     return {
         "detected": detected,
         "policy": policy,
@@ -926,8 +1052,12 @@ def analyze_language_urls(urls: Sequence[str], *, policy: str) -> dict[str, obje
         "non_english_url_count": non_english_url_count,
         "unprefixed_url_count": unprefixed_url_count,
         "url_count_by_language": dict(sorted(url_count_by_language.items())),
-        "tail_overlap_count_by_language": dict(sorted(overlap_count_by_language.items())),
-        "selected_languages": ["unprefixed"] + english_locales if detected and policy == "english" else [],
+        "tail_overlap_count_by_language": dict(
+            sorted(overlap_count_by_language.items())
+        ),
+        "selected_languages": ["unprefixed"] + english_locales
+        if detected and policy == "english"
+        else [],
         "added_exclude_paths": added_excludes,
     }
 
@@ -945,15 +1075,24 @@ def analyze_docs_version_urls(urls: Sequence[str], *, policy: str) -> dict[str, 
     for root_path, versions in groups.items():
         version_count = len(versions)
         url_count = sum(len(values) for values in versions.values())
-        if version_count >= DOCS_VERSION_MIN_VERSION_COUNT and url_count >= DOCS_VERSION_MIN_URL_COUNT:
+        if (
+            version_count >= DOCS_VERSION_MIN_VERSION_COUNT
+            and url_count >= DOCS_VERSION_MIN_URL_COUNT
+        ):
             candidates.append((url_count, version_count, root_path, versions))
     if not candidates:
         return {"detected": False, "policy": policy}
 
-    _url_count, _version_count, root_path, versions = max(candidates, key=lambda item: (item[0], item[1]))
+    _url_count, _version_count, root_path, versions = max(
+        candidates, key=lambda item: (item[0], item[1])
+    )
     version_names = sorted(versions, key=version_sort_key)
     selected = selected_docs_versions(version_names, policy)
-    excluded = [version for version in version_names if version not in selected] if selected else []
+    excluded = (
+        [version for version in version_names if version not in selected]
+        if selected
+        else []
+    )
     added_excludes = [f"{root_path}/{version}/**" for version in excluded]
     report: dict[str, object] = {
         "detected": True,
@@ -962,11 +1101,15 @@ def analyze_docs_version_urls(urls: Sequence[str], *, policy: str) -> dict[str, 
         "version_count": len(version_names),
         "versions": version_names,
         "versioned_url_count": sum(len(values) for values in versions.values()),
-        "url_count_by_version": {version: len(versions[version]) for version in version_names},
+        "url_count_by_version": {
+            version: len(versions[version]) for version in version_names
+        },
         "selected_versions": selected,
         "excluded_versions": excluded,
         "added_exclude_paths": added_excludes,
-        "applied": bool(selected and policy in {"latest", "stable-latest", "latest-nightly"}),
+        "applied": bool(
+            selected and policy in {"latest", "stable-latest", "latest-nightly"}
+        ),
     }
     if policy == "warn":
         report["suggested_policy"] = "latest"
@@ -974,7 +1117,11 @@ def analyze_docs_version_urls(urls: Sequence[str], *, policy: str) -> dict[str, 
 
 
 def docs_version_block_message(report: dict[str, object]) -> str | None:
-    if not report.get("detected") or report.get("applied") or report.get("policy") != "warn":
+    if (
+        not report.get("detected")
+        or report.get("applied")
+        or report.get("policy") != "warn"
+    ):
         return None
     suggested = report.get("suggested_policy")
     if not suggested:
@@ -996,11 +1143,17 @@ def apply_docs_version_policy(
 ) -> tuple[CrawlOptions, dict[str, object]]:
     policy = options.docs_version_policy
     if policy not in DOCS_VERSION_POLICIES:
-        raise ValueError(f"docs version policy must be one of: {', '.join(DOCS_VERSION_POLICIES)}")
+        raise ValueError(
+            f"docs version policy must be one of: {', '.join(DOCS_VERSION_POLICIES)}"
+        )
     if policy == "all" or options.crawl_strategy == "link":
         return options, {"detected": False, "policy": policy}
 
-    urls = list(sitemap_page_urls) if sitemap_page_urls is not None else discover_sitemap_page_urls(options)
+    urls = (
+        list(sitemap_page_urls)
+        if sitemap_page_urls is not None
+        else discover_sitemap_page_urls(options)
+    )
     report = analyze_docs_version_urls(urls, policy=policy)
     if not report.get("applied"):
         return options, report
@@ -1020,11 +1173,17 @@ def apply_language_policy(
 ) -> tuple[CrawlOptions, dict[str, object]]:
     policy = options.language_policy
     if policy not in LANGUAGE_POLICIES:
-        raise ValueError(f"language policy must be one of: {', '.join(LANGUAGE_POLICIES)}")
+        raise ValueError(
+            f"language policy must be one of: {', '.join(LANGUAGE_POLICIES)}"
+        )
     if policy == "all" or options.crawl_strategy == "link":
         return options, {"detected": False, "policy": policy}
 
-    urls = list(sitemap_page_urls) if sitemap_page_urls is not None else discover_sitemap_page_urls(options)
+    urls = (
+        list(sitemap_page_urls)
+        if sitemap_page_urls is not None
+        else discover_sitemap_page_urls(options)
+    )
     report = analyze_language_urls(urls, policy=policy)
     if not report.get("applied"):
         return options, report
@@ -1046,7 +1205,9 @@ def yaml_scalar(value: object) -> str:
 def page_filename(url: str, title: str, index: int) -> str:
     digest = hashlib.sha256(url.encode("utf-8")).hexdigest()[:12]
     parsed = urlparse(url)
-    path_slug = safe_slug(parsed.path.strip("/") or title or parsed.netloc, fallback=f"page-{index}")
+    path_slug = safe_slug(
+        parsed.path.strip("/") or title or parsed.netloc, fallback=f"page-{index}"
+    )
     return f"{index:04d}-{path_slug}-{digest}.md"
 
 
@@ -1080,13 +1241,19 @@ def crawled_page_from_response(
         return None
     if not markdown:
         return None
-    title = response.css("title::text").get() or response.css("h1::text").get() or response.url
+    title = (
+        response.css("title::text").get()
+        or response.css("h1::text").get()
+        or response.url
+    )
     content_type = ""
     headers = getattr(response, "headers", None)
     if headers:
         content_type = headers.get("content-type") or headers.get("Content-Type") or ""
     return CrawledPage(
-        url=canonicalize_page_url(str(response.url), strip_trailing_slash=strip_trailing_slash),
+        url=canonicalize_page_url(
+            str(response.url), strip_trailing_slash=strip_trailing_slash
+        ),
         title=str(title).strip(),
         markdown=markdown,
         status=int(response.status),
@@ -1119,13 +1286,20 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
         concurrent_requests_per_domain = options.concurrent_requests_per_domain
         download_delay = options.download_delay
         max_blocked_retries = 1
-        logging_level = 40  # ERROR; keep --json output clean unless something is genuinely wrong.
+        logging_level = (
+            40  # ERROR; keep --json output clean unless something is genuinely wrong.
+        )
 
         def __init__(self) -> None:
-            self._scheduled_urls: set[str] = {page_identity_url(_base_url, strip_trailing_slash=_strip_trailing_slash)}
+            self._scheduled_urls: set[str] = {
+                page_identity_url(_base_url, strip_trailing_slash=_strip_trailing_slash)
+            }
             self._pages_scraped = 0
             self._links = LinkExtractor(allow_domains=_allowed_host)
-            emit_progress(_progress_callback, f"crawl link: pages=0; queued=1; cap={_max_pages}; {progress_url_label(_base_url)}")
+            emit_progress(
+                _progress_callback,
+                f"crawl link: pages=0; queued=1; cap={_max_pages}; {progress_url_label(_base_url)}",
+            )
             super().__init__()
 
         async def parse(self, response):
@@ -1135,11 +1309,15 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
                 exclude_paths=_exclude_paths,
                 strip_trailing_slash=_strip_trailing_slash,
             )
-            page = crawled_page_from_response(
-                response,
-                css_selector=_css_selector,
-                strip_trailing_slash=_strip_trailing_slash,
-            ) if page_allowed else None
+            page = (
+                crawled_page_from_response(
+                    response,
+                    css_selector=_css_selector,
+                    strip_trailing_slash=_strip_trailing_slash,
+                )
+                if page_allowed
+                else None
+            )
             if page:
                 self._pages_scraped += 1
                 emit_progress(
@@ -1161,7 +1339,9 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
                     strip_trailing_slash=_strip_trailing_slash,
                 ):
                     continue
-                url_key = page_identity_url(url, strip_trailing_slash=_strip_trailing_slash)
+                url_key = page_identity_url(
+                    url, strip_trailing_slash=_strip_trailing_slash
+                )
                 if url_key in self._scheduled_urls:
                     continue
                 self._scheduled_urls.add(url_key)
@@ -1198,18 +1378,26 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
         concurrent_requests_per_domain = options.concurrent_requests_per_domain
         download_delay = options.download_delay
         max_blocked_retries = 1
-        logging_level = 40  # ERROR; keep --json output clean unless something is genuinely wrong.
+        logging_level = (
+            40  # ERROR; keep --json output clean unless something is genuinely wrong.
+        )
 
         def __init__(self) -> None:
             self._scheduled_page_urls: set[str] = set()
             self._estimated_sitemap_page_urls: set[str] = set()
             self._pages_scraped = 0
             self._allowed_links = LinkExtractor(allow_domains=_allowed_host)
-            emit_progress(_progress_callback, f"crawl sitemap: discovering pages; cap={_max_pages}")
+            emit_progress(
+                _progress_callback,
+                f"crawl sitemap: discovering pages; cap={_max_pages}",
+            )
             super().__init__()
 
         def _dispatch(self, response, url, rules):  # noqa: ANN001 - matches Scrapling template hook.
-            if _progress_callback is None and len(self._scheduled_page_urls) >= _max_pages:
+            if (
+                _progress_callback is None
+                and len(self._scheduled_page_urls) >= _max_pages
+            ):
                 return None
             if not self._allowed_links.matches(url):
                 return None
@@ -1257,7 +1445,9 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
     return SiteSitemapDryRunSpider
 
 
-def run_scrapling_spider(spider_cls: type) -> tuple[list[CrawledPage], dict[str, object]]:
+def run_scrapling_spider(
+    spider_cls: type,
+) -> tuple[list[CrawledPage], dict[str, object]]:
     """Run a Scrapling spider and normalize its item/stat output."""
 
     result = spider_cls().start()
@@ -1286,21 +1476,32 @@ def run_scrapling_spider(spider_cls: type) -> tuple[list[CrawledPage], dict[str,
     return pages, stats
 
 
-def crawl_pages(options: CrawlOptions) -> tuple[list[CrawledPage], dict[str, object], str]:
+def crawl_pages(
+    options: CrawlOptions,
+) -> tuple[list[CrawledPage], dict[str, object], str]:
     """Crawl pages using sitemap, link-only, or hybrid discovery."""
 
     if options.crawl_strategy not in CRAWL_STRATEGIES:
-        raise ValueError(f"crawl strategy must be one of: {', '.join(CRAWL_STRATEGIES)}")
+        raise ValueError(
+            f"crawl strategy must be one of: {', '.join(CRAWL_STRATEGIES)}"
+        )
 
     allowed_host = host_from_url(options.base_url)
     if options.crawl_strategy == "link":
-        emit_progress(options.progress_callback, f"crawl: starting link crawl for {allowed_host}")
+        emit_progress(
+            options.progress_callback, f"crawl: starting link crawl for {allowed_host}"
+        )
         link_spider = build_link_spider_class(options, allowed_host)
         pages, stats = run_scrapling_spider(link_spider)
-        emit_progress(options.progress_callback, f"crawl: link done pages={len(pages)}; requests={stats.get('requests_count', 0)}")
+        emit_progress(
+            options.progress_callback,
+            f"crawl: link done pages={len(pages)}; requests={stats.get('requests_count', 0)}",
+        )
         return pages[: options.max_pages], stats, "link"
 
-    emit_progress(options.progress_callback, f"crawl: starting sitemap crawl for {allowed_host}")
+    emit_progress(
+        options.progress_callback, f"crawl: starting sitemap crawl for {allowed_host}"
+    )
     sitemap_spider = build_sitemap_spider_class(options, allowed_host)
     sitemap_pages, sitemap_stats = run_scrapling_spider(sitemap_spider)
     emit_progress(
@@ -1310,7 +1511,9 @@ def crawl_pages(options: CrawlOptions) -> tuple[list[CrawledPage], dict[str, obj
     if options.crawl_strategy == "sitemap":
         if sitemap_pages:
             return sitemap_pages[: options.max_pages], sitemap_stats, "sitemap"
-        emit_progress(options.progress_callback, "crawl: sitemap empty; starting link fallback")
+        emit_progress(
+            options.progress_callback, "crawl: sitemap empty; starting link fallback"
+        )
         link_spider = build_link_spider_class(options, allowed_host)
         fallback_pages, fallback_stats = run_scrapling_spider(link_spider)
         combined_stats = combine_stats(sitemap_stats, fallback_stats)
@@ -1320,13 +1523,22 @@ def crawl_pages(options: CrawlOptions) -> tuple[list[CrawledPage], dict[str, obj
         )
         return fallback_pages[: options.max_pages], combined_stats, "link_fallback"
 
-    emit_progress(options.progress_callback, f"crawl: starting link crawl for {allowed_host}")
+    emit_progress(
+        options.progress_callback, f"crawl: starting link crawl for {allowed_host}"
+    )
     link_spider = build_link_spider_class(options, allowed_host)
     link_pages, link_stats = run_scrapling_spider(link_spider)
-    emit_progress(options.progress_callback, f"crawl: link done pages={len(link_pages)}; requests={link_stats.get('requests_count', 0)}")
+    emit_progress(
+        options.progress_callback,
+        f"crawl: link done pages={len(link_pages)}; requests={link_stats.get('requests_count', 0)}",
+    )
     combined_stats = combine_stats(sitemap_stats, link_stats)
-    merged_pages = merge_unique_pages(sitemap_pages, link_pages, strip_trailing_slash=options.strip_trailing_slash)
-    emit_progress(options.progress_callback, f"crawl: merged unique pages={len(merged_pages)}")
+    merged_pages = merge_unique_pages(
+        sitemap_pages, link_pages, strip_trailing_slash=options.strip_trailing_slash
+    )
+    emit_progress(
+        options.progress_callback, f"crawl: merged unique pages={len(merged_pages)}"
+    )
     return merged_pages[: options.max_pages], combined_stats, "hybrid"
 
 
@@ -1352,14 +1564,18 @@ def page_identity_url(url: str, *, strip_trailing_slash: bool = True) -> str:
     return canonicalize_page_url(url, strip_trailing_slash=strip_trailing_slash)
 
 
-def combine_stats(first: dict[str, object], second: dict[str, object]) -> dict[str, object]:
+def combine_stats(
+    first: dict[str, object], second: dict[str, object]
+) -> dict[str, object]:
     keys = {
         "requests_count",
         "robots_disallowed_count",
         "blocked_requests_count",
         "failed_requests_count",
     }
-    return {key: int(first.get(key, 0) or 0) + int(second.get(key, 0) or 0) for key in keys}
+    return {
+        key: int(first.get(key, 0) or 0) + int(second.get(key, 0) or 0) for key in keys
+    }
 
 
 def write_markdown_corpus(pages: Sequence[CrawledPage], pages_dir: Path) -> None:
@@ -1380,7 +1596,9 @@ def write_markdown_corpus(pages: Sequence[CrawledPage], pages_dir: Path) -> None
             "fetcher": page.fetcher,
         }
         lines = ["---"]
-        lines.extend(f"{key}: {yaml_scalar(value)}" for key, value in frontmatter.items())
+        lines.extend(
+            f"{key}: {yaml_scalar(value)}" for key, value in frontmatter.items()
+        )
         lines.extend(["---", "", page.markdown.strip(), ""])
         path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -1397,7 +1615,11 @@ def markitdown_file_to_markdown(path: Path) -> str:
 
     extension = path.suffix.lower()
     extra = MARKITDOWN_EXTRA_BY_EXTENSION.get(extension)
-    dependency_hint = f" Install markitdown[{extra}] for {extension} support if needed." if extra else ""
+    dependency_hint = (
+        f" Install markitdown[{extra}] for {extension} support if needed."
+        if extra
+        else ""
+    )
     try:
         result = MarkItDown(enable_plugins=False).convert(path)
     except Exception as exc:  # pragma: no cover - exact converter exceptions depend on markitdown stack.
@@ -1420,7 +1642,9 @@ def convert_local_document_to_markdown(source: LocalDocumentSource) -> str:
     return markitdown_file_to_markdown(source.path)
 
 
-def local_document_frontmatter(source: LocalDocumentSource, page: CrawledPage) -> dict[str, object]:
+def local_document_frontmatter(
+    source: LocalDocumentSource, page: CrawledPage
+) -> dict[str, object]:
     frontmatter: dict[str, object] = {
         "url": page.url,
         "title": page.title,
@@ -1446,7 +1670,9 @@ def local_document_frontmatter(source: LocalDocumentSource, page: CrawledPage) -
     return frontmatter
 
 
-def write_local_document_corpus(source: LocalDocumentSource, markdown: str, pages_dir: Path) -> CrawledPage:
+def write_local_document_corpus(
+    source: LocalDocumentSource, markdown: str, pages_dir: Path
+) -> CrawledPage:
     pages_dir.mkdir(parents=True, exist_ok=True)
     for stale_page in pages_dir.glob("*.md"):
         stale_page.unlink()
@@ -1462,7 +1688,10 @@ def write_local_document_corpus(source: LocalDocumentSource, markdown: str, page
     ).with_hash()
     path = pages_dir / page_filename(page.url, page.title, 1)
     lines = ["---"]
-    lines.extend(f"{key}: {yaml_scalar(value)}" for key, value in local_document_frontmatter(source, page).items())
+    lines.extend(
+        f"{key}: {yaml_scalar(value)}"
+        for key, value in local_document_frontmatter(source, page).items()
+    )
     lines.extend(["---", "", page.markdown.strip(), ""])
     path.write_text("\n".join(lines), encoding="utf-8")
     return page
@@ -1472,7 +1701,9 @@ def write_pdf_corpus(source: PdfSource, markdown: str, pages_dir: Path) -> Crawl
     return write_local_document_corpus(source, markdown, pages_dir)
 
 
-def summarize_sample_chunks(plan: IndexingPlan, sample_size: int = 3) -> list[dict[str, object]]:
+def summarize_sample_chunks(
+    plan: IndexingPlan, sample_size: int = 3
+) -> list[dict[str, object]]:
     return [
         {
             "id": chunk.id,
@@ -1559,10 +1790,15 @@ def build_local_document_summary(
         "file_source_id": source.source_id,
         "allowed_host": "",
         "namespace_candidate": source.namespace_candidate,
-        "crawl_strategy": "markitdown-pdf" if isinstance(source, PdfSource) else "markitdown-local-file",
+        "crawl_strategy": "markitdown-pdf"
+        if isinstance(source, PdfSource)
+        else "markitdown-local-file",
         "requested_crawl_strategy": options.crawl_strategy,
         "docs_version_policy": options.docs_version_policy,
-        "docs_version_report": {"detected": False, "policy": options.docs_version_policy},
+        "docs_version_report": {
+            "detected": False,
+            "policy": options.docs_version_policy,
+        },
         "language_policy": options.language_policy,
         "language_report": {"detected": False, "policy": options.language_policy},
         "sitemap_seed_urls": [],
@@ -1609,7 +1845,9 @@ def build_pdf_summary(
     plan: IndexingPlan,
     pages_dir: Path,
 ) -> dict[str, object]:
-    return build_local_document_summary(source=source, options=options, plan=plan, pages_dir=pages_dir)
+    return build_local_document_summary(
+        source=source, options=options, plan=plan, pages_dir=pages_dir
+    )
 
 
 def empty_local_document_message(source: LocalDocumentSource) -> str:
@@ -1624,17 +1862,24 @@ def empty_local_document_message(source: LocalDocumentSource) -> str:
     )
 
 
-def crawl_local_document(source: LocalDocumentSource, options: CrawlOptions) -> dict[str, object]:
+def crawl_local_document(
+    source: LocalDocumentSource, options: CrawlOptions
+) -> dict[str, object]:
     """Convert one local document with MarkItDown and return a local-only dry-run summary."""
 
     label = "pdf" if isinstance(source, PdfSource) else "local file"
-    emit_progress(options.progress_callback, f"crawl {label}: converting {source.filename} with MarkItDown")
+    emit_progress(
+        options.progress_callback,
+        f"crawl {label}: converting {source.filename} with MarkItDown",
+    )
     markdown = convert_local_document_to_markdown(source).strip()
     if not markdown:
         raise RuntimeError(empty_local_document_message(source))
 
     pages_dir = options.out_dir / "pages"
-    emit_progress(options.progress_callback, f"crawl {label}: writing markdown document")
+    emit_progress(
+        options.progress_callback, f"crawl {label}: writing markdown document"
+    )
     write_local_document_corpus(source, markdown, pages_dir)
     emit_progress(options.progress_callback, f"crawl {label}: chunking document")
     plan = process_corpus(
@@ -1650,8 +1895,13 @@ def crawl_local_document(source: LocalDocumentSource, options: CrawlOptions) -> 
         pages_dir=pages_dir,
     )
     options.out_dir.mkdir(parents=True, exist_ok=True)
-    (options.out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
-    emit_progress(options.progress_callback, f"crawl {label}: done documents=1; chunks={summary['chunks_generated']}")
+    (options.out_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    emit_progress(
+        options.progress_callback,
+        f"crawl {label}: done documents=1; chunks={summary['chunks_generated']}",
+    )
     return summary
 
 
@@ -1684,9 +1934,13 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         progress_callback=options.progress_callback,
     )
     sitemap_page_urls = None
-    if options.crawl_strategy != "link" and (options.docs_version_policy != "all" or options.language_policy != "all"):
+    if options.crawl_strategy != "link" and (
+        options.docs_version_policy != "all" or options.language_policy != "all"
+    ):
         sitemap_page_urls = discover_sitemap_page_urls(options)
-    options, docs_version_report = apply_docs_version_policy(options, sitemap_page_urls=sitemap_page_urls)
+    options, docs_version_report = apply_docs_version_policy(
+        options, sitemap_page_urls=sitemap_page_urls
+    )
     block_message = docs_version_block_message(docs_version_report)
     if block_message:
         raise RuntimeError(block_message)
@@ -1706,7 +1960,9 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
                 f"detected {docs_version_report.get('version_count')} versions under "
                 f"{docs_version_report.get('root_path')}; policy={docs_version_report.get('policy')}",
             )
-    options, language_report = apply_language_policy(options, sitemap_page_urls=sitemap_page_urls)
+    options, language_report = apply_language_policy(
+        options, sitemap_page_urls=sitemap_page_urls
+    )
     if language_report.get("applied"):
         emit_progress(
             options.progress_callback,
@@ -1716,7 +1972,9 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         )
     pages, stats, crawl_strategy = crawl_pages(options)
     pages_dir = options.out_dir / "pages"
-    emit_progress(options.progress_callback, f"crawl: writing {len(pages)} markdown pages")
+    emit_progress(
+        options.progress_callback, f"crawl: writing {len(pages)} markdown pages"
+    )
     write_markdown_corpus(pages, pages_dir)
     emit_progress(options.progress_callback, "crawl: chunking pages")
     plan = process_corpus(
@@ -1736,6 +1994,11 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         language_report=language_report,
     )
     options.out_dir.mkdir(parents=True, exist_ok=True)
-    (options.out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
-    emit_progress(options.progress_callback, f"crawl: done pages={summary['pages_scraped']}; chunks={summary['chunks_generated']}")
+    (options.out_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    emit_progress(
+        options.progress_callback,
+        f"crawl: done pages={summary['pages_scraped']}; chunks={summary['chunks_generated']}",
+    )
     return summary
