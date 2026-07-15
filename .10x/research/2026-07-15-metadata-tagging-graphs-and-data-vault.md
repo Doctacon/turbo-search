@@ -8,10 +8,10 @@ Updated: 2026-07-15
 
 Can Turbopuffer store metadata per indexed chunk, how do products and open-source tools use “tagging,” and how could many Buoy namespaces contribute to a larger data-vault or knowledge-graph layer that improves retrieval for LLMs?
 
-Two terms remain ambiguous:
+The user confirmed two terms after the initial investigation:
 
-1. **“Chief AI”** — this investigation treats it as the knowledge product documented at `help.chief.bot`, because its Labels, Collections, Concepts, and concept graph match the described behavior. `chief.ai` is a different model marketplace/platform and did not expose a comparable tagging/knowledge-graph design in the sources found.
-2. **“Data Vault”** — this may mean either the formal Data Vault 2.0 warehouse modeling pattern or a product-level vault of indexed knowledge. Both interpretations are analyzed separately; they are not interchangeable.
+1. **“Chief AI” means Chief at `chief.bot`**, the knowledge product whose Labels, Collections, Concepts, and concept graph are analyzed below. `chief.ai` is a different model marketplace/platform.
+2. **“Data Vault” means formal Data Vault 2.0**, including hubs, links, satellites, business keys, lineage, and historical modeling. A product-level knowledge vault remains a useful comparison but is not the intended definition.
 
 ## Sources and methods
 
@@ -226,13 +226,23 @@ Do not begin with a general knowledge graph. The smallest evidence-backed sequen
 
 This sequence is cheaper, reversible, and testable. It also distinguishes exact metadata filtering from probabilistic semantic extraction.
 
+## Ratified research direction
+
+On 2026-07-15 the user confirmed Chief at `chief.bot`, formal Data Vault 2.0, and that all four capability families matter independently:
+
+1. namespace catalog and routing;
+2. governed tag filtering;
+3. cross-namespace concept graphs;
+4. multi-hop and global retrieval.
+
+Each capability will receive a focused investigation in its own `work/*` branch and worktree based on current `develop`. The governing parent plan is `.10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md`. Research remains non-implementing until the focused findings are synthesized and the user ratifies a behavioral architecture.
+
 ## Unresolved decisions
 
-- Whether “Chief AI” means Chief at `chief.bot`.
-- Whether “Data Vault” means Data Vault 2.0 or a product-level cross-namespace knowledge vault.
-- The first user-visible query class: namespace discovery/routing, governed filtering, entity consolidation, multi-hop QA, global synthesis, or visual exploration.
+- How Data Vault 2.0 business keys, links, satellites, and history should map to namespace catalog, chunk evidence, concepts, and relationships without treating inferred LLM output as warehouse authority.
 - Whether tags are human-authored, rule-derived, closed-set similarity assignments, LLM-extracted open-set terms, or a combination with explicit provenance.
-- The authority and deletion model for concepts/entities that span namespaces with different access policies.
+- The authority, ACL, history, correction, and deletion model for concepts/entities that span namespaces.
+- Which measured evals are sufficient to justify each layer over the current explicit multi-namespace RRF baseline.
 
 ## Limits
 
