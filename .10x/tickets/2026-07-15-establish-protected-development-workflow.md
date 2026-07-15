@@ -24,7 +24,7 @@ This is a parent plan, not an executable ticket.
 1. `.10x/tickets/done/2026-07-15-bootstrap-protected-develop-branch.md`
    - Create remote `develop` at the ratified `main` commit.
    - Install matching protection on `main` and `develop` before ordinary integration.
-2. `.10x/tickets/2026-07-15-add-pi-worktree-governance.md`
+2. `.10x/tickets/done/2026-07-15-add-pi-worktree-governance.md`
    - On a bounded `work/*` branch, add root Pi instructions and make CI validate pushes to both long-lived branches.
    - Open a pull request to `develop`; do not self-merge.
 3. `.10x/tickets/2026-07-15-integrate-pi-worktree-governance.md`

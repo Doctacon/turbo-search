@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-15
 Updated: 2026-07-15
-Relates-To: .10x/tickets/2026-07-15-add-pi-worktree-governance.md, .10x/specs/pi-worktree-development-flow.md, .10x/specs/protected-github-branches.md
+Relates-To: .10x/tickets/done/2026-07-15-add-pi-worktree-governance.md, .10x/specs/pi-worktree-development-flow.md, .10x/specs/protected-github-branches.md
 
 # Add Pi Worktree Governance
 
