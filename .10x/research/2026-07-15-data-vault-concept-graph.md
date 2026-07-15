@@ -18,7 +18,7 @@ The task named `context.md` and `plan.md` at the worktree root, but neither file
 
 ### Local authority inspected
 
-- `.10x/tickets/2026-07-15-research-data-vault-concept-graph.md`
+- `.10x/tickets/done/2026-07-15-research-data-vault-concept-graph.md`
 - `.10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md`
 - `.10x/research/2026-07-15-metadata-tagging-graphs-and-data-vault.md`
 - `.10x/specs/explicit-multi-namespace-retrieval.md`
