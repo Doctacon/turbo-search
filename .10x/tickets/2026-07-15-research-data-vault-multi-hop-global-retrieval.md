@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md
@@ -48,3 +48,5 @@ None for research. Experiments and implementation remain blocked on completed re
 ## Progress and notes
 
 - 2026-07-15: Ticket opened from the ratified four-track research plan. Execution intentionally deferred from the ticket-authoring turn.
+- 2026-07-15: Activated the research ticket on `work/research-data-vault-multihop`. Inspected the parent plan, preliminary investigation, current retrieval/eval specifications, ranking decision, validation evidence, docs, retrieval/eval/autoresearch implementations, and focused tests. The task-referenced worktree-root `context.md` and `plan.md` were absent; durable records supplied sufficient bounded authority.
+- 2026-07-15: Produced `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md` covering primary-paper and official/open-source evidence; query taxonomy; baseline/ablation matrix; public and Buoy-specific dataset options; separate retrieval, generation, citation, temporal, and ACL metrics; cost/lifecycle gates; staged experiments; recommendations; contradictions; and limits. No dataset, eval, retriever, graph, source/spec/decision, or live-system mutation was performed. Ticket intentionally remains active for independent review.
