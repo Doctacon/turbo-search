@@ -69,13 +69,25 @@ Additional checks:
 - parsed CI triggers: `pull_request` plus `push.branches == [main, develop]`;
 - release workflow diff: empty.
 
+### Hosted protected pull request
+
+The first bounded commit was `cc7e8507178d8b32e617259170e658ebfbb2fa33`. It was pushed to `origin/work/establish-protected-development-flow`, and pull request [#1](https://github.com/Doctacon/buoy-search/pull/1) was opened against `develop`.
+
+While the test jobs were in progress, GitHub reported the open pull request as `BLOCKED`. GitHub Actions run [29439859286](https://github.com/Doctacon/buoy-search/actions/runs/29439859286) then completed successfully for exact head `cc7e8507178d8b32e617259170e658ebfbb2fa33`:
+
+- `Python 3.11`: success;
+- `Python 3.13`: success;
+- `Build distributions`: success.
+
+After all three checks passed, GitHub reported the still-open pull request as `CLEAN` and `MERGEABLE`. `develop` and `main` remained unchanged at `78d255b6e54567018e4ea7ad565a67224ee9c4bf`; the task session did not merge the pull request.
+
 ## Procedure
 
 1. Read the owning ticket, parent plan, active decision/specifications, completed dependency ticket/evidence/review, installed Pi context documentation, CI workflow/static tests, contributor guide, and release guide.
 2. Verified exact status paths, refs, protection summary, empty index, branch absence, and governance-record preservation before switching.
 3. Created the bounded work branch from `develop` and implemented only the governed files.
 4. Ran focused tests, the complete suite, a clean temporary build, diff hygiene, trigger parsing, ancestry, and release-workflow checks.
-5. Prepared the bounded commit and protected pull request described in the ticket progress log.
+5. Committed and pushed the bounded branch, opened pull request #1 to `develop`, observed its blocked in-progress state, watched all three required checks pass, and confirmed the pull request remained open.
 
 ## What this supports or challenges
 
@@ -86,6 +98,6 @@ No observation challenged the active decision or specifications.
 ## Limits
 
 - `AGENTS.md` loading is supported by installed Pi documentation, not a newly observed interactive startup header.
-- Local tests and build do not prove hosted GitHub Actions behavior; the protected pull request and final required-check observations supply that evidence.
+- Hosted results above apply to first committed head `cc7e8507178d8b32e617259170e658ebfbb2fa33`. The final evidence/ticket update commit requires its own hosted checks before integration; the integration ticket owns final-head verification.
 - The cleanup warning from the complete suite was non-fatal and occurred under a temporary test path; this evidence does not investigate unrelated cleanup behavior.
 - GitHub configuration can later be deliberately changed by an administrator.
