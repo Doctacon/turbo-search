@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md
@@ -48,3 +48,4 @@ None for research. Concept/edge semantics, storage, and implementation remain bl
 ## Progress and notes
 
 - 2026-07-15: Ticket opened from the ratified four-track research plan. Execution intentionally deferred from the ticket-authoring turn.
+- 2026-07-15: Activated the ticket and completed the bounded research record at `.10x/research/2026-07-15-data-vault-concept-graph.md`. Inspected current Buoy identity/provenance source and compared Chief Concepts, Cognee, Graphiti, Microsoft GraphRAG, LlamaIndex property graphs, RAGFlow, Data Vault authority boundaries, and open-source relational/graph storage. The record proposes a reified assertion/evidence model, ACL/temporal/deletion controls, smaller alternatives, and a synthetic offline eval; it makes no store selection or live/source/spec/decision change. Ticket intentionally remains active for independent review.
