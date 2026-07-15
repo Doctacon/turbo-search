@@ -50,16 +50,18 @@ The requested root `context.md` and `plan.md` were absent from this worktree. Th
 - Production limits: https://turbopuffer.com/docs/limits
 - Namespace listing: https://turbopuffer.com/docs/namespaces
 - Schema and attribute indexing: https://turbopuffer.com/docs/schema
+- Atomic write batches and transaction limits: https://turbopuffer.com/docs/guarantees
 
 #### Data Vault 2.0 identity, history, and lineage
 
-- Data Vault Alliance, standards/specifications entry point: https://datavaultalliance.com/news/dv/standards-specifications/
+- Data Vault Alliance, standards-change process (publisher-hosted process authority, not a public normative specification): https://datavaultalliance.com/engineering/how-to-propose-dv-standards/
+- Data Vault Alliance, Data Vault 2.0 overview by Daniel Linstedt (publisher-hosted explanatory material, not a normative specification): https://datavaultalliance.com/architecture-data/understanding-data-vault-2-0/
 - Scalefree, Data Vault 2.0 modeling overview: https://www.scalefree.com/scalefree-newsletter/data-vault-2-0-modeling-basics/
 - Databricks, Data Vault overview and hub/link/satellite explanation: https://www.databricks.com/blog/what-is-data-vault
 - dbt Labs, Data Vault technique overview: https://www.getdbt.com/blog/data-vault-with-dbt-cloud
 - AutomateDV open-source documentation, hashing and staging conventions: https://automate-dv.readthedocs.io/en/latest/best_practises/hashing/
 
-The Data Vault Alliance source is the closest inspected standards authority. The other sources are implementation/explanatory evidence, not substitutes for a ratified enterprise business-key model or the complete proprietary Data Vault 2.0 body of knowledge.
+The Data Vault Alliance process article is authoritative only about how that publisher describes standards evolution; the Alliance overview and the other sources are explanatory/implementation evidence. No accessible public normative Data Vault specification was established by this investigation, and none of these sources substitutes for a ratified enterprise business-key model or the complete proprietary Data Vault 2.0 body of knowledge.
 
 #### Open-source/self-hostable catalog and lineage implementations
 
@@ -70,7 +72,7 @@ The Data Vault Alliance source is the closest inspected standards authority. The
 
 #### Open-source routing implementations
 
-- Aurelio Labs `semantic-router`, route/utterance selection (Apache-2.0): https://github.com/aurelio-labs/semantic-router
+- Aurelio Labs `semantic-router`, route/utterance selection (MIT; repository-root license): https://github.com/aurelio-labs/semantic-router and https://raw.githubusercontent.com/aurelio-labs/semantic-router/HEAD/LICENSE
 - LlamaIndex router query engine and selectors (MIT): https://docs.llamaindex.ai/en/stable/module_guides/querying/router/ and https://github.com/run-llama/llama_index
 - Haystack conditional router (Apache-2.0): https://docs.haystack.deepset.ai/docs/conditionalrouter and https://github.com/deepset-ai/haystack
 
@@ -161,7 +163,7 @@ Licenses above are repository licenses observed at the named project roots. A pr
 
 **Strengths.** Smallest number of new runtime components; native filters plus semantic/BM25 search; straightforward scale and rebuild of route candidates if another source exists.
 
-**Failure modes.** Circular dependency (the service being routed is also the only routing authority); no documented relational constraints or multi-document transaction; user-level ACL filters remain application-enforced; hard-to-prove temporal uniqueness/currentness; accidental card overwrite can erase history; service outage blocks both discovery and retrieval. Turbopuffer metadata does not provide business lineage, so application records still have to supply it.
+**Failure modes.** Circular dependency (the service being routed is also the only routing authority); no relational constraints or general-purpose read/write transactions; user-level ACL filters remain application-enforced; hard-to-prove temporal uniqueness/currentness; accidental card overwrite can erase history; service outage blocks both discovery and retrieval. Turbopuffer documents that all writes in one upsert are applied atomically and that conditional writes provide limited atomic read/write semantics. Those guarantees do not provide foreign keys/uniqueness constraints or one transaction spanning the registry namespace, routed-data namespaces, and application lineage state, so cross-namespace and multi-system consistency remains application-managed. Turbopuffer metadata does not provide business lineage, so application records still have to supply it.
 
 **Migration path.** Export immutable cards/events into a relational catalog, then demote this namespace to a derived index. If no independent event source exists, migration cannot reconstruct overwritten or omitted history.
 
@@ -188,13 +190,16 @@ The following is a candidate for evaluation, not a ratified schema.
 | `source` | `source_id`, `source_kind`, governed business key, canonical locator, owner, lifecycle status, valid/observed times | Reference `Hub_Source` when it exists; locator/title history in source Satellite |
 | `source_revision` | `source_revision_id`, `source_id`, immutable revision/digest, observed/load time, record source, crawl/extraction contract | Source observation Satellite; do not pretend a crawl timestamp is business effective time |
 | `business_concept_ref` | external Hub key, vocabulary/version, display label, authority | Reference only; inferred terms remain separate candidates |
+| `source_revision_concept_ref` | source revision ID, concept key/version, assignment authority, record source, asserted/load time, effective-from/to, withdrawal/status | Governed relationship assertion; connects concepts to source observations without allowing inferred terms to mint or silently attach Hub identity |
 | `namespace_address` | `namespace_address_id`, provider, organization/account boundary, region, namespace ID, created/retired times | Technical registry identity; not automatically a business Hub |
-| `index_revision` | immutable ID, namespace address, source revision set, `plan_id`, artifact hash, row/chunk/schema contracts, embedding contract, retrieval profile, applied/status times, supersedes ID | Technical historical Satellite/Link projection; each successful deployment is append-only |
+| `index_revision` | immutable ID, namespace address, `plan_id`, artifact hash, row/chunk/schema contract IDs, embedding contract ID, retrieval profile ID/version, applied/status times, supersedes ID | Technical historical Satellite/Link projection; each successful deployment is append-only |
+| `index_revision_source_revision` | index revision ID, source revision ID, relationship role, record source, load time | Explicit many-to-many deployment provenance; replaces an opaque source-revision set and supports multi-source indexes |
 | `embedding_contract` | ID/version, model/revision, dimensions, vector attribute/type, normalization, input template, precision, distance metric | Technical reference data |
 | `schema_contract` | ID/version, attribute names/types, required retrieval fields, ACL fields, compatibility fingerprint | Technical reference data; remote schema may verify only part |
 | `retrieval_profile` | ID/version, source class, candidate limits, within-namespace ranking/fusion settings | Serving policy, not source truth |
 | `access_policy_ref` | policy ID/version, tenant/security boundary, policy engine/owner, default-deny marker | Reference to authoritative authorization system; do not duplicate memberships as truth |
-| `namespace_card_revision` | card ID/version, index revision, title/description, controlled tags, example queries, embedding contract for card vector, generation provenance, status | Derived serving projection; rebuildable |
+| `index_revision_access_policy` | index revision ID, policy ID/version, assignment authority, record source, load time, effective-from/to, revoked/status | Versioned effective relationship used to determine the policy governing a routable revision; policy meaning remains in the authoritative authorization system |
+| `namespace_card_revision` | card ID/version, index revision, title/description, controlled tags, example queries, embedding contract for card vector, generation provenance, status | Derived serving projection; rebuildable; policy, source, and governed-concept eligibility resolve through its index revision, not card text |
 | `catalog_event` | event ID, entity/revision, event type, actor/process, record source, load time, payload digest | Audit/outbox lineage |
 
 ### Required lifecycle representation
@@ -204,7 +209,9 @@ The following is a candidate for evaluation, not a ratified schema.
 - **Stale source:** record observed freshness separately from policy evaluation. Do not infer the allowed staleness threshold.
 - **Deletion:** mark routing eligibility false immediately in canonical state, tombstone/delete derived cards, and record remote deletion separately. Catalog history retention and source-data erasure are distinct policies.
 - **Model migration:** create a new embedding contract and index revision; old and new deployments may coexist but are different compatibility cohorts.
-- **Access-policy change:** version the policy reference/effective relationship, invalidate routing caches/cards, and default deny until both catalog selection and namespace-local enforcement use the current policy.
+- **Access-policy change:** append a new effective `index_revision_access_policy` relationship (and close/revoke the prior assignment according to the authoritative policy event), invalidate routing caches/cards, and default deny until both catalog selection and namespace-local enforcement resolve the same current policy version.
+
+For routing, the required joins are explicit: a card identifies one `index_revision`; policy eligibility resolves through `index_revision_access_policy`; governed source provenance resolves through `index_revision_source_revision`; and governed concept narrowing resolves from those source revisions through `source_revision_concept_ref`. Effective-time and status predicates come from the relationship records and their named authorities, not namespace/card text. The exact temporal-overlap, cardinality, and policy-conflict rules remain blocked semantics rather than implied schema defaults.
 
 ### Provenance minimum
 
@@ -290,6 +297,12 @@ Labels must name the governing source/business authority. Assistant-generated la
 - **Calibration/stability:** confidence vs success, no-route rate, and selection churn across card/model revisions.
 
 Promote no router on average-only gains. Require zero ACL/compatibility violations, no named critical corpus regression, bounded fan-out, and a predeclared quality/latency/cost improvement gate.
+
+### Held-out evaluation protocol
+
+Before generating or tuning cards, split reviewed queries into development and held-out test sets, stratified by query/lifecycle class and grouped by source or governed concept where possible so near-duplicates cannot cross the boundary. Freeze the test labels and keep them unavailable to card authors and parameter tuning. Use development data only to choose card wording, scorer/model, `K`, confidence thresholds, and promotion gates; then freeze the card corpus, catalog fixture revision, embedding/scorer version, code revision, seeds, and all parameters before one final held-out evaluation. If the fixture is too small for a credible single split, use grouped cross-validation for development and still reserve an untouched final test slice rather than reporting development folds as promotion evidence.
+
+Report per-query results and bootstrap confidence intervals for recall, precision/over-selection, latency, and final-quality deltas. Safety outcomes remain exact counts with zero allowed rather than averages hidden by intervals. Repeat nondeterministic scoring/answer stages under predeclared seeds and report each run plus aggregate uncertainty; deterministic stages need one reproducible run. Compare every candidate with exact-only routing on the identical held-out queries and compatibility/ACL fixture. Any post-test card, threshold, model, or label change starts a new version and requires a new untouched test set; the prior held-out result becomes development evidence only.
 
 ### What can be tested without live Turbopuffer access
 
