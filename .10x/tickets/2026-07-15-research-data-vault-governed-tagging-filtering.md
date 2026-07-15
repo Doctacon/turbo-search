@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md
@@ -48,3 +48,4 @@ None for research. Tag semantics and implementation remain blocked on findings, 
 ## Progress and notes
 
 - 2026-07-15: Ticket opened from the ratified four-track research plan. Execution intentionally deferred from the ticket-authoring turn.
+- 2026-07-15: Inspected the parent plan, preliminary research, blocked tag-output drift ticket, referenced active records, and Buoy tagging/schema/retrieval/applied-state source. Reviewed official Chief, RAGFlow, Cognee, and Turbopuffer documentation plus Data Vault and open taxonomy/catalog comparisons. Drafted `.10x/research/2026-07-15-data-vault-governed-tagging-filtering.md`; ticket remains active pending independent review.
