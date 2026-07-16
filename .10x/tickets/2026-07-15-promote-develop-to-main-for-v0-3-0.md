@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
@@ -42,3 +42,5 @@ Pre/post commit graph, PR/check URLs, merge method/parents, main push CI, diff s
 None. Release preparation completed and passed hosted checks.
 
 ## Progress and notes
+
+- 2026-07-15: Promotion pre-merge execution started from release-prepared develop `1441c14`; no main merge is authorized in this phase.
