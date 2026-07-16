@@ -82,7 +82,7 @@ Catalog state does not prove that a remote namespace exists or is fresh.
 
 Canonical normalization for duplicate detection MUST apply Unicode NFKC, `casefold()`, maximal non-alphanumeric runs to one ASCII space, whitespace collapse, and trim. Duplicate normalized aliases/tags MUST be rejected. A normalized alias equal to the title MUST be rejected.
 
-A manual catalog upsert sets `semantic_origin=manual`. Approved apply MUST preserve all semantic fields and `enabled` when that origin is manual. For generated cards, approved apply MAY regenerate semantic fields from the latest verified plan.
+A manual catalog upsert sets `semantic_origin=manual`. Approved apply MUST preserve all semantic fields when that origin is manual. For generated cards, approved apply MAY regenerate semantic fields from the latest verified plan. Approved apply MUST preserve the current `enabled` state for every existing card, generated or manual, including a concurrent disable after precompute.
 
 ### Retrieval contract
 

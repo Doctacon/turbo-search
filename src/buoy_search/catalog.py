@@ -822,7 +822,11 @@ def merge_system_card(existing: NamespaceCard | None, incoming: NamespaceCard) -
     if existing.namespace != incoming.namespace:
         raise CatalogError("cannot merge cards with different namespaces")
     if existing.semantic_origin != "manual":
-        merged = replace(incoming, created_at=existing.created_at)
+        merged = replace(
+            incoming,
+            enabled=existing.enabled,
+            created_at=existing.created_at,
+        )
     else:
         merged = replace(
             incoming,

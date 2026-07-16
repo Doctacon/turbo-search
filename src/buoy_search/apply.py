@@ -49,8 +49,10 @@ from buoy_search.catalog_pending import (
     confirm_pending,
     create_pending,
     inspect_apply_collision,
+    load_pending_snapshot,
     pending_path_for_plan,
     reconcile_command,
+    remove_expected_pending,
 )
 from buoy_search.retriever import ranking_defaults_for_namespace
 from buoy_search.plan_artifacts import (
@@ -551,17 +553,42 @@ def run_approved_apply(
         )
         try:
             confirmed = confirm_pending(pending_path, pending, apply_id=apply_id)
+            confirmed_snapshot = load_pending_snapshot(pending_path)
+            if confirmed_snapshot.payload != confirmed:
+                raise ValueError("confirmed pending catalog registration changed unexpectedly")
             document, card, _changed = commit_system_card(
                 resolved_catalog,
                 parse_card(confirmed["prospective_card"]),
             )
-            pending_path.unlink()
         except (CatalogError, OSError, ValueError) as exc:
             partial = {
                 **base_summary,
                 "remote_apply_succeeded": True,
                 "catalog_updated": False,
+                "pending_cleanup": False,
                 "catalog_path": str(resolved_catalog),
+                "pending_path": str(pending_path),
+                "catalog_repair_command": reconcile_command(pending_path, resolved_catalog),
+            }
+            raise CatalogCommitPartialSuccess(str(exc), partial) from exc
+
+        try:
+            remove_expected_pending(
+                pending_path,
+                confirmed,
+                expected_device=confirmed_snapshot.device,
+                expected_inode=confirmed_snapshot.inode,
+            )
+        except (OSError, ValueError) as exc:
+            partial = {
+                **base_summary,
+                "remote_apply_succeeded": True,
+                "catalog_updated": True,
+                "pending_cleanup": False,
+                "catalog_path": str(resolved_catalog),
+                "catalog_revision": document.catalog_revision,
+                "card_revision": card.card_revision,
+                "catalog_namespace": card.namespace,
                 "pending_path": str(pending_path),
                 "catalog_repair_command": reconcile_command(pending_path, resolved_catalog),
             }
@@ -571,11 +598,13 @@ def run_approved_apply(
             **base_summary,
             "remote_apply_succeeded": True,
             "catalog_updated": True,
+            "pending_cleanup": True,
             "catalog_path": str(resolved_catalog),
             "catalog_revision": document.catalog_revision,
             "card_revision": card.card_revision,
             "catalog_namespace": card.namespace,
         }
+
 
 def build_state_after_apply(
     verified: VerifiedApplyPlan,

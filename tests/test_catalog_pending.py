@@ -50,6 +50,12 @@ def run_cli(args: list[str], *, env: dict[str, str] | None = None) -> tuple[int,
     return result, stdout.getvalue(), stderr.getvalue()
 
 
+def replace_identically(path: Path) -> None:
+    replacement = path.with_name(f".{path.name}.replacement")
+    replacement.write_bytes(path.read_bytes())
+    os.replace(replacement, path)
+
+
 def approved_args(plan_path: Path, state_root: Path, catalog_path: Path) -> list[str]:
     return [
         "apply", "--approve", "--plan", str(plan_path),
@@ -135,6 +141,53 @@ class CatalogPendingIntegrationTests(unittest.TestCase):
         self.assertIn("remote state is indeterminate", rerun_stderr)
         self.assertEqual(FakeWriter.rows, [])
 
+    def test_missing_credentials_leave_pending_block_rerun_and_require_approved_abandon(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            catalog_path = root / "catalog.json"
+            _artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            with patch(
+                "buoy_search.apply.TurbopufferWriter",
+                side_effect=AssertionError("remote writer constructed"),
+            ):
+                result, stdout, stderr = run_cli(
+                    approved_args(plan_path, state_root, catalog_path), env={}
+                )
+            pending_path = next((state_root.resolve() / "catalog-pending").glob("*.json"))
+            pending = load_pending(pending_path)
+            with patch(
+                "buoy_search.apply.TurbopufferWriter",
+                side_effect=AssertionError("remote writer constructed on rerun"),
+            ):
+                rerun, rerun_stdout, rerun_stderr = run_cli(
+                    approved_args(plan_path, state_root, catalog_path),
+                    env={"TURBOPUFFER_API_KEY": "not-used"},
+                )
+            preview, preview_stdout, preview_stderr = run_cli([
+                "catalog", "abandon-pending", "--pending", str(pending_path),
+                "--catalog", str(catalog_path), "--json",
+            ])
+            preview_retained = pending_path.exists()
+            abandoned, abandon_stdout, abandon_stderr = run_cli([
+                "catalog", "abandon-pending", "--pending", str(pending_path),
+                "--catalog", str(catalog_path), "--approve", "--json",
+            ])
+
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("TURBOPUFFER_API_KEY must be set", stderr)
+        self.assertFalse(pending["remote_apply_confirmed"])
+        self.assertEqual(rerun, 2)
+        self.assertEqual(rerun_stdout, "")
+        self.assertIn("remote state is indeterminate", rerun_stderr)
+        self.assertEqual((preview, preview_stderr), (0, ""))
+        self.assertEqual(json.loads(preview_stdout)["mutation_status"], "preview")
+        self.assertTrue(preview_retained)
+        self.assertEqual((abandoned, abandon_stderr), (0, ""))
+        self.assertEqual(json.loads(abandon_stdout)["mutation_status"], "abandoned")
+        self.assertFalse(pending_path.exists())
+
     def test_lock_contention_precedes_catalog_model_pending_credentials_and_remote(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -163,6 +216,37 @@ class CatalogPendingIntegrationTests(unittest.TestCase):
         self.assertIn("namespace busy", stderr)
         self.assertFalse(pending_root.exists())
         self.assertFalse(catalog_path.exists())
+
+    def test_pending_creation_rejects_symlink_and_non_directory_roots(self) -> None:
+        for root_kind in ("symlink", "file"):
+            with self.subTest(root_kind=root_kind), tempfile.TemporaryDirectory() as tmp:
+                reset_fakes()
+                root = Path(tmp)
+                state_root = root / "state"
+                state_root.mkdir()
+                catalog_path = root / "catalog.json"
+                _artifacts, plan_path = build_saved_plan(root / "plan-source", state_root=state_root)
+                pending_root = state_root.resolve() / "catalog-pending"
+                outside = root / "outside"
+                if root_kind == "symlink":
+                    outside.mkdir()
+                    pending_root.symlink_to(outside, target_is_directory=True)
+                else:
+                    pending_root.write_text("not a directory", encoding="utf-8")
+                with patch("buoy_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                    "buoy_search.apply.TurbopufferWriter", FakeWriter
+                ):
+                    result, stdout, stderr = run_cli(
+                        approved_args(plan_path, state_root, catalog_path),
+                        env={"TURBOPUFFER_API_KEY": "fake"},
+                    )
+                outside_entries = list(outside.iterdir()) if outside.exists() else []
+
+                self.assertEqual(result, 2)
+                self.assertEqual(stdout, "")
+                self.assertIn("pending root must be a real directory", stderr)
+                self.assertEqual(FakeWriter.rows, [])
+                self.assertEqual(outside_entries, [])
 
     def test_namespace_lock_lifetime_contains_model_remote_state_and_catalog_commit(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -286,6 +370,44 @@ class CatalogPendingIntegrationTests(unittest.TestCase):
         self.assertEqual(card.last_apply_id, pending["apply_id"])
         self.assertTrue(plan_retained_after_partial)
 
+    def test_catalog_success_with_pending_cleanup_failure_reports_truthful_partial_success(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            catalog_path = root / "catalog.json"
+            _artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            with patch("buoy_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "buoy_search.apply.TurbopufferWriter", FakeWriter
+            ), patch(
+                "buoy_search.apply.remove_expected_pending",
+                side_effect=OSError("unlink failure"),
+            ):
+                result, stdout, stderr = run_cli(
+                    approved_args(plan_path, state_root, catalog_path),
+                    env={"TURBOPUFFER_API_KEY": "fake"},
+                )
+            partial = json.loads(stdout)
+            pending_path = Path(partial["pending_path"])
+            pending_before_reconcile = pending_path.exists()
+            committed = load_catalog(catalog_path)
+            remote_write_count = len(FakeWriter.rows)
+            reconciled, reconcile_stdout, reconcile_stderr = run_cli([
+                "catalog", "reconcile", "--pending", str(pending_path),
+                "--catalog", str(catalog_path), "--json",
+            ])
+
+        self.assertEqual((result, stderr), (2, ""))
+        self.assertTrue(partial["remote_apply_succeeded"])
+        self.assertTrue(partial["catalog_updated"])
+        self.assertFalse(partial["pending_cleanup"])
+        self.assertEqual(partial["catalog_revision"], committed.catalog_revision)
+        self.assertEqual(partial["card_revision"], committed.cards[0].card_revision)
+        self.assertTrue(pending_before_reconcile)
+        self.assertEqual((reconciled, reconcile_stderr), (0, ""))
+        self.assertEqual(json.loads(reconcile_stdout)["mutation_status"], "already-committed")
+        self.assertFalse(pending_path.exists())
+        self.assertEqual(len(FakeWriter.rows), remote_write_count)
+
     def test_pending_confirmation_write_failure_is_truthful_and_recoverable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -385,6 +507,114 @@ class CatalogPendingIntegrationTests(unittest.TestCase):
         self.assertEqual(out_result, 2)
         self.assertEqual(out_stdout, "")
         self.assertIn("directly under", out_stderr)
+
+    def test_reconcile_rejects_replacement_after_lock_and_immediately_before_unlink(self) -> None:
+        for replacement_phase in ("after-lock", "before-unlink"):
+            with self.subTest(replacement_phase=replacement_phase), tempfile.TemporaryDirectory() as tmp:
+                reset_fakes()
+                root = Path(tmp)
+                state_root = root / "state"
+                catalog_path = root / "catalog.json"
+                _artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+                with patch("buoy_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                    "buoy_search.apply.TurbopufferWriter", FakeWriter
+                ), patch("buoy_search.apply.commit_system_card", side_effect=CatalogError("disk failure")):
+                    _result, stdout, _stderr = run_cli(
+                        approved_args(plan_path, state_root, catalog_path),
+                        env={"TURBOPUFFER_API_KEY": "fake"},
+                    )
+                pending_path = Path(json.loads(stdout)["pending_path"])
+
+                if replacement_phase == "after-lock":
+                    @contextmanager
+                    def replacing_lock(**_kwargs):
+                        replace_identically(pending_path)
+                        yield
+
+                    contexts = [patch(
+                        "buoy_search.catalog_pending.acquire_namespace_apply_lock",
+                        replacing_lock,
+                    )]
+                else:
+                    real_commit = pending_module.commit_system_card
+
+                    def commit_then_replace(path, card):
+                        result = real_commit(path, card)
+                        replace_identically(pending_path)
+                        return result
+
+                    contexts = [patch(
+                        "buoy_search.catalog_pending.commit_system_card",
+                        side_effect=commit_then_replace,
+                    )]
+
+                with contexts[0]:
+                    reconciled, reconcile_stdout, reconcile_stderr = run_cli([
+                        "catalog", "reconcile", "--pending", str(pending_path),
+                        "--catalog", str(catalog_path), "--json",
+                    ])
+                catalog_cards = load_catalog(catalog_path).cards
+
+                self.assertEqual(reconciled, 2)
+                self.assertEqual(reconcile_stdout, "")
+                self.assertIn("replaced", reconcile_stderr)
+                self.assertTrue(pending_path.exists())
+                if replacement_phase == "after-lock":
+                    self.assertEqual(catalog_cards, [])
+                else:
+                    self.assertEqual(len(catalog_cards), 1)
+
+    def test_abandon_rejects_replacement_after_lock_and_immediately_before_unlink(self) -> None:
+        for replacement_phase in ("after-lock", "before-unlink"):
+            with self.subTest(replacement_phase=replacement_phase), tempfile.TemporaryDirectory() as tmp:
+                reset_fakes()
+                root = Path(tmp)
+                state_root = root / "state"
+                catalog_path = root / "catalog.json"
+                _artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+                FakeWriter.should_fail = True
+                with patch("buoy_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                    "buoy_search.apply.TurbopufferWriter", FakeWriter
+                ):
+                    self.assertEqual(run_cli(
+                        approved_args(plan_path, state_root, catalog_path),
+                        env={"TURBOPUFFER_API_KEY": "fake"},
+                    )[0], 2)
+                pending_path = next((state_root.resolve() / "catalog-pending").glob("*.json"))
+
+                if replacement_phase == "after-lock":
+                    @contextmanager
+                    def replacing_lock(**_kwargs):
+                        replace_identically(pending_path)
+                        yield
+
+                    context = patch(
+                        "buoy_search.catalog_pending.acquire_namespace_apply_lock",
+                        replacing_lock,
+                    )
+                else:
+                    real_load = pending_module.load_catalog
+
+                    def load_then_replace(path):
+                        result = real_load(path)
+                        replace_identically(pending_path)
+                        return result
+
+                    context = patch(
+                        "buoy_search.catalog_pending.load_catalog",
+                        side_effect=load_then_replace,
+                    )
+
+                with context:
+                    abandoned, abandon_stdout, abandon_stderr = run_cli([
+                        "catalog", "abandon-pending", "--pending", str(pending_path),
+                        "--catalog", str(catalog_path), "--approve", "--json",
+                    ])
+
+                self.assertEqual(abandoned, 2)
+                self.assertEqual(abandon_stdout, "")
+                self.assertIn("replaced", abandon_stderr)
+                self.assertTrue(pending_path.exists())
 
     def test_legacy_schema_v1_plan_without_precision_registers_from_verified_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

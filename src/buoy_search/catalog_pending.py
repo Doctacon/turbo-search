@@ -6,7 +6,7 @@ reads credentials or imports Turbopuffer.
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 import json
 import os
 from pathlib import Path
@@ -72,6 +72,13 @@ class CatalogCommitPartialSuccess(RuntimeError):
         self.summary = summary
 
 
+@dataclass(frozen=True)
+class PendingSnapshot:
+    payload: dict[str, Any]
+    device: int
+    inode: int
+
+
 def normalized_path(path: Path) -> Path:
     return path.expanduser().resolve(strict=False)
 
@@ -99,49 +106,82 @@ def _payload_hash(payload: dict[str, Any]) -> str:
     return stable_hash(compact)
 
 
+def _open_pending_parent(path: Path) -> int:
+    parent = path.parent
+    try:
+        mode = parent.lstat().st_mode
+        if stat.S_ISLNK(mode) or not stat.S_ISDIR(mode):
+            raise PendingCatalogError(
+                f"pending root must be a real directory, not a symlink or non-directory: {parent}"
+            )
+    except FileNotFoundError:
+        try:
+            parent.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            pass
+        except OSError as exc:
+            raise PendingCatalogError(f"could not create pending root {parent}: {exc}") from exc
+        mode = parent.lstat().st_mode
+        if stat.S_ISLNK(mode) or not stat.S_ISDIR(mode):
+            raise PendingCatalogError(
+                f"pending root must be a real directory, not a symlink or non-directory: {parent}"
+            )
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        directory_fd = os.open(parent, flags)
+    except OSError as exc:
+        raise PendingCatalogError(f"could not safely open pending root {parent}: {exc}") from exc
+    if not stat.S_ISDIR(os.fstat(directory_fd).st_mode):
+        os.close(directory_fd)
+        raise PendingCatalogError(f"pending root is not a directory: {parent}")
+    return directory_fd
+
+
 def _atomic_write(path: Path, payload: dict[str, Any], *, exclusive: bool = False) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     data = (stable_json_dumps(payload, indent=2) + "\n").encode("utf-8")
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp")
+    temporary_name = f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp"
+    directory_fd = _open_pending_parent(path)
     try:
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        fd = os.open(temporary, flags, 0o600)
-        try:
-            with os.fdopen(fd, "wb", closefd=True) as handle:
-                handle.write(data)
-                handle.flush()
-                os.fsync(handle.fileno())
-        except Exception:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-            raise
+        fd = os.open(temporary_name, flags, 0o600, dir_fd=directory_fd)
+        with os.fdopen(fd, "wb", closefd=True) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
         if exclusive:
             try:
-                os.link(temporary, path)
+                os.link(
+                    temporary_name,
+                    path.name,
+                    src_dir_fd=directory_fd,
+                    dst_dir_fd=directory_fd,
+                    follow_symlinks=False,
+                )
             except FileExistsError as exc:
                 raise PendingCollisionError(
                     f"pending catalog registration already exists: {path}"
                 ) from exc
-            temporary.unlink()
+            os.unlink(temporary_name, dir_fd=directory_fd)
         else:
-            os.replace(temporary, path)
+            os.replace(
+                temporary_name,
+                path.name,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+            )
         try:
-            directory_fd = os.open(path.parent, os.O_RDONLY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            os.fsync(directory_fd)
         except OSError:
             pass
     except OSError as exc:
         raise PendingCatalogError(f"could not atomically write pending catalog registration {path}: {exc}") from exc
     finally:
         try:
-            temporary.unlink()
+            os.unlink(temporary_name, dir_fd=directory_fd)
         except FileNotFoundError:
             pass
+        finally:
+            os.close(directory_fd)
 
 
 def build_pending_payload(
@@ -297,16 +337,90 @@ def validate_pending_payload(payload: object) -> dict[str, Any]:
     return dict(payload)
 
 
-def load_pending(path: Path) -> dict[str, Any]:
+def load_pending_snapshot(path: Path) -> PendingSnapshot:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
-        mode = path.lstat().st_mode
-        if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
-            raise PendingCatalogError(f"pending path must be a regular non-symlink file: {path}")
-        return validate_pending_payload(json.loads(path.read_text(encoding="utf-8")))
+        fd = os.open(path, flags)
+        try:
+            metadata = os.fstat(fd)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise PendingCatalogError(f"pending path must be a regular non-symlink file: {path}")
+            with os.fdopen(fd, "r", encoding="utf-8", closefd=False) as handle:
+                payload = validate_pending_payload(json.load(handle))
+        finally:
+            os.close(fd)
+        current = path.lstat()
+        if (
+            stat.S_ISLNK(current.st_mode)
+            or not stat.S_ISREG(current.st_mode)
+            or (current.st_dev, current.st_ino) != (metadata.st_dev, metadata.st_ino)
+        ):
+            raise PendingCatalogError(f"pending path was replaced while being validated: {path}")
+        return PendingSnapshot(payload=payload, device=metadata.st_dev, inode=metadata.st_ino)
     except PendingCatalogError:
         raise
-    except (OSError, UnicodeError, json.JSONDecodeError, ValueError, CatalogError) as exc:
+    except OSError as exc:
+        if path.is_symlink():
+            raise PendingCatalogError(
+                f"pending path must be a regular non-symlink file: {path}"
+            ) from exc
         raise PendingCatalogError(f"invalid pending catalog registration {path}: {exc}") from exc
+    except (UnicodeError, json.JSONDecodeError, ValueError, CatalogError) as exc:
+        raise PendingCatalogError(f"invalid pending catalog registration {path}: {exc}") from exc
+
+
+def load_pending(path: Path) -> dict[str, Any]:
+    return load_pending_snapshot(path).payload
+
+
+def _require_same_pending(
+    path: Path,
+    expected: PendingSnapshot,
+    supplied_catalog: Path,
+) -> PendingSnapshot:
+    current = load_pending_snapshot(path)
+    validate_pending_path(path, current.payload, supplied_catalog)
+    if (
+        (current.device, current.inode) != (expected.device, expected.inode)
+        or current.payload["payload_hash"] != expected.payload["payload_hash"]
+        or current.payload != expected.payload
+    ):
+        raise PendingCatalogError(
+            f"pending catalog registration was replaced after validation: {path}"
+        )
+    return current
+
+
+def remove_expected_pending(
+    path: Path,
+    expected_payload: dict[str, Any],
+    *,
+    expected_device: int | None = None,
+    expected_inode: int | None = None,
+) -> None:
+    current = load_pending_snapshot(path)
+    if (
+        current.payload != expected_payload
+        or current.payload["payload_hash"] != expected_payload["payload_hash"]
+        or (expected_device is not None and current.device != expected_device)
+        or (expected_inode is not None and current.inode != expected_inode)
+    ):
+        raise PendingCatalogError(
+            f"pending catalog registration was replaced before cleanup: {path}"
+        )
+    directory_fd = _open_pending_parent(path)
+    try:
+        metadata = os.stat(path.name, dir_fd=directory_fd, follow_symlinks=False)
+        if not stat.S_ISREG(metadata.st_mode) or (metadata.st_dev, metadata.st_ino) != (
+            current.device,
+            current.inode,
+        ):
+            raise PendingCatalogError(
+                f"pending catalog registration was replaced before cleanup: {path}"
+            )
+        os.unlink(path.name, dir_fd=directory_fd)
+    finally:
+        os.close(directory_fd)
 
 
 def validate_pending_path(path: Path, payload: dict[str, Any], supplied_catalog: Path) -> tuple[Path, Path]:
@@ -376,11 +490,14 @@ def _unconfirmed_state_proves_success(payload: dict[str, Any], state: Any) -> bo
 
 
 def reconcile_pending(path: Path, catalog_path: Path) -> tuple[CatalogDocument, NamespaceCard, bool]:
-    payload = load_pending(path)
+    initial = load_pending_snapshot(path)
+    payload = initial.payload
     state_root, catalog = validate_pending_path(path, payload, catalog_path)
     with acquire_namespace_apply_lock(
         site_id=str(payload["site_id"]), namespace=str(payload["namespace"]), state_root=state_root
     ):
+        locked = _require_same_pending(path, initial, catalog_path)
+        payload = locked.payload
         state = load_applied_state(
             site_id=str(payload["site_id"]),
             namespace=str(payload["namespace"]),
@@ -406,18 +523,26 @@ def reconcile_pending(path: Path, catalog_path: Path) -> tuple[CatalogDocument, 
                 "unconfirmed pending catalog registration is not backed by a new matching applied-state success"
             )
         document, card, changed = commit_system_card(catalog, card)
-        path.unlink()
+        remove_expected_pending(
+            path,
+            payload,
+            expected_device=locked.device,
+            expected_inode=locked.inode,
+        )
         return document, card, changed
 
 
 def abandon_pending(path: Path, catalog_path: Path, *, approve: bool) -> dict[str, Any]:
-    payload = load_pending(path)
+    initial = load_pending_snapshot(path)
+    payload = initial.payload
     state_root, catalog = validate_pending_path(path, payload, catalog_path)
-    if payload["remote_apply_confirmed"]:
-        raise PendingCatalogError("confirmed pending catalog registration must be reconciled, not abandoned")
     with acquire_namespace_apply_lock(
         site_id=str(payload["site_id"]), namespace=str(payload["namespace"]), state_root=state_root
     ):
+        locked = _require_same_pending(path, initial, catalog_path)
+        payload = locked.payload
+        if payload["remote_apply_confirmed"]:
+            raise PendingCatalogError("confirmed pending catalog registration must be reconciled, not abandoned")
         state = load_applied_state(
             site_id=str(payload["site_id"]),
             namespace=str(payload["namespace"]),
@@ -438,5 +563,10 @@ def abandon_pending(path: Path, catalog_path: Path, *, approve: bool) -> dict[st
             "warning": "A later approved apply may repeat idempotent remote upserts after an indeterminate crash.",
         }
         if approve:
-            path.unlink()
+            remove_expected_pending(
+                path,
+                payload,
+                expected_device=locked.device,
+                expected_inode=locked.inode,
+            )
         return result

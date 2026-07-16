@@ -44,11 +44,11 @@ Global lock order is namespace lock first, then catalog lock. Reconciliation MUS
 
 If lock acquisition fails, perform no model, pending, credential, catalog, or remote work.
 
-If an existing card is manual, construct the prospective update with its semantic fields and enabled state preserved. Otherwise construct deterministic generated semantics.
+For every existing card, preserve its current enabled state through commit, including a disable concurrent with precompute. If an existing card is manual, also preserve its semantic fields; otherwise construct deterministic generated semantics.
 
 ### 2. Resolve pending collision and precompute before remote writes
 
-The canonical pending root is `<resolved-state-root>/catalog-pending/`; the file is `<plan-id>.json`. Under the held namespace lock, inspect any existing pending path before replacement:
+The canonical pending root is `<resolved-state-root>/catalog-pending/`; it MUST be a real directory and MUST NOT be a symlink or non-directory. Pending creation MUST use that canonical directory without following a substituted parent outside the state root. The file is `<plan-id>.json`. Under the held namespace lock, inspect any existing pending path before replacement:
 
 - a valid matching `remote_apply_confirmed=true` artifact MUST block approved apply before model/credential/remote work and print its exact reconcile command;
 - a confirmed artifact whose plan/namespace/catalog/applied-state binding is mismatched or tampered MUST fail closed;
@@ -67,7 +67,7 @@ Before reading `TURBOPUFFER_API_KEY`, constructing a Turbopuffer client, or writ
 
 A failure in this phase MUST abort with no remote or catalog mutation. The pending file MUST be atomically written and may remain for diagnosis; it MUST be marked `remote_apply_confirmed=false` and MUST NOT be reconcilable or automatically replaced.
 
-`buoy catalog abandon-pending --pending PATH --catalog PATH --approve` is the only supported way to remove a valid unconfirmed artifact. It MUST apply the same bound-root/catalog/symlink/hash checks as reconcile, acquire the namespace lock, verify that applied state does not claim the pending plan/apply as successful, require explicit approval, warn that a later approved apply may repeat idempotent remote upserts after an indeterminate crash, and remove only the validated local pending file. Without `--approve` it is preview-only. It reads no credentials and contacts no remote service.
+`buoy catalog abandon-pending --pending PATH --catalog PATH --approve` is the only supported way to remove a valid unconfirmed artifact. It MUST apply the same bound-root/catalog/symlink/hash checks as reconcile, acquire the namespace lock, re-read and require the same payload hash/file identity, verify that applied state does not claim the pending plan/apply as successful, require explicit approval, warn that a later approved apply may repeat idempotent remote upserts after an indeterminate crash, and immediately revalidate that same expected artifact before removing only the validated local pending file. Without `--approve` it is preview-only. It reads no credentials and contacts no remote service.
 
 ### 3. Execute existing remote apply
 
@@ -95,14 +95,14 @@ The committed card MUST retain the successful `plan_id` and `apply_id`.
 
 ## Post-apply catalog commit failure
 
-A pending-confirmation write, catalog lock, disk, conflict, or atomic-save failure after remote/applied-state success is a **partial success**, not a rollback of remote data. If pending confirmation itself fails, the still-valid unconfirmed artifact plus its prior applied-state identity MUST remain locally recoverable: reconciliation MAY promote it only when the exact bound applied-state database proves a new matching successful plan/apply identity distinct from the bound prior identity. This is not the indeterminate unconfirmed-remote-failure case.
+A pending-confirmation write, catalog lock, disk, conflict, atomic-save, or post-commit pending-cleanup failure after remote/applied-state success is a **partial success**, not a rollback of remote data. If pending confirmation itself fails, the still-valid unconfirmed artifact plus its prior applied-state identity MUST remain locally recoverable: reconciliation MAY promote it only when the exact bound applied-state database proves a new matching successful plan/apply identity distinct from the bound prior identity. This is not the indeterminate unconfirmed-remote-failure case. If catalog commit succeeds but pending cleanup fails, output MUST truthfully retain `catalog_updated=true`, catalog/card revisions, `pending_cleanup=false`, pending path, and the exact reconcile command; reconciliation MUST idempotently verify the committed revision and remove the artifact without remote work.
 
 The command MUST:
 
 - return exit code 2;
 - preserve the confirmed pending artifact;
 - preserve successful applied state and remote rows;
-- print/return `remote_apply_succeeded=true` and `catalog_updated=false`;
+- print/return `remote_apply_succeeded=true`, plus truthful `catalog_updated` and `pending_cleanup` values for the phase reached;
 - include the exact pending path;
 - include the exact repair command `buoy catalog reconcile --pending <path> --catalog <bound-catalog-path>`;
 - avoid normal plan-directory cleanup when that cleanup would remove required reconciliation provenance.
@@ -116,10 +116,10 @@ It MUST NOT retry remote writes automatically.
 1. read no credentials and contact no remote service;
 2. normalize paths; require pending to be a regular non-symlink file directly under the bound resolved `catalog-pending` root; require supplied catalog path to equal the normalized target bound in the payload;
 3. validate pending schema/hash and require `remote_apply_confirmed=true`, except that a valid unconfirmed artifact MAY continue only for interrupted-confirmation recovery when step 4 proves a new matching applied-state success distinct from its bound prior identity;
-4. acquire the bound namespace lock, then load applied state from the exact bound database path and require matching site ID, namespace, plan ID, and apply ID; for the narrow interrupted-confirmation exception, derive the final apply ID only from that exact applied state;
-5. apply the same current manual-semantic/enabled preservation merge under the catalog lock;
+4. acquire the bound namespace lock, then re-read the pending regular file and revalidate its path, binding, payload hash, and file identity against the pre-lock snapshot before loading applied state from the exact bound database path; require matching site ID, namespace, plan ID, and apply ID; for the narrow interrupted-confirmation exception, derive the final apply ID only from that exact applied state;
+5. apply the same current manual-semantic/all-existing-enabled preservation merge under the catalog lock;
 6. be idempotent when the exact card revision is already committed;
-7. remove only the validated pending artifact and only after successful/idempotent catalog completion;
+7. immediately before removal, revalidate the same expected payload hash and file identity so a pathname replacement is rejected; remove only that validated artifact and only after successful/idempotent catalog completion;
 8. clearly reject stale, indeterminate-unconfirmed, mismatched, tampered, symlinked, out-of-root, or superseded pending state.
 
 A successful reconciliation MUST report local-only completion and leave remote/applied state untouched.
@@ -177,7 +177,7 @@ Given pending card preparation succeeded but remote apply fails, then the catalo
 
 ### Local post-apply failure
 
-Given remote apply and applied state succeed but pending confirmation or catalog save fails, then the command reports partial success, retains one recoverable pending artifact, gives the exact repair command, and performs no second remote write. A confirmation-write failure may leave the artifact unconfirmed only when its bound prior identity plus exact applied state safely prove the new success during reconciliation.
+Given remote apply and applied state succeed but pending confirmation, catalog save, or pending cleanup fails, then the command reports truthful partial success, retains one recoverable pending artifact, gives the exact repair command, and performs no second remote write. A confirmation-write failure may leave the artifact unconfirmed only when its bound prior identity plus exact applied state safely prove the new success during reconciliation. A cleanup-only failure reports the committed catalog/card revisions with `catalog_updated=true` and `pending_cleanup=false`.
 
 ### Reconcile
 

@@ -444,6 +444,35 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         self.assertEqual((merged.last_plan_id, merged.last_apply_id), ("plan-new", "apply-new"))
         self.assertEqual(merged.created_at, existing.created_at)
 
+    def test_concurrent_generated_disable_is_preserved_during_system_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "catalog.json"
+            current = make_card(
+                enabled=False,
+                semantic_origin="generated",
+                title="Current generated",
+                aliases=[],
+                last_plan_id="plan-current",
+                last_apply_id="apply-current",
+            )
+            incoming = make_card(
+                enabled=True,
+                semantic_origin="generated",
+                title="Refreshed generated",
+                summary="Refreshed.",
+                aliases=[],
+                last_plan_id="plan-new",
+                last_apply_id="apply-new",
+                now="2026-07-15T15:00:00+00:00",
+            )
+            save_catalog(path, [current])
+            _document, committed, changed = commit_system_card(path, incoming)
+
+        self.assertTrue(changed)
+        self.assertFalse(committed.enabled)
+        self.assertEqual(committed.title, incoming.title)
+        self.assertEqual((committed.last_plan_id, committed.last_apply_id), ("plan-new", "apply-new"))
+
     def test_commit_api_validates_merges_and_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "catalog.json"

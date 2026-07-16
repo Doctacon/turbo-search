@@ -37,6 +37,34 @@ git diff --check
 
 Focused tests use fake content embedders, a fixed 384-dimensional routing embedder, fake remote writers, lock/order event sentinels, credential-read sentinels, and injected local persistence failures. No live Turbopuffer call, real credential read, hosted model request, or model download occurred.
 
+## Independent-review fix verification
+
+The bounded review repair split catalog commit from pending cleanup, preserves enabled state for generated and manual cards, hardens pending-directory creation and reconcile/abandon pathname races, and covers missing credentials as an intentional precomputed-pending collision.
+
+Observed focused regressions prove:
+
+- catalog commit plus failed unlink reports exit 2 with `catalog_updated=true`, catalog/card revisions, `pending_cleanup=false`, pending path, and reconcile command; reconcile reports `already-committed` and removes the artifact without remote work;
+- a generated card disabled concurrently after precompute remains disabled while generated/system fields refresh;
+- reconcile and abandon reject identical-content inode replacement after namespace-lock acquisition and immediately before unlink; reconcile does not commit when replacement occurs at lock entry, and retains the pending path after a post-commit replacement;
+- pending creation rejects both a symlinked `catalog-pending` directory and a non-directory path, creates nothing through the symlink target, and performs no remote write;
+- missing credentials leave a valid unconfirmed pending artifact, construct no remote writer, block rerun, remain after abandonment preview, and require approved local abandonment.
+
+```text
+uv run python -m unittest tests.test_apply_cli tests.test_catalog_pending tests.test_catalog tests.test_catalog_cli tests.test_cli
+Ran 133 tests in 4.365s
+OK
+
+uv run python -m unittest discover -s tests -p 'test_*.py'
+Ran 346 tests in 6.721s
+OK
+
+uv run python -m py_compile src/buoy_search/*.py tests/test_catalog_pending.py tests/test_catalog.py
+# no output
+
+git diff --check
+# no output
+```
+
 ## What this supports
 
 This evidence supports child 2 acceptance for apply `--region`/`--catalog`, non-mutating previews, lock acquisition/lifetime/order, collision/precompute/confirmation/commit phases, partial-success and confirmation-failure recovery, reconciliation and approved abandonment, exact bindings/path safety/idempotency, manual/enabled preservation, schema-v1/source compatibility, documentation, and regression preservation of existing apply remote/write/stale/state behavior.

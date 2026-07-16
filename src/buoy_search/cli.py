@@ -1659,8 +1659,8 @@ def print_apply_text(payload: dict[str, object]) -> None:
         )
     if "catalog_updated" in payload:
         print(f"  catalog_updated: {payload['catalog_updated']}; catalog: {payload['catalog_path']}")
-        if not payload["catalog_updated"]:
-            print(f"  pending_path: {payload['pending_path']}")
+        if payload.get("pending_cleanup") is False:
+            print(f"  pending_cleanup: False; pending_path: {payload['pending_path']}")
             print(f"  repair: {payload['catalog_repair_command']}")
     timing = payload.get("timing")
     if isinstance(timing, dict):
