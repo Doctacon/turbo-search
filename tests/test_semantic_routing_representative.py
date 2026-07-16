@@ -132,6 +132,57 @@ class RepresentativeSemanticRoutingTests(unittest.TestCase):
         self.assertEqual([item["repo_key"] for item in ranking], ["alpha", "zeta", "beta"])
         self.assertEqual(ranking[0]["raw_score"], 1.0)
 
+    def test_fixed_route_fan_out_truncates_recorded_ranking_before_home_rank(self) -> None:
+        ranking = [
+            {"rank": rank, "repo_key": f"repo-{rank}", "namespace": f"namespace-{rank}"}
+            for rank in range(1, 8)
+        ]
+
+        routed = routing.routed_top_five(ranking)
+
+        self.assertEqual(len(routed), 5)
+        self.assertEqual([item["rank"] for item in routed], [1, 2, 3, 4, 5])
+        self.assertEqual(routing.home_rank(routed, "namespace-5"), 5)
+        self.assertIsNone(routing.home_rank(routed, "namespace-6"))
+
+    def test_evaluate_scores_semantic_and_hybrid_homes_outside_fan_out_as_unranked(self) -> None:
+        cards = [
+            {
+                "repo_key": f"repo-{index}",
+                "namespace": f"namespace-{index}",
+                "title": f"Project {index}",
+                "aliases": [],
+                "tags": [],
+                "summary": "project",
+            }
+            for index in range(1, 7)
+        ]
+        questions = [
+            {
+                "identity": "repo-6:case",
+                "repo_key": "repo-6",
+                "case_id": "case",
+                "question": "descriptor free question",
+                "home_namespace": "namespace-6",
+            }
+        ]
+        card_vectors = [
+            [1.0, 0.0],
+            [0.9, 0.435889894],
+            [0.8, 0.6],
+            [0.7, 0.714142843],
+            [0.6, 0.8],
+            [0.0, 1.0],
+        ]
+        with patch.object(routing, "encode_float32", side_effect=[card_vectors, [[1.0, 0.0]]]):
+            result = routing.evaluate(cards, questions, object())
+
+        for strategy in ("semantic", "hybrid_rrf"):
+            case = result[strategy]["cases"][0]
+            self.assertEqual(len(case["rankings"]), 5)
+            self.assertIsNone(case["home_namespace_rank"])
+            self.assertEqual(result[strategy]["metrics"]["aggregate"]["unranked_count"], 1)
+
     def test_hybrid_uses_equal_weight_production_rrf_and_deterministic_ties(self) -> None:
         lexical = [
             {"rank": 1, "repo_key": "alpha", "namespace": "n-alpha"},
@@ -148,6 +199,18 @@ class RepresentativeSemanticRoutingTests(unittest.TestCase):
         self.assertEqual([item["repo_key"] for item in ranking], ["alpha", "beta", "gamma"])
         self.assertAlmostEqual(ranking[0]["raw_score"], 1 / 61 + 1 / 62)
         self.assertAlmostEqual(ranking[1]["raw_score"], 1 / 62 + 1 / 61)
+
+    def test_benchmark_bias_quantifies_home_title_alias_matches_and_descriptor_free_cases(self) -> None:
+        bias = routing.benchmark_bias(routing.load_cards(), routing.load_questions())
+
+        self.assertEqual(bias["evaluated_count"], 90)
+        self.assertEqual(bias["home_title_or_alias_present_count"], 79)
+        self.assertEqual(bias["descriptor_free_count"], 11)
+        self.assertEqual(len(bias["descriptor_free_cases"]), 11)
+        self.assertEqual(
+            len({case["identity"] for case in bias["descriptor_free_cases"]}),
+            11,
+        )
 
     def test_metrics_include_unranked_homes(self) -> None:
         metrics = routing.aggregate_metrics(
@@ -195,12 +258,14 @@ class RepresentativeSemanticRoutingTests(unittest.TestCase):
             self.assertEqual(os.environ["TMPDIR"], tmp)
             self.assertEqual(os.environ["HF_HOME"], str(snapshot.parents[3]))
 
-    def test_socket_and_path_guards_reject_network_cache_mutation_and_external_writes(self) -> None:
+    def test_guards_reject_network_process_escape_and_external_path_mutations(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             run_dir = root / "run"
             temp_dir = run_dir / "temp"
             outside = root / "outside.txt"
+            outside_symlink = root / "outside-link"
+            outside_hardlink = root / "outside-hardlink"
             cache_file = root / "model-cache" / "weights"
             run_dir.mkdir()
             temp_dir.mkdir()
@@ -212,15 +277,52 @@ class RepresentativeSemanticRoutingTests(unittest.TestCase):
                     socket.create_connection(("127.0.0.1", 9))
                 with self.assertRaisesRegex(routing.ExperimentError, "Network access"):
                     socket.getaddrinfo("example.com", 443)
+                udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                try:
+                    with self.assertRaisesRegex(routing.ExperimentError, "Network access"):
+                        udp.sendto(b"blocked", ("127.0.0.1", 9))
+                finally:
+                    udp.close()
+                with self.assertRaisesRegex(routing.ExperimentError, "process launch"):
+                    subprocess.Popen(["/usr/bin/true"])
+                with self.assertRaisesRegex(routing.ExperimentError, "process launch"):
+                    os.system("/usr/bin/true")
                 with self.assertRaisesRegex(routing.ExperimentError, "outside experiment"):
                     outside.write_text("blocked", encoding="utf-8")
                 with self.assertRaisesRegex(routing.ExperimentError, "outside experiment"):
                     cache_file.write_text("mutation", encoding="utf-8")
-                (run_dir / "allowed.txt").write_text("ok", encoding="utf-8")
+                with self.assertRaisesRegex(routing.ExperimentError, "outside experiment"):
+                    os.symlink("target", outside_symlink)
+                with self.assertRaisesRegex(routing.ExperimentError, "outside experiment"):
+                    os.link(cache_file, outside_hardlink)
+                with self.assertRaisesRegex(routing.ExperimentError, "outside experiment"):
+                    os.truncate(cache_file, 0)
+
+                allowed = run_dir / "allowed.txt"
+                allowed.write_text("allowed", encoding="utf-8")
+                os.truncate(allowed, 3)
+                os.link(allowed, run_dir / "allowed-hardlink")
+                os.symlink("allowed.txt", run_dir / "allowed-symlink")
                 (temp_dir / "allowed.txt").write_text("ok", encoding="utf-8")
 
             self.assertFalse(outside.exists())
+            self.assertFalse(outside_symlink.exists())
+            self.assertFalse(outside_hardlink.exists())
             self.assertEqual(cache_file.read_text(encoding="utf-8"), "cached")
+            self.assertEqual((run_dir / "allowed.txt").read_text(encoding="utf-8"), "all")
+            self.assertEqual((run_dir / "allowed-hardlink").read_text(encoding="utf-8"), "all")
+            self.assertEqual((run_dir / "allowed-symlink").read_text(encoding="utf-8"), "all")
+
+    def test_guard_coverage_and_forbidden_module_check_are_explicit(self) -> None:
+        coverage = routing.guard_coverage()
+        self.assertIn("socket.socket.sendto", coverage["socket_apis"])
+        self.assertIn("subprocess.Popen", coverage["process_apis"])
+        self.assertIn("os.system", coverage["process_apis"])
+        self.assertIn("os.symlink", coverage["path_mutation_apis"])
+        self.assertIn("os.link", coverage["path_mutation_apis"])
+        self.assertIn("os.truncate", coverage["path_mutation_apis"])
+        with patch.dict(sys.modules, {"turbopuffer.client": object()}):
+            self.assertEqual(routing.imported_forbidden_clients(), ["turbopuffer"])
 
     def test_gitignore_exception_tracks_only_the_representative_run(self) -> None:
         target = "autoresearch/runs/semantic-routing-representative-20260715/evaluate.py"

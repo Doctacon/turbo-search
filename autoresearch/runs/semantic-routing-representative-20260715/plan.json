@@ -1,6 +1,63 @@
 {
+  "benchmark_bias_analysis": {
+    "descriptor_fields": [
+      "home card title",
+      "home card aliases"
+    ],
+    "match": "complete normalized token phrase",
+    "purpose": "Quantify how often source identity is explicit in the question."
+  },
   "card_count": 13,
   "controls": {
+    "blocked_api_coverage": {
+      "path_mutation_apis": [
+        "builtins.open(write modes)",
+        "io.open(write modes)",
+        "os.open(write flags)",
+        "os.ftruncate",
+        "os.symlink",
+        "os.remove",
+        "os.unlink",
+        "os.rmdir",
+        "os.mkdir",
+        "os.mkfifo",
+        "os.mknod",
+        "os.truncate",
+        "os.chmod",
+        "os.chown",
+        "os.lchown",
+        "os.utime",
+        "os.replace",
+        "os.rename",
+        "os.link"
+      ],
+      "process_apis": [
+        "subprocess.Popen",
+        "os.system",
+        "os.spawnl",
+        "os.spawnle",
+        "os.spawnlp",
+        "os.spawnlpe",
+        "os.spawnv",
+        "os.spawnve",
+        "os.spawnvp",
+        "os.spawnvpe",
+        "os.posix_spawn",
+        "os.posix_spawnp",
+        "os.fork",
+        "os.forkpty"
+      ],
+      "socket_apis": [
+        "socket.create_connection",
+        "socket.getaddrinfo",
+        "socket.socket.connect",
+        "socket.socket.connect_ex",
+        "socket.socket.send",
+        "socket.socket.sendall",
+        "socket.socket.sendto",
+        "socket.socket.sendmsg"
+      ]
+    },
     "credential_environment_removed": [
       "ANTHROPIC_API_KEY",
       "COHERE_API_KEY",
@@ -9,8 +66,16 @@
       "OPENAI_API_KEY",
       "TURBOPUFFER_API_KEY"
     ],
+    "external_processes_allowed": false,
+    "forbidden_client_modules": [
+      "turbopuffer",
+      "openai",
+      "anthropic",
+      "cohere"
+    ],
     "hosted_api_allowed": false,
     "model_cache_writable": false,
+    "model_snapshot_manifest_equality_required": true,
     "network_allowed": false,
     "offline_environment": {
       "HF_DATASETS_OFFLINE": "1",
@@ -20,7 +85,6 @@
       "TRANSFORMERS_OFFLINE": "1"
     },
     "result_overwrite_requires_flag": "--replace-result",
-    "socket_connections_rejected": true,
     "temporary_directory": {
       "ephemeral": true,
       "path": ".semantic-routing-tmp",

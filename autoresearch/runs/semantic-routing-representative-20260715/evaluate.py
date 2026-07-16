@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import shutil
 import socket
+import subprocess
 import sys
 import time
 import unicodedata
@@ -49,6 +50,7 @@ CREDENTIAL_ENV = {
     "ANTHROPIC_API_KEY",
     "COHERE_API_KEY",
 }
+FORBIDDEN_CLIENT_MODULES = ("turbopuffer", "openai", "anthropic", "cohere")
 DATASETS = {
     "black": ("github-psf-black-v1", "src/buoy_search/data/black_repo_search_seed_evals.json", 5),
     "buoy": ("github-doctacon-buoy-search-v1", "src/buoy_search/data/buoy_search_repo_search_seed_evals.json", 10),
@@ -175,11 +177,58 @@ def hybrid_rank(
     ]
 
 
+def routed_top_five(ranking: Sequence[Mapping[str, object]]) -> list[Mapping[str, object]]:
+    """Apply the experiment's fixed route fan-out before recording or scoring."""
+    return list(ranking[:ROUTE_FAN_OUT])
+
+
 def home_rank(ranking: Sequence[Mapping[str, object]], namespace: str) -> int | None:
     for item in ranking:
         if item["namespace"] == namespace:
             return int(item["rank"])
     return None
+
+
+def benchmark_bias(
+    cards: Sequence[Mapping[str, object]], questions: Sequence[Mapping[str, str]]
+) -> dict[str, object]:
+    cards_by_repo = {str(card["repo_key"]): card for card in cards}
+    descriptor_free_cases: list[dict[str, str]] = []
+    explicit_cases: list[dict[str, object]] = []
+    for question in questions:
+        card = cards_by_repo[question["repo_key"]]
+        descriptors = {
+            descriptor
+            for value in (card["title"], *card["aliases"])
+            if (descriptor := normalize(str(value)))
+        }
+        normalized_question = normalize(question["question"])
+        matched = sorted(
+            descriptor for descriptor in descriptors if contains_phrase(normalized_question, descriptor)
+        )
+        if matched:
+            explicit_cases.append(
+                {
+                    "identity": question["identity"],
+                    "repo_key": question["repo_key"],
+                    "case_id": question["case_id"],
+                    "matched_home_descriptors": matched,
+                }
+            )
+        else:
+            descriptor_free_cases.append(dict(question))
+    return {
+        "method": "Complete normalized phrase match against the home card title and aliases only.",
+        "evaluated_count": len(questions),
+        "home_title_or_alias_present_count": len(explicit_cases),
+        "descriptor_free_count": len(descriptor_free_cases),
+        "home_descriptor_cases": explicit_cases,
+        "descriptor_free_cases": descriptor_free_cases,
+        "interpretation": (
+            "Most cases are explicit-name source attribution. The descriptor-free subset has cross-home "
+            "ambiguity and is not a clean semantic-routing benchmark."
+        ),
+    }
 
 
 def aggregate_metrics(cases: Sequence[Mapping[str, object]]) -> dict[str, object]:
@@ -337,34 +386,113 @@ def _allowed_path(path: object, roots: Sequence[Path]) -> bool:
     return any(resolved == root or resolved.is_relative_to(root) for root in roots)
 
 
+SOCKET_METHOD_GUARDS = tuple(
+    name for name in ("connect", "connect_ex", "send", "sendall", "sendto", "sendmsg") if hasattr(socket.socket, name)
+)
+PROCESS_OS_GUARDS = tuple(
+    name
+    for name in (
+        "system",
+        "spawnl",
+        "spawnle",
+        "spawnlp",
+        "spawnlpe",
+        "spawnv",
+        "spawnve",
+        "spawnvp",
+        "spawnvpe",
+        "posix_spawn",
+        "posix_spawnp",
+        "fork",
+        "forkpty",
+    )
+    if hasattr(os, name)
+)
+ONE_PATH_MUTATION_GUARDS = tuple(
+    name
+    for name in (
+        "remove",
+        "unlink",
+        "rmdir",
+        "mkdir",
+        "mkfifo",
+        "mknod",
+        "truncate",
+        "chmod",
+        "chown",
+        "lchown",
+        "utime",
+        "setxattr",
+        "removexattr",
+    )
+    if hasattr(os, name)
+)
+TWO_PATH_MUTATION_GUARDS = tuple(name for name in ("replace", "rename", "link") if hasattr(os, name))
+
+
+def guard_coverage() -> dict[str, list[str]]:
+    return {
+        "socket_apis": [
+            "socket.create_connection",
+            "socket.getaddrinfo",
+            *(f"socket.socket.{name}" for name in SOCKET_METHOD_GUARDS),
+        ],
+        "process_apis": ["subprocess.Popen", *(f"os.{name}" for name in PROCESS_OS_GUARDS)],
+        "path_mutation_apis": [
+            "builtins.open(write modes)",
+            "io.open(write modes)",
+            "os.open(write flags)",
+            "os.ftruncate",
+            "os.symlink",
+            *(f"os.{name}" for name in ONE_PATH_MUTATION_GUARDS),
+            *(f"os.{name}" for name in TWO_PATH_MUTATION_GUARDS),
+        ],
+    }
+
+
+def imported_forbidden_clients() -> list[str]:
+    return sorted(
+        module_name
+        for module_name in FORBIDDEN_CLIENT_MODULES
+        if any(name == module_name or name.startswith(f"{module_name}.") for name in sys.modules)
+    )
+
+
 @contextmanager
 def execution_guards(run_dir: Path, temp_dir: Path) -> Iterable[None]:
-    """Reject sockets and filesystem mutations outside the two allowed roots."""
+    """Reject network/process escape and mutations outside the two allowed roots."""
     roots = (run_dir.resolve(), temp_dir.resolve())
-    original_connect = socket.socket.connect
-    original_connect_ex = socket.socket.connect_ex
+    socket_originals = {name: getattr(socket.socket, name) for name in SOCKET_METHOD_GUARDS}
     original_create_connection = socket.create_connection
     original_getaddrinfo = socket.getaddrinfo
+    original_popen = subprocess.Popen
+    process_originals = {name: getattr(os, name) for name in PROCESS_OS_GUARDS}
     original_open = builtins.open
     original_io_open = io.open
     original_os_open = os.open
-    originals = {
-        "replace": os.replace,
-        "rename": os.rename,
-        "remove": os.remove,
-        "unlink": os.unlink,
-        "rmdir": os.rmdir,
-        "mkdir": os.mkdir,
-    }
+    original_ftruncate = os.ftruncate
+    original_symlink = os.symlink
+    one_path_originals = {name: getattr(os, name) for name in ONE_PATH_MUTATION_GUARDS}
+    two_path_originals = {name: getattr(os, name) for name in TWO_PATH_MUTATION_GUARDS}
 
-    def reject_socket(*_args: object, **_kwargs: object) -> object:
+    def reject_network(*_args: object, **_kwargs: object) -> object:
         raise ExperimentError("Network access is forbidden by the semantic-routing experiment socket guard.")
+
+    def reject_process(*_args: object, **_kwargs: object) -> object:
+        raise ExperimentError("External process launch is forbidden by the semantic-routing experiment guard.")
 
     def check_path(path: object) -> None:
         if isinstance(path, int):
-            return
+            try:
+                path = os.readlink(f"/dev/fd/{path}")
+            except OSError as exc:
+                raise ExperimentError("File-descriptor mutation cannot be proven inside the write allowlist.") from exc
         if not _allowed_path(path, roots):
             raise ExperimentError(f"Write outside experiment allowlist is forbidden: {path}")
+
+    def reject_dir_fd(name: str, kwargs: Mapping[str, object]) -> None:
+        if any(key.endswith("dir_fd") and value is not None for key, value in kwargs.items()):
+            raise ExperimentError(f"{name} with dir_fd is forbidden by the path guard.")
 
     def guarded_open(file: object, mode: str = "r", *args: object, **kwargs: object) -> object:
         if any(marker in mode for marker in ("w", "a", "x", "+")):
@@ -384,53 +512,70 @@ def execution_guards(run_dir: Path, temp_dir: Path) -> Iterable[None]:
             check_path(path)
         return original_os_open(path, flags, mode, dir_fd=dir_fd)
 
+    def guarded_ftruncate(fd: int, length: int) -> None:
+        check_path(fd)
+        original_ftruncate(fd, length)
+
     def guarded_one_path(name: str) -> Callable[..., object]:
-        original = originals[name]
+        original = one_path_originals[name]
 
         def call(path: object, *args: object, **kwargs: object) -> object:
-            if kwargs.get("dir_fd") is not None:
-                raise ExperimentError(f"{name} with dir_fd is forbidden by the path guard.")
+            reject_dir_fd(name, kwargs)
             check_path(path)
             return original(path, *args, **kwargs)
 
         return call
 
     def guarded_two_paths(name: str) -> Callable[..., object]:
-        original = originals[name]
+        original = two_path_originals[name]
 
         def call(source: object, destination: object, *args: object, **kwargs: object) -> object:
-            if kwargs.get("src_dir_fd") is not None or kwargs.get("dst_dir_fd") is not None:
-                raise ExperimentError(f"{name} with dir_fd is forbidden by the path guard.")
+            reject_dir_fd(name, kwargs)
             check_path(source)
             check_path(destination)
             return original(source, destination, *args, **kwargs)
 
         return call
 
-    socket.socket.connect = reject_socket  # type: ignore[method-assign]
-    socket.socket.connect_ex = reject_socket  # type: ignore[method-assign]
-    socket.create_connection = reject_socket
-    socket.getaddrinfo = reject_socket
+    def guarded_symlink(source: object, destination: object, *args: object, **kwargs: object) -> object:
+        reject_dir_fd("symlink", kwargs)
+        check_path(destination)
+        return original_symlink(source, destination, *args, **kwargs)
+
+    for name in SOCKET_METHOD_GUARDS:
+        setattr(socket.socket, name, reject_network)
+    socket.create_connection = reject_network
+    socket.getaddrinfo = reject_network
+    subprocess.Popen = reject_process  # type: ignore[assignment]
+    for name in PROCESS_OS_GUARDS:
+        setattr(os, name, reject_process)
     builtins.open = guarded_open
     io.open = guarded_io_open
     os.open = guarded_os_open
-    os.replace = guarded_two_paths("replace")
-    os.rename = guarded_two_paths("rename")
-    os.remove = guarded_one_path("remove")
-    os.unlink = guarded_one_path("unlink")
-    os.rmdir = guarded_one_path("rmdir")
-    os.mkdir = guarded_one_path("mkdir")
+    os.ftruncate = guarded_ftruncate
+    os.symlink = guarded_symlink
+    for name in ONE_PATH_MUTATION_GUARDS:
+        setattr(os, name, guarded_one_path(name))
+    for name in TWO_PATH_MUTATION_GUARDS:
+        setattr(os, name, guarded_two_paths(name))
     try:
         yield
     finally:
-        socket.socket.connect = original_connect  # type: ignore[method-assign]
-        socket.socket.connect_ex = original_connect_ex  # type: ignore[method-assign]
+        for name, original in socket_originals.items():
+            setattr(socket.socket, name, original)
         socket.create_connection = original_create_connection
         socket.getaddrinfo = original_getaddrinfo
+        subprocess.Popen = original_popen
+        for name, original in process_originals.items():
+            setattr(os, name, original)
         builtins.open = original_open
         io.open = original_io_open
         os.open = original_os_open
-        for name, original in originals.items():
+        os.ftruncate = original_ftruncate
+        os.symlink = original_symlink
+        for name, original in one_path_originals.items():
+            setattr(os, name, original)
+        for name, original in two_path_originals.items():
             setattr(os, name, original)
 
 
@@ -499,15 +644,23 @@ def build_plan(model_files: Sequence[Mapping[str, object]]) -> dict[str, object]
         "strategies": ["oracle", "lexical", "semantic", "hybrid_rrf"],
         "rrf_k": RRF_K,
         "route_fan_out": ROUTE_FAN_OUT,
+        "benchmark_bias_analysis": {
+            "descriptor_fields": ["home card title", "home card aliases"],
+            "match": "complete normalized token phrase",
+            "purpose": "Quantify how often source identity is explicit in the question.",
+        },
         "controls": {
             "network_allowed": False,
+            "external_processes_allowed": False,
             "hosted_api_allowed": False,
             "turbopuffer_allowed": False,
             "credential_environment_removed": sorted(CREDENTIAL_ENV),
             "offline_environment": OFFLINE_ENV,
-            "socket_connections_rejected": True,
+            "blocked_api_coverage": guard_coverage(),
             "write_roots": ["experiment directory", "process-owned ephemeral temporary directory"],
             "model_cache_writable": False,
+            "model_snapshot_manifest_equality_required": True,
+            "forbidden_client_modules": list(FORBIDDEN_CLIENT_MODULES),
             "temporary_directory": {"path": ".semantic-routing-tmp", "ephemeral": True, "removed_after_run": True},
             "result_overwrite_requires_flag": "--replace-result",
         },
@@ -556,11 +709,12 @@ def evaluate(
             ("semantic", semantic),
             ("hybrid_rrf", hybrid),
         ):
+            routed_ranking = routed_top_five(ranking)
             strategy_cases[strategy].append(
                 {
                     **question,
-                    "rankings": ranking,
-                    "home_namespace_rank": home_rank(ranking, question["home_namespace"]),
+                    "rankings": routed_ranking,
+                    "home_namespace_rank": home_rank(routed_ranking, question["home_namespace"]),
                 }
             )
     return {
@@ -594,7 +748,25 @@ def render_report(result: Mapping[str, object]) -> str:
             f"{float(aggregate['recall_at_3']):.6f} | {float(aggregate['recall_at_5']):.6f} | "
             f"{aggregate['unranked_count']} | {aggregate['evaluated_count']} |"
         )
-    lines.extend(["", "Route fan-out is fixed at five for reporting; no promotion threshold is defined.", ""])
+    bias = result["benchmark_bias"]
+    assert isinstance(bias, Mapping)
+    lines.extend(
+        [
+            "",
+            "Every recorded route ranking is truncated to the fixed fan-out of five before home-rank and metric calculation; no promotion threshold is defined.",
+            "",
+            "## Benchmark source-revealing bias",
+            "",
+            f"- Questions containing a complete home-card title or alias: `{bias['home_title_or_alias_present_count']}/{bias['evaluated_count']}`.",
+            f"- Descriptor-free questions: `{bias['descriptor_free_count']}/{bias['evaluated_count']}`.",
+            "- This basket is therefore largely explicit-name attribution. The descriptor-free subset has cross-home ambiguity and is not a clean semantic-routing benchmark.",
+            "",
+            "Descriptor-free cases:",
+        ]
+    )
+    for case in bias["descriptor_free_cases"]:
+        lines.append(f"- `{case['identity']}` — {case['question']}")
+    lines.append("")
     for strategy in ("oracle", "lexical", "semantic", "hybrid_rrf"):
         payload = strategies[strategy]
         metrics = payload["metrics"]  # type: ignore[index]
@@ -619,8 +791,10 @@ def render_report(result: Mapping[str, object]) -> str:
             "## Safety and provenance",
             "",
             f"- Model: `{MODEL_ID}` at immutable revision `{MODEL_REVISION}`, loaded with `local_files_only=True`.",
-            "- Socket connection calls were blocked, credential variables were removed, offline controls were set, and writes were limited to this run directory plus an ephemeral process-owned temporary directory.",
-            "- No Turbopuffer, hosted API, model download, production-state mutation, or downstream cross-namespace retrieval ran.",
+            "- The run completed without a guard violation. Configured guards blocked the exact socket, process-launch, and path-mutation APIs listed in `plan.json` and `result.json`; this is guard coverage, not OS-wide activity instrumentation.",
+            "- Credential environment variables were absent, implicit token use was disabled, and no forbidden Turbopuffer or hosted-client module was imported.",
+            "- The model snapshot SHA-256 manifest was identical before and after model construction and evaluation.",
+            "- No downstream cross-namespace retrieval ran, and no absent cross-namespace hits were fabricated.",
             "- The model snapshot SHA-256 manifest and immutable input hashes are recorded in `plan.json`.",
             "",
             "## Limitations",
@@ -660,11 +834,20 @@ def run(*, replace_result: bool = False) -> dict[str, object]:
     try:
         prepare_environment(TEMP_DIR, snapshot)
         with execution_guards(RUN_DIR, TEMP_DIR):
-            manifest = model_manifest(snapshot)
+            manifest_before = model_manifest(snapshot)
+            forbidden_before = imported_forbidden_clients()
+            if forbidden_before:
+                raise ExperimentError(f"Forbidden client module imported before model construction: {forbidden_before}")
             model = construct_model()
-            plan = build_plan(manifest)
+            plan = build_plan(manifest_before)
             write_json(PLAN_PATH, plan)
             strategies = evaluate(cards, questions, model)
+            manifest_after = model_manifest(snapshot)
+            if manifest_after != manifest_before:
+                raise ExperimentError("Pinned model snapshot manifest changed during guarded execution.")
+            forbidden_after = imported_forbidden_clients()
+            if forbidden_after:
+                raise ExperimentError(f"Forbidden client module imported during guarded execution: {forbidden_after}")
             result = {
                 "experiment_id": "semantic-routing-representative-20260715",
                 "status": "completed",
@@ -674,16 +857,25 @@ def run(*, replace_result: bool = False) -> dict[str, object]:
                 "route_fan_out": ROUTE_FAN_OUT,
                 "rrf_k": RRF_K,
                 "strategies": strategies,
+                "benchmark_bias": benchmark_bias(cards, questions),
                 "runtime": {"duration_seconds": time.monotonic() - started},
                 "safety": {
-                    "network_calls": 0,
-                    "turbopuffer_calls": 0,
-                    "hosted_api_calls": 0,
-                    "credentials_used": False,
-                    "model_downloads": 0,
-                    "external_writes": 0,
-                    "model_cache_writes": 0,
+                    "guarded_execution_completed_without_violation": True,
+                    "blocked_api_coverage": guard_coverage(),
+                    "offline_environment_verified": {
+                        name: os.environ.get(name) == value for name, value in OFFLINE_ENV.items()
+                    },
+                    "credential_environment_absent": {
+                        name: name not in os.environ for name in sorted(CREDENTIAL_ENV)
+                    },
+                    "forbidden_client_modules": list(FORBIDDEN_CLIENT_MODULES),
+                    "forbidden_client_modules_imported": forbidden_after,
+                    "model_snapshot_manifest_equal_before_after": manifest_after == manifest_before,
+                    "model_cache_outside_write_allowlist": True,
+                    "write_roots": ["experiment directory", "process-owned ephemeral temporary directory"],
+                    "ephemeral_temporary_directory_cleanup": "performed in finally after artifact writing",
                     "cross_namespace_hits_fabricated": False,
+                    "scope_note": "These fields report configured Python guard coverage and successful completion, not OS-wide activity counters.",
                 },
             }
             write_json(RESULT_PATH, result)
