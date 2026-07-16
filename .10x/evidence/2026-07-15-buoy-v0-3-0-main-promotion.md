@@ -78,7 +78,7 @@ No `v0.3.0` tag or GitHub Release existed during this post-merge record pass.
 4. Compared the release merge tree byte-for-byte with release-prepared develop and ran diff hygiene checks.
 5. Queried GitHub Actions workflow/check-run metadata for sync PR, fresh release PR head, develop push, and exact main push.
 6. Verified remote branch ancestry/divergence and absent v0.3.0 tag/Release.
-7. Changed only durable promotion records; performed no GitHub mutation.
+7. Changed, committed, and pushed only durable promotion records on the existing work branch; performed no protected-branch or release mutation.
 
 ## What this supports or challenges
 
@@ -86,7 +86,7 @@ This supports every technical and hosted acceptance claim for protected promotio
 
 ## External-side-effect boundary
 
-This records already-completed PR merges. This record pass performed only Git fetches and read-only GitHub/API queries plus commits to the existing records work branch. It did not mutate main/develop, merge a PR, create/push a tag, approve an environment, create a GitHub Release, publish to PyPI, change protection, expose credentials, or contact Turbopuffer.
+This records already-completed PR merges. This record pass performed only Git fetches, read-only GitHub/API queries, and the explicitly requested commit/push to the existing records work branch. It did not mutate main/develop, merge a PR, create/push a tag, approve an environment, create a GitHub Release, publish to PyPI, change protection, expose credentials, or contact Turbopuffer.
 
 ## Limits
 
