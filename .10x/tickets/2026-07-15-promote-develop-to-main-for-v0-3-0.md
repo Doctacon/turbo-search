@@ -1,8 +1,8 @@
-Status: blocked
+Status: open
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
-Depends-On: .10x/tickets/2026-07-15-prepare-buoy-v0-3-0.md
+Depends-On: .10x/tickets/done/2026-07-15-prepare-buoy-v0-3-0.md
 
 # Promote Develop to Main for v0.3.0
 
@@ -39,6 +39,6 @@ Pre/post commit graph, PR/check URLs, merge method/parents, main push CI, diff s
 
 ## Blockers
 
-Release preparation dependency only.
+None. Release preparation completed and passed hosted checks.
 
 ## Progress and notes

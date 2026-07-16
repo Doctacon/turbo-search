@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-15
 Updated: 2026-07-15
-Relates-To: .10x/tickets/2026-07-15-prepare-buoy-v0-3-0.md, .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
+Relates-To: .10x/tickets/done/2026-07-15-prepare-buoy-v0-3-0.md, .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
 
 # Buoy v0.3.0 Preparation
 

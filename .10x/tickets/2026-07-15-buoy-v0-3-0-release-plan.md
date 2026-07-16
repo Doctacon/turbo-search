@@ -12,7 +12,7 @@ Release the integrated production semantic-routing work as GitHub-only Buoy v0.3
 
 ## Child sequence
 
-1. `.10x/tickets/2026-07-15-prepare-buoy-v0-3-0.md`
+1. `.10x/tickets/done/2026-07-15-prepare-buoy-v0-3-0.md`
 2. `.10x/tickets/2026-07-15-promote-develop-to-main-for-v0-3-0.md`
 3. `.10x/tickets/2026-07-15-create-buoy-v0-3-0-github-release.md`
 4. `.10x/tickets/2026-07-15-finalize-buoy-v0-3-0-changelog.md`
@@ -42,3 +42,5 @@ Children are strictly sequential. The parent is not executable.
 
 - 2026-07-15: User selected v0.3.0 rather than merge-only or v0.2.2, and selected retaining deprecated command/environment aliases through 0.3 with removal target moved to 0.4.
 - 2026-07-15: Current remote divergence is one main-only release merge commit and sixteen develop-only integration commits; release preparation must preserve ancestry rather than flatten it.
+
+- 2026-07-15: Preparation child completed after local, independent, and hosted validation; PR #21 awaits integration. Promotion child is unblocked after integration.
