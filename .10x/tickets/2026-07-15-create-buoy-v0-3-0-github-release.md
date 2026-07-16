@@ -1,8 +1,8 @@
-Status: blocked
+Status: open
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
-Depends-On: .10x/tickets/2026-07-15-promote-develop-to-main-for-v0-3-0.md
+Depends-On: .10x/tickets/done/2026-07-15-promote-develop-to-main-for-v0-3-0.md
 
 # Create Buoy v0.3.0 GitHub Release
 
@@ -40,6 +40,6 @@ Preflight observations; tag object/peeled commit; workflow/run/job/deployment id
 
 ## Blockers
 
-Main-promotion dependency only.
+None. Main promotion completed and passed review.
 
 ## Progress and notes

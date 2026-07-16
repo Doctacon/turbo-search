@@ -13,7 +13,7 @@ Release the integrated production semantic-routing work as GitHub-only Buoy v0.3
 ## Child sequence
 
 1. `.10x/tickets/done/2026-07-15-prepare-buoy-v0-3-0.md`
-2. `.10x/tickets/2026-07-15-promote-develop-to-main-for-v0-3-0.md`
+2. `.10x/tickets/done/2026-07-15-promote-develop-to-main-for-v0-3-0.md`
 3. `.10x/tickets/2026-07-15-create-buoy-v0-3-0-github-release.md`
 4. `.10x/tickets/2026-07-15-finalize-buoy-v0-3-0-changelog.md`
 
@@ -43,4 +43,7 @@ Children are strictly sequential. The parent is not executable.
 - 2026-07-15: User selected v0.3.0 rather than merge-only or v0.2.2, and selected retaining deprecated command/environment aliases through 0.3 with removal target moved to 0.4.
 - 2026-07-15: Current remote divergence is one main-only release merge commit and sixteen develop-only integration commits; release preparation must preserve ancestry rather than flatten it.
 
-- 2026-07-15: Preparation child completed after local, independent, and hosted validation; PR #21 awaits integration. Promotion child is unblocked after integration.
+- 2026-07-15: Preparation child completed after local, independent, and hosted validation and was integrated through PR #21.
+- 2026-07-15: Protected promotion completed technically: ancestry-only sync PR #23 produced develop `5658fe4cc5c12b80d8fd64aa7963f5f1907133db`; release PR #22 produced main `595d157177bd032c20cf6e6c0112ee6b43212a88`; exact main push CI passed. Promotion child remains active pending parent durable review/closure before release publication is unblocked. Evidence: `.10x/evidence/2026-07-15-buoy-v0-3-0-main-promotion.md`.
+
+- 2026-07-15: Main promotion completed through protected ancestry-sync PR #23 and merge-commit release PR #22. Main is `595d157`; release publication child is unblocked.
