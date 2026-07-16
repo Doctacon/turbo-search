@@ -1,8 +1,8 @@
-Status: blocked
+Status: open
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
-Depends-On: .10x/tickets/2026-07-15-create-buoy-v0-3-0-github-release.md
+Depends-On: .10x/tickets/done/2026-07-15-create-buoy-v0-3-0-github-release.md
 
 # Finalize Buoy v0.3.0 Changelog
 
@@ -33,6 +33,6 @@ Observed hosted release metadata, exact changelog diff, task PR/check URLs, and 
 
 ## Blockers
 
-Hosted v0.3.0 release dependency only.
+None. Hosted v0.3.0 release completed and passed independent review.
 
 ## Progress and notes
