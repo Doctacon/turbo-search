@@ -95,22 +95,22 @@ class ReleaseAutomationTests(unittest.TestCase):
 
     def test_release_requires_remote_annotated_tag_metadata(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be annotated"):
-            verify_remote_annotated_tag("v0.2.1", "commit")
-        verify_remote_annotated_tag("v0.2.1", "tag")
+            verify_remote_annotated_tag("v0.3.0", "commit")
+        verify_remote_annotated_tag("v0.3.0", "tag")
 
     def test_release_checks_accept_only_current_tag_and_exact_assets(self) -> None:
-        self.assertEqual(project_version(), "0.2.1")
-        self.assertEqual(module_version(), "0.2.1")
-        verify_tag("v0.2.1")
+        self.assertEqual(project_version(), "0.3.0")
+        self.assertEqual(module_version(), "0.3.0")
+        verify_tag("v0.3.0")
         with self.assertRaisesRegex(ValueError, "release tag mismatch"):
-            verify_tag("v0.2.0")
+            verify_tag("v0.2.1")
         with tempfile.TemporaryDirectory() as directory:
             dist = Path(directory)
-            for name in ("buoy_search-0.2.1-py3-none-any.whl", "buoy_search-0.2.1.tar.gz"):
+            for name in ("buoy_search-0.3.0-py3-none-any.whl", "buoy_search-0.3.0.tar.gz"):
                 (dist / name).touch()
             self.assertEqual(
                 verify_assets(dist),
-                ["buoy_search-0.2.1-py3-none-any.whl", "buoy_search-0.2.1.tar.gz"],
+                ["buoy_search-0.3.0-py3-none-any.whl", "buoy_search-0.3.0.tar.gz"],
             )
             (dist / "unexpected.txt").touch()
             with self.assertRaisesRegex(ValueError, "release assets mismatch"):
@@ -148,12 +148,28 @@ class ReleaseAutomationTests(unittest.TestCase):
             build_system = tomllib.load(handle)["build-system"]
         self.assertEqual(build_system["requires"], ["hatchling==1.31.0"])
 
-    def test_changelog_records_verified_release(self) -> None:
+    def test_changelog_records_pending_and_verified_releases(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
+        self.assertIn("## [0.3.0] - pending", changelog)
+        self.assertNotIn("[0.3.0]:", changelog)
+        self.assertIn("scheduled for removal in 0.4", changelog)
         self.assertIn("## [0.2.1] - 2026-07-14", changelog)
         self.assertIn("`v0.2.0` tag was preserved without a GitHub Release", changelog)
         self.assertIn("[0.2.1]: https://github.com/Doctacon/buoy-search/releases/tag/v0.2.1", changelog)
         self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy-search/compare/v0.2.1...HEAD", changelog)
+
+    def test_legacy_alias_deprecation_consistently_targets_0_4(self) -> None:
+        sources = {
+            "CLI warning": ROOT / "src" / "buoy_search" / "cli.py",
+            "environment warnings": ROOT / "src" / "buoy_search" / "config.py",
+            "migration guide": ROOT / "docs" / "migrating-to-buoy.md",
+            "changelog": ROOT / "CHANGELOG.md",
+        }
+        for label, path in sources.items():
+            text = path.read_text()
+            self.assertNotIn("removed in 0.3", text, label)
+            self.assertNotIn("removal in 0.3", text, label)
+            self.assertRegex(text, r"remov(?:ed|al) in 0\.4", label)
 
     def test_release_check_cli_rejects_mismatch_without_git_side_effects(self) -> None:
         before = subprocess.run(

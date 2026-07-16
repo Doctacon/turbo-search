@@ -1,0 +1,38 @@
+{
+  "artifact_directory": "/tmp/buoy-v0.3.0-dist",
+  "artifacts": [
+    {
+      "bytes": 158105,
+      "name": "buoy_search-0.3.0-py3-none-any.whl",
+      "sha256": "7e065496344539cc650ee1c0b4a768b7bf2d6a6e743762b87cd58400de7c6b56"
+    },
+    {
+      "bytes": 962860,
+      "name": "buoy_search-0.3.0.tar.gz",
+      "sha256": "8ad6493539b01d11ad65dd79c74a18da1bb81071aea0e3e3b2c24d0193a79fb2"
+    }
+  ],
+  "build_backend": "hatchling==1.31.0",
+  "module_version": "0.3.0",
+  "old_import_package_absent": true,
+  "project_version": "0.3.0",
+  "sdist_entries": 432,
+  "sdist_has_catalog_and_routing": true,
+  "tag_check": "v0.3.0 passed",
+  "tests": {
+    "python_3_11": {
+      "count": 364,
+      "result": "passed"
+    },
+    "python_3_13": {
+      "count": 364,
+      "result": "passed"
+    },
+    "release_and_cli_focused": {
+      "count": 48,
+      "result": "passed"
+    }
+  },
+  "wheel_entries": 44,
+  "wheel_has_catalog_and_routing": true
+}

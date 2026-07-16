@@ -10,7 +10,7 @@ Use `buoy` for new commands:
 uv run buoy --help
 ```
 
-The deprecated `turbo-search` console alias remains available in 0.2 and prints a warning to stderr. It will be removed in 0.3.
+The deprecated `turbo-search` console alias remains available through 0.3 and prints a warning to stderr. It is scheduled for removal in 0.4.
 
 Python imports make a clean break: replace `turbo_search` with `buoy_search`. There is no old import shim.
 

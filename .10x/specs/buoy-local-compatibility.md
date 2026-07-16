@@ -6,7 +6,7 @@ Updated: 2026-07-15
 
 ## Purpose and scope
 
-Preserve local state, old plans, and configuration during the Buoy 0.2 rebrand without copying, moving, or silently splitting durable state.
+Preserve local state, old plans, and configuration through Buoy 0.3 without copying, moving, or silently splitting durable state.
 
 ## State-root resolution
 
