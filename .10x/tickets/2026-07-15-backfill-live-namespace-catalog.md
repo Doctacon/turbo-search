@@ -1,4 +1,4 @@
-Status: done
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -68,3 +68,5 @@ None. User ratified read-only remote inventory and local registration in the cur
 ## Retrospective
 
 Prospective registration is not operational migration. When a new local authority is introduced over pre-existing remote resources, delivery must either include a provenance-safe backfill or explicitly state that the catalog starts empty. The backfill preserved the stricter rule: live existence alone never supplies semantic or compatibility authority.
+
+- 2026-07-15: Reopened after the user explicitly declared legacy applied state disposable and directed migration to the new default root. Exact inspected scope: preserve the validated two-card catalog, remove the empty catalog lock and 513 MB `.turbo-search/state`, remove `.turbo-search`, and verify default `.buoy/catalog.json` behavior without credentials or remote calls. No pending recovery files exist and `.buoy` was absent before migration.
