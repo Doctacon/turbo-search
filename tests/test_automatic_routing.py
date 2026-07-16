@@ -119,6 +119,16 @@ def run_cli(args: list[str], *, env: dict[str, str] | None = None) -> tuple[int,
     return result, stdout.getvalue(), stderr.getvalue()
 
 
+def run_cli_with_environment(
+    args: list[str], environment: dict[str, str]
+) -> tuple[int, str, str]:
+    stdout = StringIO()
+    stderr = StringIO()
+    with patch.object(os, "environ", environment), redirect_stdout(stdout), redirect_stderr(stderr):
+        result = main(args)
+    return result, stdout.getvalue(), stderr.getvalue()
+
+
 class RoutingAlgorithmTests(unittest.TestCase):
     def test_eligibility_gates_disabled_and_runtime_incompatible_cards_before_scoring(self) -> None:
         eligible = make_card("eligible", title="ordinary", vector=unit_vector(1))
@@ -251,6 +261,20 @@ class AutomaticRoutingCliTests(unittest.TestCase):
                     "buoy_search.cli.load_catalog": patch("buoy_search.cli.load_catalog", side_effect=AssertionError("catalog loaded")),
                     "buoy_search.cli.load_routing_embedder": patch("buoy_search.cli.load_routing_embedder", side_effect=AssertionError("model loaded")),
                 }
+
+    def test_explicit_namespace_error_precedes_empty_query_while_auto_route_validates_query(self) -> None:
+        with patch("buoy_search.cli.config_from_args", side_effect=AssertionError("config loaded")):
+            result, stdout, stderr = run_cli(["retrieve", "   ", "--json"])
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("--namespace or TURBOPUFFER_NAMESPACE", stderr)
+        self.assertNotIn("non-empty query", stderr)
+
+        with patch("buoy_search.cli.load_catalog", side_effect=AssertionError("catalog loaded")):
+            result, stdout, stderr = run_cli(["retrieve", "   ", "--auto-route", "--json"])
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("non-empty query", stderr)
 
     def test_route_top_k_parser_bounds_are_one_through_ten(self) -> None:
         parser = build_parser()
@@ -542,22 +566,25 @@ class AutomaticRoutingCliTests(unittest.TestCase):
             self.assertEqual(stdout, "")
             self.assertIn("Retrieval failed for namespace 'b-card'", stderr)
 
-    def test_missing_corrupt_empty_or_missing_model_fail_closed_before_live_work(self) -> None:
+    def test_missing_or_corrupt_catalog_and_missing_model_precede_credential_read(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             missing = root / "missing.json"
             corrupt = root / "corrupt.json"
             corrupt.write_text("{", encoding="utf-8")
             for path, expected in ((missing, "no enabled compatible"), (corrupt, "Catalog load failed")):
+                environment = CredentialReadSentinel(
+                    {"TURBOPUFFER_API_KEY": "must-not-be-read"}
+                )
                 with self.subTest(path=path), patch(
                     "buoy_search.cli.load_routing_embedder", side_effect=AssertionError("model loaded")
                 ), patch(
                     "buoy_search.cli.MultiNamespaceRetriever.from_configs",
                     side_effect=AssertionError("live prepared"),
                 ):
-                    result, stdout, stderr = run_cli(
+                    result, stdout, stderr = run_cli_with_environment(
                         ["retrieve", "query", "--auto-route", "--catalog", str(path), "--live", "--json"],
-                        env={"TURBOPUFFER_API_KEY": "test-key"},
+                        environment,
                     )
                 self.assertEqual(result, 2)
                 self.assertEqual(stdout, "")
@@ -565,6 +592,9 @@ class AutomaticRoutingCliTests(unittest.TestCase):
 
             valid = root / "valid.json"
             write_catalog(valid, [make_card("card")])
+            environment = CredentialReadSentinel(
+                {"TURBOPUFFER_API_KEY": "must-not-be-read"}
+            )
             with patch(
                 "buoy_search.cli.load_routing_embedder",
                 side_effect=RuntimeError("not cached; downloads disabled"),
@@ -572,9 +602,9 @@ class AutomaticRoutingCliTests(unittest.TestCase):
                 "buoy_search.cli.MultiNamespaceRetriever.from_configs",
                 side_effect=AssertionError("live prepared"),
             ):
-                result, stdout, stderr = run_cli(
+                result, stdout, stderr = run_cli_with_environment(
                     ["retrieve", "query", "--auto-route", "--catalog", str(valid), "--live", "--json"],
-                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                    environment,
                 )
             self.assertEqual(result, 2)
             self.assertEqual(stdout, "")

@@ -1423,17 +1423,21 @@ def _run_retrieve(args: argparse.Namespace) -> int:
     if not args.auto_route and (args.route_top_k is not None or args.catalog is not None):
         print("--route-top-k and --catalog are valid only with --auto-route.", file=sys.stderr)
         return 2
-    query = args.query.strip()
-    if not query:
-        print("A non-empty query is required for retrieval.", file=sys.stderr)
-        return 2
     if args.auto_route:
+        query = args.query.strip()
+        if not query:
+            print("A non-empty query is required for retrieval.", file=sys.stderr)
+            return 2
         return _run_auto_routed_retrieve(args, query=query)
 
     try:
         namespaces = resolve_retrieval_namespaces(args)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
+        return 2
+    query = args.query.strip()
+    if not query:
+        print("A non-empty query is required for retrieval.", file=sys.stderr)
         return 2
 
     base_config = config_from_args(args)
