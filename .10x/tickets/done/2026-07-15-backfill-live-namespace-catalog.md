@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -72,3 +72,9 @@ Prospective registration is not operational migration. When a new local authorit
 
 - 2026-07-15: Reopened after the user explicitly declared legacy applied state disposable and directed migration to the new default root. Exact inspected scope: preserve the validated two-card catalog, remove the empty catalog lock and 513 MB `.turbo-search/state`, remove `.turbo-search`, and verify default `.buoy/catalog.json` behavior without credentials or remote calls. No pending recovery files exist and `.buoy` was absent before migration.
 - 2026-07-15: Migrated the catalog byte-for-byte to private `.buoy/catalog.json`, then deleted only the authorized 538,263,552-byte old state, old catalog/lock, and empty legacy root. Original default catalog and Oscilar dry-route commands now use `.buoy` without a legacy warning; the revision, file hash, two cards, and Oscilar-first route are unchanged. Credentials were removed and model networking forced offline for all validation. Evidence: `.10x/evidence/2026-07-15-default-buoy-state-root-migration.md`. Ticket remains active pending independent review.
+
+- 2026-07-15: Independent migration review passed after stale acceptance text was corrected. Review: `.10x/reviews/2026-07-15-default-buoy-state-root-migration-review.md`.
+
+## Migration closure
+
+The canonical local catalog now lives at the normal `.buoy/catalog.json` path, the disposable legacy applied state and `.turbo-search` root are absent, default commands are warning-free, and the exact Oscilar route remains correct. The user-authorized loss of applied ledgers may make later approved applies re-upsert rows; no remote state was changed by this migration.
