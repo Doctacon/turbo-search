@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
@@ -43,3 +43,5 @@ Preflight observations; tag object/peeled commit; workflow/run/job/deployment id
 None. Main promotion completed and passed review.
 
 ## Progress and notes
+
+- 2026-07-15: Strict preflight passed at exact reviewed main `595d157177bd032c20cf6e6c0112ee6b43212a88`: project/module/lock are 0.3.0; main push CI run `29537732717` passed; promotion evidence agrees; v0.2.0/v0.2.1 tag objects and v0.2.1 Release are preserved; v0.3.0 local/remote tag, Release, and workflow run are absent; PyPI returned 404; the `release` environment requires `Doctacon` review with self-review allowed; exact-main tag/assets dry checks and wheel/sdist metadata/content inspection passed. No external mutation had occurred at this checkpoint.
