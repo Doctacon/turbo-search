@@ -20,8 +20,9 @@ The user explicitly selected this contract on 2026-07-16: ordinary retrieval alw
 - `--route-top-k` and `--catalog` apply to the default automatic mode without requiring `--auto-route`; they remain invalid with explicit CLI namespaces.
 - No `--no-auto-route` is added. A deliberate CLI namespace is the manual escape hatch.
 - Automatic routing retains eligibility-before-relevance, fixed persisted-vector contracts, local-only preview, default top-three fan-out, fail-closed errors, all-or-nothing live retrieval, and no remote discovery/fallback.
+- Every non-activation choice from the superseded decision remains active: canonical local JSON catalog authority; enabled compatible-card eligibility; hybrid lexical/semantic RRF; persisted vectors refreshed only on semantic/model-contract change; manual semantic and enabled-state preservation; apply precomputation before remote writes; namespace locking; exact pending-state reconciliation/approved abandonment; and no remote catalog, ACL groups, taxonomy, graph, telemetry, or online learning.
 
-This decision supersedes `.10x/decisions/superseded/production-routing-local-catalog.md`.
+This decision supersedes `.10x/decisions/superseded/production-routing-local-catalog.md` only by changing retrieval activation and namespace-environment precedence; it explicitly restates and preserves the remaining catalog/apply architecture.
 
 ## Alternatives considered
 

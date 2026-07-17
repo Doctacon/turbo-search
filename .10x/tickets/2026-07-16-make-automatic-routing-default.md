@@ -26,6 +26,7 @@ Implement `.10x/specs/default-production-namespace-routing.md`:
 - `TURBOPUFFER_NAMESPACE` has no effect and produces no retrieve warning; tests use sentinels to prove it is not read where practical.
 - Existing `--auto-route` commands remain valid and behaviorally equivalent to the new default.
 - Automatic-only controls work without the flag and fail with explicit namespaces.
+- Live/dry-plan conflict remains the first retrieval error; contradictory explicit/automatic options precede namespace-list validation; explicit malformed/duplicate namespace errors precede empty query; automatic whitespace-only query fails before catalog/config/model/credential work.
 - Missing/corrupt/incompatible/empty catalog and missing route model continue to fail closed before credentials or remote calls.
 - Focused and full tests, Python 3.11/3.13 CI, build, docs, and independent review pass.
 
@@ -42,7 +43,7 @@ Removing `--namespace`; removing `--auto-route`; adding `--no-auto-route`; chang
 
 ## Evidence expectations
 
-Argument/precedence matrix, credential/environment sentinels, default dry/live routing fakes, explicit compatibility, fail-closed cases, help/docs, focused/full/hosted checks, and independent review.
+Argument/precedence matrix including live/dry, contradictory modes, duplicate/empty namespaces, and whitespace-only queries; credential/environment sentinels; default dry/live routing fakes; explicit compatibility; fail-closed cases; help/docs; focused/full/hosted checks; and independent review.
 
 ## Blockers
 

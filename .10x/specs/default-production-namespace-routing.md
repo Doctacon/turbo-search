@@ -29,6 +29,14 @@ Activation and precedence rules:
 - CLI catalog path overrides non-empty `BUOY_CATALOG_PATH`, which overrides resolved/default state-root catalog; whitespace-only paths fail configuration;
 - all other environment/deprecation warnings MUST use stderr so JSON stdout remains valid.
 
+Validation and error precedence MUST be deterministic:
+
+1. `--live` combined with `--dry-run` or its `--plan` alias fails before namespace, query, catalog, model, configuration, credential, or remote work;
+2. explicit CLI namespace combined with `--auto-route`, `--route-top-k`, or retrieve `--catalog` fails next, before namespace-list validation;
+3. in explicit mode, empty/duplicate namespace values are validated before the query, preserving existing explicit-command error precedence;
+4. in automatic mode, a query that becomes empty after stripping whitespace fails before catalog resolution, runtime configuration, routing-model construction, credential lookup, or remote work;
+5. after those checks, each selected mode follows its existing fail-closed validation order.
+
 ## Catalog load and eligibility
 
 Before scoring, load and fully validate the catalog under `.10x/specs/production-local-namespace-catalog.md`.
@@ -165,6 +173,14 @@ The actionable fallback is an explicit `--namespace` invocation or local catalog
 - Errors for excluded cards SHOULD report aggregate reason counts, not entire disabled card contents.
 
 ## Acceptance scenarios
+
+### Validation precedence
+
+Given both live and dry/plan mode, when retrieval starts, then that conflict is reported before any namespace, query, catalog, model, configuration, credential, or remote validation.
+
+Given an explicit namespace plus any automatic-only option, when retrieval starts, then the contradictory-mode error is reported before duplicate/empty namespace or query errors.
+
+Given explicit mode with malformed/duplicate namespaces and an empty query, when retrieval starts, then the namespace error retains precedence. Given automatic mode with a whitespace-only query, it fails before catalog path/configuration/model/credential work.
 
 ### Explicit behavior unchanged
 
