@@ -34,6 +34,12 @@ Focused checkpoints covered 36 catalog CLI/backend tests, 22 pending/recovery te
 
 No implementation or test command created a provider client against live state, wrote/read credentials, mutated Turbopuffer, queried content namespaces, or changed canonical `.buoy/catalog.json`. One earlier incomplete test-harness run attempted namespace listing with inherited dummy credentials and failed at authentication before any query result or write; the harness was replaced with injected fakes and hard sentinels before validation.
 
+## Initial live provider finding
+
+After PR #32's initial hosted checks passed, read-only preflight in the cards' exact `gcp-us-central1` region classified the remote catalog as absent and listed four content namespaces. The first approved migration created exact `buoy-routing-catalog-v1` schema and both intended card rows, then post-write verification failed because Turbopuffer 2.4.0 omits absent nullable row extras instead of returning explicit nulls. A catalog-only strong raw inspection observed exactly the two intended deterministic row IDs, 384-dimensional vectors, and every non-null attribute; no content namespace was queried or mutated.
+
+Commit `e83fe90` normalizes omission of exactly `last_plan_id` and `last_apply_id` to application null while preserving strict rejection of every other missing/extra field. Forty-one focused tests and independent review passed. No migration retry has occurred yet; the freeze remains active and hosted checks must pass on the repair before controlled verification retry.
+
 ## What this supports
 
-This supports implementation readiness for hosted PR checks and the subsequent fail-closed live seed/branch verification phase. It does not prove live provider normalization or authorize local catalog deletion before integration and post-merge verification.
+This supports a hosted-check-gated verification retry against the exact already-created two-card remote state. It does not authorize local catalog deletion before integration and post-merge verification.
