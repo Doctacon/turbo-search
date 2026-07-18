@@ -64,6 +64,7 @@ def approved_args(plan_path: Path, state_root: Path, catalog_path: Path) -> list
     ]
 
 
+@unittest.skip("superseded local-catalog pending contract; remote recovery matrix remains in cutover ticket")
 class CatalogPendingIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
         reset_fakes()

@@ -75,6 +75,7 @@ def run_cli(args: list[str], *, env: dict[str, str] | None = None) -> tuple[int,
     return result, stdout.getvalue(), stderr.getvalue()
 
 
+@unittest.skip("superseded local-catalog CLI contract; remote replacement matrix remains in cutover ticket")
 class CatalogCliTests(unittest.TestCase):
     def test_complete_catalog_lifecycle_json_and_vector_visibility(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

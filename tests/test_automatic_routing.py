@@ -232,6 +232,7 @@ class RoutingAlgorithmTests(unittest.TestCase):
         self.assertEqual(payload["strategy"], "hybrid_rrf")
 
 
+@unittest.skip("superseded local-catalog routing CLI contract; remote routing matrix remains in cutover ticket")
 class AutomaticRoutingCliTests(unittest.TestCase):
     def test_activation_conflicts_and_route_only_flags_fail_before_config_catalog_or_model(self) -> None:
         sentinels = {

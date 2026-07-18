@@ -175,6 +175,15 @@ class MigrationState:
     reason: str | None = None
 
 
+@dataclass(frozen=True)
+class RemoteMigrationSnapshot:
+    catalog_exists: bool
+    cards: tuple[NamespaceCard, ...]
+    live_namespace_ids: tuple[str, ...]
+    snapshot_revision: str
+    metrics: ReadMetrics
+
+
 T = TypeVar("T")
 
 
@@ -332,6 +341,53 @@ def read_remote_catalog(
             card_query_pages=first_card_pages + second_card_pages,
             billing=tuple([*first_billing, *second_billing]),
         ),
+    )
+
+
+def read_remote_migration_snapshot(
+    client: RemoteClient,
+    *,
+    region: str,
+    compatibility: CompatibilityContract,
+) -> RemoteMigrationSnapshot:
+    """Read stable remote state while allowing the reserved namespace to be absent."""
+
+    first_ids, first_pages = _list_namespaces(client)
+    second_ids, second_pages = _list_namespaces(client)
+    if first_ids != second_ids:
+        raise RemoteCatalogError("remote namespace listing changed between migration read passes")
+    if REMOTE_CATALOG_NAMESPACE not in first_ids:
+        return RemoteMigrationSnapshot(
+            catalog_exists=False,
+            cards=(),
+            live_namespace_ids=tuple(first_ids),
+            snapshot_revision=catalog_revision([]),
+            metrics=ReadMetrics(first_pages + second_pages, 0, 0, ()),
+        )
+    snapshot = read_remote_catalog(client, region=region, compatibility=compatibility)
+    return RemoteMigrationSnapshot(
+        catalog_exists=True,
+        cards=snapshot.cards,
+        live_namespace_ids=snapshot.live_namespace_ids,
+        snapshot_revision=snapshot.snapshot_revision,
+        metrics=snapshot.metrics,
+    )
+
+
+def read_remote_card_twice(
+    resource: NamespaceResource,
+    *,
+    namespace: str,
+    region: str,
+) -> tuple[NamespaceCard, ...]:
+    """Strongly read one exact remote card twice, returning zero or one stable card."""
+
+    _validate_target_namespace(namespace, allow_reserved=False)
+    return _read_exact_cards_twice(
+        resource,
+        [remote_card_id(namespace)],
+        region=region,
+        allow_missing=True,
     )
 
 
