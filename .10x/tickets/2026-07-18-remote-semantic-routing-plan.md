@@ -37,7 +37,9 @@ ID-only routing; per-content-namespace card rows; local/disk cache; cross-region
 
 - `.10x/decisions/production-routing-remote-catalog.md`
 - `.10x/research/2026-07-18-turbopuffer-remote-routing-catalog.md`
+- `.10x/specs/namespace-routing-card-contract.md`
 - `.10x/specs/remote-turbopuffer-routing-catalog.md`
+- `.10x/specs/remote-routing-catalog-cli.md`
 - `.10x/specs/approved-apply-remote-catalog-registration.md`
 - `.10x/specs/default-remote-namespace-routing.md`
 - `.10x/specs/atomic-remote-catalog-cutover.md`

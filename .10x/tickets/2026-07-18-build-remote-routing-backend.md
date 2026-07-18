@@ -10,7 +10,7 @@ Depends-On: None
 
 Implement only the inert backend primitives in `.10x/specs/remote-turbopuffer-routing-catalog.md` and recovery merge/identity helpers needed by `.10x/specs/approved-apply-remote-catalog-registration.md`:
 
-- provider-neutral canonical card serializer/hash and exact schema constants;
+- provider-neutral canonical card serializer/hash from the active card contract and exact remote schema constants;
 - deterministic ID and row conversion/validation;
 - injected-client namespace listing, metadata normalization, two-pass strong paginated reads, stable snapshot/intersection counts;
 - exact conditional create/update/delete and re-read verification;
@@ -37,6 +37,7 @@ Public catalog/apply/retrieve integration, live migration, local deletion, conte
 
 ## References
 
+- `.10x/specs/namespace-routing-card-contract.md`
 - `.10x/specs/remote-turbopuffer-routing-catalog.md`
 - `.10x/specs/approved-apply-remote-catalog-registration.md`
 - `.10x/research/2026-07-18-turbopuffer-remote-routing-catalog.md`

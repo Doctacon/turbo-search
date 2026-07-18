@@ -14,7 +14,7 @@ Execute `.10x/specs/atomic-remote-catalog-cutover.md` as one cohesive authority 
 - replace approved-apply local card registration/reconcile with the remote contract including safe rebase/accept remote;
 - replace local automatic routing with authenticated live-list/remote-card reads while preserving explicit CLI bypass;
 - update CLI/help/docs/changelog/tests and remove obsolete local catalog paths/modules where no longer used;
-- after implementation review and hosted PR checks, enter the mutation freeze, seed exactly two cards, verify branch behavior, integrate, verify integrated behavior, and delete only the exact bound local catalog/lock.
+- after implementation review and hosted PR checks, enter the mutation freeze, seed exactly two cards through `buoy catalog migrate-local`, verify branch behavior, integrate, verify integrated behavior, and delete only the exact bound local catalog; any lock presence blocks deletion.
 
 The implementation subagent owns code only. Parent/release sessions own live preflight, user-authorized remote writes, protected integration, post-merge verification, local deletion, evidence, review, and closure.
 
@@ -22,7 +22,7 @@ The implementation subagent owns code only. Parent/release sessions own live pre
 
 ### Implementation
 
-- Public catalog CLI, approved apply, automatic routing, outputs, and help satisfy all three active behavior specs.
+- Public catalog CLI, approved apply, automatic routing, outputs, and help satisfy the remote card, backend, CLI, apply, and routing active specs.
 - Apply preview remains local/API-free and labels remote state unknown; approved phases/recovery are exact and replay-safe.
 - Automatic preview uses credentials/read-only remote calls; explicit CLI dry preview remains local.
 - Local path options/environment/read-write code is removed from public authority.
@@ -40,7 +40,7 @@ The implementation subagent owns code only. Parent/release sessions own live pre
 ### Deletion and closure
 
 - Exact bound regular non-symlink local catalog/hash/revision/card revisions and pending/lock state revalidate after integration.
-- Only `/Users/crlough/Code/personal/turbo-search/.buoy/catalog.json` and an exact regular lock if present are deleted; other `.buoy` state is untouched.
+- Only `/Users/crlough/Code/personal/turbo-search/.buoy/catalog.json` is deleted; any lock appearance blocks, and other `.buoy` state is untouched.
 - Post-deletion remote behavior still matches across directories and no local catalog IO remains.
 - Freeze is released; durable evidence enumerates remote reads/writes, billing/counts, affected IDs, integration checks, deletion identity, and no-content-operation boundary.
 - Independent post-cutover review and parent graph closure pass.
@@ -51,7 +51,9 @@ Live content retrieval/evals; content namespace query/write/delete; extra cards;
 
 ## References
 
+- `.10x/specs/namespace-routing-card-contract.md`
 - `.10x/specs/remote-turbopuffer-routing-catalog.md`
+- `.10x/specs/remote-routing-catalog-cli.md`
 - `.10x/specs/approved-apply-remote-catalog-registration.md`
 - `.10x/specs/default-remote-namespace-routing.md`
 - `.10x/specs/atomic-remote-catalog-cutover.md`

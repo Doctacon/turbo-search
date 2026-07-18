@@ -58,7 +58,7 @@ Turbopuffer's implicit `id` attribute MUST be `string`; it is not repeated in th
 | `semantic_hash` | `string` | false | none |
 | `vector_hash` | `string` | false | none |
 
-No full-text, regex, glob, fuzzy, embed, sparse, or second vector index exists. Canonical card/revision/hash/timestamp/URI/type/vector validation is fully restated by implementation tests from the superseded local contract; unknown fields, bool-as-int, non-finite/non-unit vectors, stale hashes, or unsupported values fail.
+No full-text, regex, glob, fuzzy, embed, sparse, or second vector index exists. Every card row MUST satisfy `.10x/specs/namespace-routing-card-contract.md`; unknown fields, bool-as-int, non-finite/non-unit vectors, stale hashes, or unsupported values fail.
 
 The provider-neutral canonical card serializer/hash contract remains independent of the SDK and has JSON golden fixtures. No hosted embedding is used. `catalog list --json` redacts vectors; explicit `show --include-vector --json` is the operator export path.
 

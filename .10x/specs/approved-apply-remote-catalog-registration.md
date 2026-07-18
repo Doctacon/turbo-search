@@ -73,9 +73,11 @@ Identical already-committed card/apply state is idempotent. Zero affected rows i
 
 It preserves current enabled/manual semantics, merges pending verified system/apply fields, recomputes semantic projection locally if semantics changed, writes conditionally against exact current revision, strongly verifies, and removes pending. Any system/lineage change is not rebase-safe.
 
+If the pending base was absence and a manual card was concurrently created, rebase is safe only when the card is valid/manual, same target, source/retrieval fields exactly equal the pending verified candidate, lineage remains null, and all other differences are manual semantics/enabled plus derived fields. It then follows the same preserve/merge/conditional-write path. Otherwise it remains blocked.
+
 ### Approved accept-remote
 
-`catalog reconcile --pending PATH --accept-remote --approve` performs no remote write. It may remove confirmed pending only when the strongly stable remote card is valid for the same target and has a parseable `last_apply_id` timestamp strictly newer than the pending intended apply identity, with non-null different plan/apply IDs. Output must show both identities and state that the newer remote apply is accepted as superseding. Otherwise fail without removal.
+Apply-ID wall clocks are not causal across machines. `catalog reconcile --pending PATH --accept-remote --approve --expected-remote-revision REV` performs no remote write and makes no automatic newer-state claim. It may remove confirmed pending only when two strong reads return the exact operator-supplied revision, the card is valid for the same target, and it has non-null plan/apply identities different from the pending intended identities. Output must show both identity sets and explicitly state that the operator is declaring this exact remote revision authoritative despite unresolved content ordering. Revision drift or missing/matching lineage fails without removal.
 
 `--rebase` and `--accept-remote` are mutually exclusive, require approval, and have distinct JSON actions/exit success. Neither repeats content.
 
@@ -92,7 +94,7 @@ Remote conditional writes are the cross-machine concurrency boundary; no distrib
 - First apply: absence-bound pending, content/state, conditional card create, strong verify, cleanup.
 - Manual/disabled card: semantics/enabled preserved while system/lineage refresh.
 - Concurrent disable/manual edit: original commit conflicts; approved rebase safely preserves it and completes without content replay.
-- Concurrent system/apply change: rebase refuses; strictly newer valid apply can be explicitly accepted remotely and pending cleared.
+- Concurrent system/apply change: rebase refuses; the operator may explicitly accept one exact stable remote revision and clear pending without claiming timestamp causality.
 - Confirmation interruption: exact applied ledger promotes pending; mismatch cannot.
 - Content success/card failure and card success/cleanup failure report truthful recoverable states.
 - Missing credentials/schema/conflict fails at specified phase without silent overwrite.

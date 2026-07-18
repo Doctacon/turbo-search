@@ -43,9 +43,9 @@ Expected pre-cutover identity:
 - Dagster card revision `6b063015a1864c449a31df15f61201903c631a63011801f06163e2d47292ba9c`;
 - Oscilar card revision `4213e01252e99a8b92829fd021933525666bd259a834191216d979739f456ff1`.
 
-Expected lock path: `/Users/crlough/Code/personal/turbo-search/.buoy/catalog.json.lock`; inspection found it absent. If present at cutover it MUST be a regular non-symlink file and acquired non-blocking before deletion. No catalog pending registration may exist. Any mismatch blocks deletion.
+Expected lock path: `/Users/crlough/Code/personal/turbo-search/.buoy/catalog.json.lock`; inspection found it absent. If it exists or appears at either cutover deletion check, deletion MUST block. No process may unlink a lock path while holding or after releasing an inode that could be replaced. No catalog pending registration may exist. Any mismatch blocks deletion.
 
-Delete neither `.buoy` nor any other state. If no lock exists, delete only the exact catalog after all post-merge remote validations. If a lock exists, hold it while revalidating and deleting catalog/lock.
+Delete neither `.buoy` nor any other state. Only when the lock path is absent before and immediately after final catalog identity revalidation may the exact catalog file be deleted. Recheck that the lock remains absent and catalog path absent afterward; otherwise record a blocker without deleting anything else.
 
 ## Seed and cutover sequence
 
@@ -56,7 +56,7 @@ Delete neither `.buoy` nor any other state. If no lock exists, delete only the e
 5. Revalidate local hash/revision and remote stable card set immediately before integration.
 6. Integrate the exact reviewed PR into develop through required checks.
 7. From integrated develop, repeat two-directory remote previews and explicit local dry preview; verify catalog CLI and approved-apply preflight contracts.
-8. Revalidate exact local file/lock/pending state, then delete only the bound local catalog/lock.
+8. Revalidate exact local file identity plus absent lock/pending state, then delete only the bound local catalog file; any lock appearance blocks.
 9. Prove default remote operation no longer reads local state and release freeze.
 10. Record live reads/writes, affected IDs, checks, deletion identity, and limits; close only after independent review.
 
@@ -68,7 +68,7 @@ The user authorized:
 
 - create/update only `buoy-routing-catalog-v1` in `gcp-us-central1` with exactly two card rows;
 - read namespace inventory/catalog metadata/cards for verification;
-- delete only the exact bound local catalog/lock after success.
+- delete only the exact bound local catalog after success; lock presence blocks deletion.
 
 Not authorized: content namespace queries/writes/deletes, extra cards, cross-region operations, remote catalog deletion, live content retrieval/evals, protection changes, or other filesystem deletion.
 
