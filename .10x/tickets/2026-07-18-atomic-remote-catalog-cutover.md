@@ -1,8 +1,8 @@
-Status: blocked
+Status: active
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-remote-semantic-routing-plan.md
-Depends-On: .10x/tickets/2026-07-18-build-remote-routing-backend.md
+Depends-On: .10x/tickets/done/2026-07-18-build-remote-routing-backend.md
 
 # Atomic Remote Catalog Cutover
 
@@ -64,6 +64,8 @@ Implementation fake/request matrices and full/hosted checks; exact live prefligh
 
 ## Blockers
 
-Remote backend dependency only.
+None. The reviewed backend was integrated through PR #31 as `bc8bdc30555e66837288d049c3c4885e3cf1df71`.
 
 ## Progress and notes
+
+- 2026-07-18: Backend dependency closed after passing independent review, 387 integration tests, and hosted Python 3.11/3.13/build checks. Cutover implementation started on `work/atomic-remote-catalog-cutover`; live operations remain gated behind reviewed implementation and fail-closed preflight.
