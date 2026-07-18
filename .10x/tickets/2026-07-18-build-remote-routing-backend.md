@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-remote-semantic-routing-plan.md
@@ -51,3 +51,6 @@ Golden schema/cards, exact captured fake requests/responses, pagination stabilit
 None.
 
 ## Progress and notes
+
+- 2026-07-18: Execution started on `work/build-remote-routing-backend`; active specs, research, current local catalog/card implementation, installed SDK 2.4.0 contracts, and existing tests inspected. Public behavior and live operations remain excluded.
+- 2026-07-18: Implemented inert remote backend; initial Python 3.11/3.13 full suites each passed 382 tests and focused compatibility passed 59. Review repairs expanded coverage to 22 backend tests and added mutation prevalidation, projection-safe rebase, stable accept-remote, 10,000-page/cursor bounds, payload-free provider errors, independent 29-attribute schema/nullability fixture, and zero-eligible management/routing behavior. Post-repair backend 23, compatibility 59, build/compile/diff/reference checks passed; the final exception-chaining repair mechanically proved factory/list/query/write formatted tracebacks omit raw provider payloads. Broader matrices were not rerun per narrow handoff. Evidence: `.10x/evidence/2026-07-18-remote-routing-backend-implementation.md`. Ticket remains active pending final independent review and hosted checks.

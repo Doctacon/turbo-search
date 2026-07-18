@@ -76,7 +76,7 @@ Use installed Turbopuffer SDK-compatible calls with default bounded transport po
    - `include_attributes` exact full attribute list including `vector`;
    - `vector_encoding="float"`;
    - `consistency={"level":"strong"}`.
-5. Reject more than 100 rows, non-increasing IDs, repeated IDs, or a full page whose last ID does not advance.
+5. Reject more than 100 rows, non-increasing IDs, repeated IDs, a full page whose last ID does not advance, repeated namespace-page cursor/signature, or more than 10,000 namespace/card pages per pass.
 6. Perform two complete strong-consistency card passes. Ordered `(id, card_revision)` sequences and computed canonical snapshot revisions must match exactly.
 7. Perform a second complete namespace-list pass and require its sorted ID set to equal the first pass. Any list/card instability fails with no retry/model/content query.
 
@@ -95,7 +95,7 @@ Classifications are mutually exclusive in this order:
 
 Metrics distinguish `listed_total`, `control_plane_count`, `content_live_count`, `card_count`, `stale_target_count`, `missing_card_count`, `disabled_count`, `incompatible_count`, and `eligible_count`. Example after seed: five listed IDs, one control plane, four content-live, two cards, zero stale, two missing, zero disabled/incompatible, two eligible.
 
-Duplicate/corrupt/unsupported rows/schema are fatal rather than classification. Zero eligible cards fails with actionable guidance. Namespace IDs never supply semantics.
+Duplicate/corrupt/unsupported rows/schema are fatal rather than classification. The generic stable read returns a classified snapshot even with zero eligible cards so catalog management can diagnose/repair it. A routing-facing `require_eligible` read MUST fail with actionable guidance when eligible count is zero. Namespace IDs never supply semantics.
 
 ## Exact mutation requests
 
