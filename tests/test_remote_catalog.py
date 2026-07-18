@@ -296,6 +296,17 @@ class StatefulResource(QueryResource):
         raise AssertionError("unexpected write shape")
 
 
+class ProviderRow:
+    """Provider-shaped row object whose serialization omits null attributes."""
+
+    def __init__(self, row: dict[str, object], *, omit: set[str] | None = None) -> None:
+        self.row = row
+        self.omit = omit or set()
+
+    def model_dump(self) -> dict[str, object]:
+        return {key: value for key, value in self.row.items() if key not in self.omit}
+
+
 class RemoteSchemaAndCardTests(unittest.TestCase):
     def test_schema_golden_is_complete_independent_and_normalizes_server_defaults(self) -> None:
         self.assertEqual(len(EXPECTED_REMOTE_SCHEMA), 29)
@@ -347,6 +358,58 @@ class RemoteSchemaAndCardTests(unittest.TestCase):
         half_lineage["last_plan_id"] = "plan-only"
         with self.assertRaisesRegex(RemoteCatalogError, "both IDs null or both non-empty"):
             card_from_remote_row(half_lineage, region=REGION)
+
+    def test_provider_row_with_both_nullable_nulls_omitted_is_normalized(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        provider_row = ProviderRow(
+            card_to_remote_row(card),
+            omit={"last_plan_id", "last_apply_id"},
+        )
+        self.assertEqual(card_from_remote_row(provider_row, region=REGION), card)
+
+    def test_provider_row_with_explicit_nullable_nulls_is_accepted(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        self.assertEqual(
+            card_from_remote_row(ProviderRow(card_to_remote_row(card)), region=REGION),
+            card,
+        )
+
+    def test_provider_row_with_one_nullable_null_omitted_is_normalized(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        provider_row = ProviderRow(card_to_remote_row(card), omit={"last_apply_id"})
+        self.assertEqual(card_from_remote_row(provider_row, region=REGION), card)
+
+    def test_provider_row_with_non_nullable_attribute_omitted_is_rejected(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        provider_row = ProviderRow(card_to_remote_row(card), omit={"title"})
+        with self.assertRaisesRegex(RemoteCatalogError, "missing=\\['title'\\]"):
+            card_from_remote_row(provider_row, region=REGION)
+
+    def test_verification_retry_reads_provider_rows_with_omitted_nulls(self) -> None:
+        first = make_card("site-oscilar-com-v1")
+        second = make_card("site-turbopuffer-com-v1")
+
+        class OmittedNullQueryResource(QueryResource):
+            def query(self, **kwargs: object) -> object:
+                response = super().query(**kwargs)
+                response["rows"] = [
+                    ProviderRow(row, omit={"last_plan_id", "last_apply_id"})
+                    for row in response["rows"]
+                ]
+                return response
+
+        ids = [REMOTE_CATALOG_NAMESPACE, first.namespace, second.namespace]
+        client = FakeClient(
+            [NamespacePage(ids), NamespacePage(ids)],
+            OmittedNullQueryResource([first, second]),
+        )
+        snapshot = read_remote_catalog(
+            client,
+            region=REGION,
+            compatibility=CompatibilityContract(REGION, MODEL, "float32"),
+        )
+        self.assertEqual(snapshot.cards, (first, second))
+        self.assertEqual(snapshot.counts.card_count, 2)
 
     def test_remote_id_and_card_row_round_trip_are_provider_neutral(self) -> None:
         card = make_card("site-oscilar-com-v1")

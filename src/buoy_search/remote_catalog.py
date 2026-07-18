@@ -226,6 +226,10 @@ def card_from_remote_row(row: object, *, region: str) -> NamespaceCard:
     row_id = payload.pop("id", None)
     payload.pop("$dist", None)
     payload.pop("dist", None)
+    # The provider omits requested attributes whose stored value is null.
+    # Only the two application-nullable lineage fields may be reconstructed.
+    payload.setdefault("last_plan_id", None)
+    payload.setdefault("last_apply_id", None)
     if set(payload) != set(REMOTE_CARD_ATTRIBUTES):
         unknown = sorted(set(payload) - set(REMOTE_CARD_ATTRIBUTES))
         missing = sorted(set(REMOTE_CARD_ATTRIBUTES) - set(payload))
