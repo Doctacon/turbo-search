@@ -487,8 +487,9 @@ class CatalogPendingIntegrationTests(unittest.TestCase):
         self.assertEqual(output["read_metrics"]["namespace_list_pages"], 2)
         self.assertEqual(output["request_summary"]["precondition_verification_query_requests"], 2)
         self.assertEqual(output["request_summary"]["total_requests"], 7)
+        self.assertTrue(output["request_summary"]["complete"])
         self.assertEqual(output["request_summary"]["billing"], [])
-        self.assertFalse(output["request_summary"]["billing_complete"])
+        self.assertTrue(output["request_summary"]["billing_complete"])
         self.assertEqual(self.remote.cards[0].last_apply_id, payload["apply_id"])
 
     def test_reconcile_snapshot_failure_after_verified_mutation_is_truthful_and_replay_free(self) -> None:
@@ -514,6 +515,63 @@ class CatalogPendingIntegrationTests(unittest.TestCase):
         self.assertTrue(pending_retained)
         self.assertNotIn("fake-secret", stdout)
         self.assertNotIn('"vector"', stdout)
+
+    def test_reconcile_snapshot_failure_marks_request_accounting_incomplete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path, _payload = self.make_confirmed_pending(Path(tmp))
+            self.remote.snapshot_error_on_call = self.remote.snapshot_calls + 1
+            result, stdout, stderr = self.reconcile(path)
+            output = json.loads(stdout)
+            pending_retained = path.exists()
+
+        self.assertEqual((result, stderr), (2, ""))
+        self.assertEqual(output["read_metrics"], {
+            "namespace_list_pages": None, "metadata_requests": None,
+            "card_query_pages": None, "billing": [],
+        })
+        self.assertEqual(set(output["request_summary"]), {
+            "namespace_list_requests", "metadata_requests", "catalog_page_query_requests",
+            "precondition_verification_query_requests", "mutation_verification_query_requests",
+            "write_requests", "total_requests", "complete", "billing", "billing_complete",
+        })
+        self.assertEqual(output["request_summary"]["precondition_verification_query_requests"], 2)
+        self.assertIsNone(output["request_summary"]["total_requests"])
+        self.assertFalse(output["request_summary"]["complete"])
+        self.assertFalse(output["request_summary"]["billing_complete"])
+        self.assertTrue(pending_retained)
+
+    def test_reconcile_missing_verified_card_uses_completed_snapshot_accounting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path, _payload = self.make_confirmed_pending(Path(tmp))
+
+            def snapshot_without_card(client, *, region: str, compatibility):  # noqa: ANN001
+                snapshot = self.remote.snapshot(client, region=region, compatibility=compatibility)
+                return replace(snapshot, cards=(), eligible_cards=())
+
+            with patch(
+                "buoy_search.catalog_pending.read_remote_catalog",
+                side_effect=snapshot_without_card,
+            ):
+                result, stdout, stderr = self.reconcile(path)
+            output = json.loads(stdout)
+            pending_retained = path.exists()
+
+        self.assertEqual((result, stderr), (2, ""))
+        self.assertTrue(output["catalog_snapshot_complete"])
+        self.assertEqual(output["read_metrics"], {
+            "namespace_list_pages": 2, "metadata_requests": 1,
+            "card_query_pages": 2, "billing": [],
+        })
+        self.assertEqual(set(output["request_summary"]), {
+            "namespace_list_requests", "metadata_requests", "catalog_page_query_requests",
+            "precondition_verification_query_requests", "mutation_verification_query_requests",
+            "write_requests", "total_requests", "complete", "billing", "billing_complete",
+        })
+        self.assertEqual(output["request_summary"]["total_requests"], 7)
+        self.assertTrue(output["request_summary"]["complete"])
+        self.assertTrue(output["request_summary"]["billing_complete"])
+        self.assertFalse(output["pending_cleanup"])
+        self.assertTrue(pending_retained)
 
     def test_safe_rebase_preserves_concurrent_manual_edit_and_disable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -556,13 +556,20 @@ def _reconcile_output(
 ) -> dict[str, Any]:
     read = snapshot.metrics if snapshot else None
     mutation_metrics = mutation.metrics if mutation else None
-    namespace_pages = read.namespace_list_pages if read else 0
-    metadata_requests = read.metadata_requests if read else 0
-    card_pages = read.card_query_pages if read else 0
+    namespace_pages = read.namespace_list_pages if read else None
+    metadata_requests = read.metadata_requests if read else None
+    card_pages = read.card_query_pages if read else None
     verification_requests = mutation_metrics.verification_query_requests if mutation_metrics else 0
     write_requests = mutation_metrics.write_requests if mutation_metrics else 0
     billing = list(read.billing if read else ())
     billing.extend(mutation_metrics.billing if mutation_metrics else ())
+    requests_complete = snapshot is not None
+    total_requests = (
+        namespace_pages + metadata_requests + card_pages
+        + 2 + verification_requests + write_requests
+        if requests_complete
+        else None
+    )
     return {
         "command": "catalog reconcile",
         "catalog_namespace": REMOTE_CATALOG_NAMESPACE,
@@ -583,12 +590,10 @@ def _reconcile_output(
             "precondition_verification_query_requests": 2,
             "mutation_verification_query_requests": verification_requests,
             "write_requests": write_requests,
-            "total_requests": (
-                namespace_pages + metadata_requests + card_pages
-                + 2 + verification_requests + write_requests
-            ),
+            "total_requests": total_requests,
+            "complete": requests_complete,
             "billing": billing,
-            "billing_complete": False,
+            "billing_complete": requests_complete,
         },
         "namespace": desired.namespace,
         "pending_path": str(path),
@@ -692,6 +697,7 @@ def reconcile_pending(
                 result_action = "committed"
         if accepted is None:
             raise RemoteCatalogError("verified reconcile action returned no remote card")
+        snapshot: RemoteCatalogSnapshot | None = None
         try:
             snapshot = read_remote_catalog(client, region=region, compatibility=compatibility)
             snapshot_card = next(
@@ -703,7 +709,7 @@ def reconcile_pending(
             partial = _reconcile_output(
                 path=path, region=region, desired=desired, accepted=accepted,
                 action=result_action, affected_ids=affected_ids, mutation=mutation,
-                snapshot=None, expected_remote_revision=expected_remote_revision,
+                snapshot=snapshot, expected_remote_revision=expected_remote_revision,
             )
             raise CatalogCommitPartialSuccess(str(exc), partial) from exc
         output = _reconcile_output(
