@@ -1,8 +1,10 @@
-Status: active
+Status: superseded
 Created: 2026-07-12
-Updated: 2026-07-12
+Updated: 2026-07-18
 
 # DuckDB Applied-State Concurrency and Retention
+
+Superseded by `.10x/decisions/duckdb-only-applied-state-hard-cutover.md`.
 
 ## Context
 

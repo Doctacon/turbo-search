@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-02
-Updated: 2026-07-14
+Updated: 2026-07-18
 
 # Buoy Site Planning Workflow
 
@@ -35,11 +35,13 @@ uv run buoy plan "https://example.com/" --include-path "/docs/**" --max-pages 10
 uv run buoy plan "https://example.com/" --crawl-strategy hybrid
 ```
 
-After inspecting the plan, preflight with:
+After inspecting the plan, run explicit local-only preflight with:
 
 ```bash
-uv run buoy apply
+uv run buoy apply --dry-run
 ```
+
+For normal interactive execution, plain `uv run buoy apply` performs that preflight, displays it, and prompts `Apply this plan? [y/N]`; only exact `y`/`yes` proceeds. Use `--approve` only for separately authorized non-interactive execution.
 
 Before preflight, inspect `first_apply`, `state_first_apply`, the local state path, prior apply provenance, upsert counts, and stale-row counts. A request to create a new namespace is not authority to refresh an existing deterministic namespace. If the reviewed plan reports prior applied state, pause before any preflight or live write and ask the user to choose among:
 
@@ -47,4 +49,4 @@ Before preflight, inspect `first_apply`, `state_first_apply`, the local state pa
 - refresh the existing namespace under explicitly renewed write authority, with stale-row handling stated separately;
 - create a genuinely new versioned namespace from a new plan targeting that namespace.
 
-Do not infer the choice from the absence of an active ticket or record: local applied state can reveal prior work that project records do not index. Only use `uv run buoy apply --approve` after the selected namespace and exact live-write action are explicit and the plan for that target has been reviewed.
+Do not infer the choice from the absence of an active ticket or record: local applied state can reveal prior work that project records do not index. Only confirm interactive plain apply with `y`/`yes`, or use `uv run buoy apply --approve` non-interactively, after the selected namespace and exact live-write action are explicit and the plan for that target has been reviewed. Enter/no/EOF cancels without writes; plain non-interactive apply is rejected.

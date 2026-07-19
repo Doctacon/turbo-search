@@ -10,15 +10,15 @@ Define default automatic retrieval using live Turbopuffer namespace discovery in
 
 ## Activation
 
-- Without CLI `--namespace`, `buoy retrieve QUERY` MUST automatically route remotely whether or not compatibility flag `--auto-route` is present.
-- Repeatable CLI `--namespace` MUST bypass namespace listing, remote catalog, and routing-model work; explicit dry preview remains credential-free and local.
+- Without CLI `--namespace`, `buoy retrieve QUERY` MUST automatically route remotely whether or not compatibility flag `--auto-route` is present, then execute content retrieval unless a preview flag is present.
+- Repeatable CLI `--namespace` MUST bypass namespace listing, remote catalog, and routing-model work; plain explicit retrieval executes live, while explicit `--dry-run`/`--plan` preview remains credential-free and local.
 - `TURBOPUFFER_NAMESPACE` MUST NOT be read, selected, or warned about by retrieve.
 - `--auto-route` remains accepted and is contradictory with CLI namespaces.
 - `--route-top-k` (default 3, maximum 10) is valid in automatic mode without the flag and invalid with explicit namespaces.
 - Local retrieve `--catalog` and `BUOY_CATALOG_PATH` no longer exist. The remote catalog namespace is fixed, not configurable.
 - No `--no-auto-route` exists.
 
-Existing validation precedence remains: live/dry-plan conflict first; contradictory explicit/automatic options next; explicit namespace-list validation before explicit query; automatic whitespace-only query before configuration/credentials/API work.
+`--dry-run` and compatibility alias `--plan` request preview. `--live` remains accepted as a compatibility no-op for scripts written before live-by-default behavior. `--live` combined with `--dry-run`/`--plan` is contradictory and fails first. Existing validation precedence otherwise remains: contradictory explicit/automatic options next; explicit namespace-list validation before explicit query; automatic whitespace-only query before configuration/credentials/API work.
 
 ## Automatic read sequence
 
@@ -40,7 +40,7 @@ Canonical descriptor normalization, exact phrase lexical scoring, BGE query pref
 
 ## Preview
 
-Automatic retrieval without `--live` is a read-only remote preview, not a local dry run. It MUST:
+Automatic retrieval with `--dry-run` or `--plan` is a read-only remote preview. It MUST:
 
 - require credentials and list/query Turbopuffer;
 - make zero writes and zero content-namespace queries;
@@ -48,11 +48,11 @@ Automatic retrieval without `--live` is a read-only remote preview, not a local 
 - report `credentials_required=true`, read-only API calls occurred, and content retrieval did not occur;
 - never print vectors or credentials.
 
-Explicit CLI namespace preview retains the existing local, credential-free retrieval plan and output shape.
+Explicit CLI namespace preview requires `--dry-run` or `--plan` and retains the existing local, credential-free retrieval plan and output shape.
 
 ## Live retrieval
 
-Automatic `--live` MUST use the exact route produced by the same remote read/routing sequence, then hand ordered per-card configurations to existing `MultiNamespaceRetriever` and downstream cross-namespace RRF. Content query embedding remains once per live retrieval, namespace calls remain sequential/all-or-nothing, and final top-k/namespace-qualified identity remain unchanged.
+Plain automatic retrieval and compatibility `--live` MUST use the exact route produced by the remote read/routing sequence, then hand ordered per-card configurations to existing `MultiNamespaceRetriever` and downstream cross-namespace RRF. Plain explicit namespace retrieval and compatibility `--live` MUST execute the existing explicit live path. Content query embedding remains once per live retrieval, namespace calls remain sequential/all-or-nothing, and final top-k/namespace-qualified identity remain unchanged.
 
 A failure during listing/catalog/routing emits no content result. A failure in any selected content namespace emits no partial result. No fallback to all live namespaces, IDs, stale cards, environment namespace, or explicit mode is allowed.
 
@@ -75,9 +75,11 @@ Existing selected-card score/rank components and retrieval plans remain. Explici
 - Whitespace query fails before credentials/API/model.
 - Missing key fails before client construction.
 - Missing list permission, missing catalog namespace, corrupt schema/card, pagination loop, and API errors fail closed.
-- Explicit CLI namespace dry preview makes no credential/API/catalog/model call.
+- Plain automatic and explicit retrieval execute live; failures never fall back to preview.
+- Explicit CLI namespace `--dry-run`/`--plan` preview makes no credential/API/catalog/model call.
 - Compatibility `--auto-route` produces the same result as default automatic mode.
-- Automatic preview makes read-only list/catalog calls and no writes/content queries.
+- Automatic `--dry-run`/`--plan` preview makes read-only list/catalog calls and no writes/content queries.
+- Compatibility `--live` produces the same live result as plain retrieval and remains contradictory with preview flags.
 - Automatic live route order and downstream retrieval/RRF remain unchanged.
 
 ## Explicit exclusions

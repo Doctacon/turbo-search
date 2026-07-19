@@ -8,9 +8,9 @@ Updated: 2026-07-18
 
 Replace local JSON card commit with revision-bound remote registration while preserving content ordering, manual/enabled ownership, crash truthfulness, replay blocking, and explicit recovery.
 
-## Non-approved preview
+## Preflight and confirmation boundary
 
-`buoy apply` without `--approve` remains local, credential-free, model-free, and API-free. It reports content diff/intent plus `remote_catalog_state=unknown_until_approved`; it cannot claim manual/enabled preservation, expected revision, or final card mutation. This remains coherent with `.10x/specs/apply-to-retrieval-handoff.md`.
+Apply mode selection and interactive confirmation are governed by `.10x/specs/interactive-apply-confirmation.md`. `buoy apply --dry-run` remains local, credential-free, model-free, and API-free. Interactive plain apply performs that complete preflight before prompting; cancellation remains a zero-write success. Preflight reports content diff/intent plus `remote_catalog_state=unknown_until_approved`; it cannot claim manual/enabled preservation, expected revision, or final card mutation. Only `--approve` or interactive `y`/`yes` may enter the approved sequence below. This remains coherent with `.10x/specs/apply-to-retrieval-handoff.md`.
 
 ## Approved lock and local precompute
 
@@ -98,7 +98,7 @@ Remote conditional writes are the cross-machine concurrency boundary; no distrib
 - Confirmation interruption: exact applied ledger promotes pending; mismatch cannot.
 - Content success/card failure and card success/cleanup failure report truthful recoverable states.
 - Missing credentials/schema/conflict fails at specified phase without silent overwrite.
-- Non-approved preview makes zero model/credential/API calls and labels remote fields unknown.
+- `apply --dry-run` and cancelled interactive apply make zero model/credential/API calls and label remote fields unknown; only confirmed interactive or `--approve` execution enters remote preparation.
 - No local catalog JSON is read/written after cutover.
 
 ## Explicit exclusions

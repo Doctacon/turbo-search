@@ -1,12 +1,12 @@
 Status: active
 Created: 2026-07-12
-Updated: 2026-07-12
+Updated: 2026-07-18
 
 # Compact DuckDB Applied State
 
 ## Purpose and scope
 
-Replace the JSON applied-state ledger for Buoy with a compact, per-namespace embedded DuckDB ledger. This specification governs local incremental state, migration, history retention, and concurrent approved applies.
+Define Buoy's compact, per-namespace embedded DuckDB applied-state ledger. This specification governs local incremental state, format authority, history retention, and concurrent confirmed applies.
 
 It does not compact plan artifacts, change crawl/chunk semantics, create or delete Turbopuffer namespaces, add Quack, or enable simultaneous applies to one namespace.
 
@@ -26,13 +26,11 @@ The database MUST contain:
 
 The backend MUST NOT write full per-apply copies of the row ledger. Apply summaries are retained indefinitely.
 
-## Migration
+## Format authority and hard cutover
 
-Given a legacy `last-applied.json` for a state location, the implementation MUST delete it and MUST initialize the matching DuckDB ledger empty. It MUST NOT archive or import legacy rows into active state.
+DuckDB is the only active applied-state format. The implementation MUST NOT discover, read, parse, validate, import, migrate, archive, delete, warn about, or otherwise act on `last-applied.json` or prior `legacy-json/` applied-state artifacts.
 
-This migration policy is intentional for the current Turbopuffer account, which has no matching remote namespaces. The next plan/apply MUST therefore identify every desired row as needing an upsert.
-
-Migration MUST NOT contact Turbopuffer or load embeddings. Existing `legacy-json/` artifacts from the superseded archive behavior are not active state and are eligible for deletion.
+Obsolete JSON applied-state files are inert user-owned files. Their presence or contents MUST NOT affect plan, preflight, confirmation, apply, locking, output, or cleanup. The namespace MUST use normal first-apply behavior only when `state.duckdb` is absent or is a valid initialized empty ledger. An unreadable, corrupt, schema-incompatible, or identity-invalid DuckDB ledger MUST retain the existing fail-closed behavior.
 
 ## Plan behavior
 
@@ -42,26 +40,27 @@ Given equivalent active rows, the DuckDB-backed diff MUST preserve the existing 
 
 ## Approved apply behavior
 
-Before an approved apply performs embeddings or remote writes, it MUST attempt to acquire a non-blocking lock scoped to that `(site_id, namespace)`.
+After apply confirmation and before embeddings, pending-state mutation, or remote writes, confirmed apply MUST attempt to acquire a non-blocking lock scoped to that `(site_id, namespace)`.
 
 - If the lock is already held, the command MUST fail with a clear busy error and MUST perform no Turbopuffer mutation or local-state update.
 - Applies for different namespace paths MUST be able to proceed concurrently.
-- After all approved Turbopuffer operations succeed, the implementation MUST atomically update the local current ledger and append one apply summary in one DuckDB transaction.
-- If Turbopuffer work fails, the local active ledger and apply-run history MUST remain unchanged.
+- After all confirmed content-namespace upsert/delete operations succeed, the implementation MUST atomically update the local current ledger and append one apply summary in one DuckDB transaction.
+- If content-namespace Turbopuffer work fails, the local active ledger and apply-run history MUST remain unchanged.
+- Remote catalog registration occurs after the DuckDB commit and retains the partial-success, pending-state, and recovery contract in `.10x/specs/approved-apply-remote-catalog-registration.md`; this specification MUST NOT move the ledger commit after catalog registration.
 
-The local transaction does not include Turbopuffer. A crash after a remote write and before local commit may result in safe repeat upserts on the next explicitly approved apply.
+The local transaction does not include Turbopuffer. A crash after a remote write and before local commit may result in safe repeat upserts on the next explicitly confirmed apply.
 
 ## Constraints
 
 - `duckdb` MUST be an open-source local dependency.
 - The default backend MUST remain embedded DuckDB; no service, listener, token, or Quack extension is in scope.
-- Existing plan/apply safety gates remain: `plan` and preflight are local-only; remote mutation requires `--approve` and `TURBOPUFFER_API_KEY`.
-- State paths and any legacy state paths remain gitignored.
+- Existing plan/apply safety gates remain: `plan`, `apply --dry-run`, and interactive pre-prompt work are local-only; remote mutation requires either interactive `y`/`yes` confirmation or `--approve`, plus `TURBOPUFFER_API_KEY`.
+- State paths remain gitignored; obsolete JSON files receive no special runtime handling.
 
 ## Acceptance criteria
 
-1. A legacy JSON state is deleted, the resulting DuckDB state is empty, and the next plan reports first-apply/upsert behavior without a Turbopuffer call.
-2. Equivalent active data produces the same diff classification and counts as the existing JSON backend tests.
-3. An approved apply records current rows and one summary only after mocked remote success; a mocked remote failure leaves the database unchanged.
+1. When `state.duckdb` is absent or is a valid initialized empty ledger, plan and apply use identical first-apply behavior whether obsolete JSON applied-state files are present or absent; all such files remain byte-for-byte unchanged. Unreadable, corrupt, schema-incompatible, and identity-invalid DuckDB fixtures retain fail-closed behavior.
+2. Equivalent DuckDB active data produces the established unchanged, new, changed, retained-stale, and stale classifications.
+3. A confirmed apply records current rows and one summary only after mocked content-namespace upsert/delete success; a mocked content-namespace failure leaves the database unchanged. A subsequent remote catalog failure preserves the committed DuckDB state and follows the pending-recovery contract in `.10x/specs/approved-apply-remote-catalog-registration.md`.
 4. Two applies to different namespaces can acquire separate locks; a second apply to one locked namespace fails before the writer is called.
 5. The state backend creates no full row-history snapshots and exposes an inspectable persistent DuckDB file.

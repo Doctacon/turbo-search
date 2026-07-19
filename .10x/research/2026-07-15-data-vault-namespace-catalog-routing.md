@@ -1,6 +1,6 @@
 Status: done
 Created: 2026-07-15
-Updated: 2026-07-15
+Updated: 2026-07-18
 
 # Data Vault Namespace Catalog and Semantic Routing
 
@@ -32,7 +32,7 @@ The requested root `context.md` and `plan.md` were absent from this worktree. Th
 - `.10x/specs/compact-duckdb-applied-state.md`
 - `.10x/specs/plan-artifact-lifecycle-cleanup.md`
 - `.10x/decisions/namespace-ranking-defaults.md`
-- `.10x/decisions/duckdb-applied-state-concurrency-and-retention.md`
+- `.10x/decisions/superseded/duckdb-applied-state-concurrency-and-retention.md`
 - `.10x/decisions/plan-artifact-immediate-lifecycle-retention.md`
 - `.10x/tickets/done/2026-07-14-add-namespace-discovery-command.md`
 - `.10x/tickets/done/2026-07-14-add-explicit-multi-namespace-retrieval.md`
