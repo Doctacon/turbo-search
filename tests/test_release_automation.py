@@ -95,22 +95,22 @@ class ReleaseAutomationTests(unittest.TestCase):
 
     def test_release_requires_remote_annotated_tag_metadata(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be annotated"):
-            verify_remote_annotated_tag("v0.3.0", "commit")
-        verify_remote_annotated_tag("v0.3.0", "tag")
+            verify_remote_annotated_tag("v0.4.0", "commit")
+        verify_remote_annotated_tag("v0.4.0", "tag")
 
     def test_release_checks_accept_only_current_tag_and_exact_assets(self) -> None:
-        self.assertEqual(project_version(), "0.3.0")
-        self.assertEqual(module_version(), "0.3.0")
-        verify_tag("v0.3.0")
+        self.assertEqual(project_version(), "0.4.0")
+        self.assertEqual(module_version(), "0.4.0")
+        verify_tag("v0.4.0")
         with self.assertRaisesRegex(ValueError, "release tag mismatch"):
-            verify_tag("v0.2.1")
+            verify_tag("v0.3.0")
         with tempfile.TemporaryDirectory() as directory:
             dist = Path(directory)
-            for name in ("buoy_search-0.3.0-py3-none-any.whl", "buoy_search-0.3.0.tar.gz"):
+            for name in ("buoy_search-0.4.0-py3-none-any.whl", "buoy_search-0.4.0.tar.gz"):
                 (dist / name).touch()
             self.assertEqual(
                 verify_assets(dist),
-                ["buoy_search-0.3.0-py3-none-any.whl", "buoy_search-0.3.0.tar.gz"],
+                ["buoy_search-0.4.0-py3-none-any.whl", "buoy_search-0.4.0.tar.gz"],
             )
             (dist / "unexpected.txt").touch()
             with self.assertRaisesRegex(ValueError, "release assets mismatch"):
@@ -140,6 +140,8 @@ class ReleaseAutomationTests(unittest.TestCase):
         with (ROOT / "pyproject.toml").open("rb") as handle:
             project = tomllib.load(handle)["project"]
         self.assertEqual(project["license"], "Apache-2.0")
+        self.assertEqual(project["version"], "0.4.0")
+        self.assertEqual(project["scripts"], {"buoy": "buoy_search.cli:main"})
         self.assertIn("Development Status :: 4 - Beta", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.11", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.13", project["classifiers"])
@@ -156,6 +158,9 @@ class ReleaseAutomationTests(unittest.TestCase):
             changelog,
         )
         self.assertIn("scheduled for removal in 0.4", changelog)
+        self.assertIn("Removed\n\n- The deprecated package-owned `turbo-search` console entry point", changelog)
+        self.assertIn("Replace only the executable name with `buoy`", changelog)
+        self.assertIn("does not delete user-created shell aliases", changelog)
         for release_note in (
             "Opt-in float16 corpus and query embedding inference",
             "Read-only `buoy namespaces` discovery",
@@ -169,13 +174,18 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertIn("[0.2.1]: https://github.com/Doctacon/buoy-search/releases/tag/v0.2.1", changelog)
         self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy-search/compare/v0.3.0...HEAD", changelog)
 
-    def test_legacy_alias_deprecation_consistently_targets_0_4(self) -> None:
+    def test_console_alias_is_removed_for_0_4_without_claiming_user_launcher_cleanup(self) -> None:
         cli_source = (ROOT / "src" / "buoy_search" / "cli.py").read_text()
-        self.assertIn(
-            "`turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.",
-            cli_source,
-        )
+        self.assertNotIn("def legacy_main", cli_source)
 
+        migration = (ROOT / "docs" / "migrating-to-buoy.md").read_text()
+        command_section = migration.split("## Command and Python package\n", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("Buoy 0.4 removes the deprecated `turbo-search` console entry point", command_section)
+        self.assertIn("replacing only the executable name", command_section)
+        self.assertIn("arguments, parser behavior, output, and exit codes are unchanged", command_section)
+        self.assertIn("does not delete user-created shell aliases", command_section)
+
+    def test_legacy_environment_alias_deprecation_consistently_targets_0_4(self) -> None:
         migration = (ROOT / "docs" / "migrating-to-buoy.md").read_text()
         environment_section = migration.split("## Environment variables\n", 1)[1].split("\n## ", 1)[0]
         self.assertIn("Through 0.3, the old model and precision variables are accepted", environment_section)

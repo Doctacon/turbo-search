@@ -1,6 +1,6 @@
 [project]
 name = "buoy-search"
-version = "0.3.0"
+version = "0.4.0"
 description = "Plan, index, and search public knowledge sources with anchored citations."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,7 +39,6 @@ Documentation = "https://github.com/Doctacon/buoy-search/tree/main/docs"
 
 [project.scripts]
 buoy = "buoy_search.cli:main"
-turbo-search = "buoy_search.cli:legacy_main"
 
 [build-system]
 requires = ["hatchling==1.31.0"]

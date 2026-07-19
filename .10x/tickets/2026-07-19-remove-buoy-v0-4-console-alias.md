@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-19
 Updated: 2026-07-19
 Parent: .10x/tickets/2026-07-19-buoy-v0-4-compatibility-removal-plan.md
@@ -54,3 +54,4 @@ Environment-alias runtime/config changes; removal of any other compatibility; ar
 ## Progress and notes
 
 - 2026-07-19: Opened from the ratified active console-removal specification. No implementation performed.
+- 2026-07-19: Began bounded implementation on `work/remove-v0-4-console-alias` from `develop` commit `31b355a`; read the governing plan, both active 0.4 compatibility specs, identity/local/precision/release-validation specs, compatibility inventory research, shaping reviews, and immutable v0.3.0 release evidence before changing source.

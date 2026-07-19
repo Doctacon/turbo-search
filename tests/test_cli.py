@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from buoy_search.applied_state import AppliedStateRow, applied_state_paths, build_applied_state, save_applied_state
-from buoy_search.cli import OneLineProgress, build_parser, legacy_main, main, print_eval_text, print_retrieval_text
+from buoy_search.cli import OneLineProgress, build_parser, main, print_eval_text, print_retrieval_text
 from buoy_search.crawler import CrawlExecution, CrawlOptions
 from buoy_search.chunker import process_corpus
 from buoy_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
@@ -211,22 +211,6 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(parser.prog, "buoy")
         self.assertTrue(parser.format_help().startswith("usage: buoy"))
-
-    def test_legacy_cli_warns_on_stderr_without_contaminating_json_stdout(self) -> None:
-        stdout = StringIO()
-        stderr = StringIO()
-
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            result = legacy_main(
-                ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
-            )
-
-        self.assertEqual(result, 0)
-        self.assertEqual(json.loads(stdout.getvalue())["command"], "retrieve")
-        self.assertEqual(
-            stderr.getvalue(),
-            "Warning: `turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.\n",
-        )
 
     def test_legacy_embedding_environment_warning_keeps_json_stdout_clean(self) -> None:
         stdout = StringIO()

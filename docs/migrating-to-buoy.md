@@ -10,7 +10,7 @@ Use `buoy` for new commands:
 uv run buoy --help
 ```
 
-The deprecated `turbo-search` console alias remains available through 0.3 and prints a warning to stderr. It is scheduled for removal in 0.4.
+Buoy 0.4 removes the deprecated `turbo-search` console entry point. Update scripts and commands by replacing only the executable name `turbo-search` with `buoy`; arguments, parser behavior, output, and exit codes are unchanged by this removal. Package upgrades remove the package-owned launcher, but Buoy does not delete user-created shell aliases, copied launchers, wrappers, or caches.
 
 Python imports make a clean break: replace `turbo_search` with `buoy_search`. There is no old import shim.
 

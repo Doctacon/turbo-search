@@ -12,6 +12,10 @@ Notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Catalog lifecycle, approved-apply registration, and recovery now use conditional remote cards with explicit permissions, stable reads, preview-first removal, safe rebase, and operator-approved exact-revision acceptance.
 - Local catalog path options and `BUOY_CATALOG_PATH` were removed. `catalog migrate-local` imports a validated legacy schema-v1 file without modifying it; the bound local cutover catalog is deleted only after post-integration verification.
 
+### Removed
+
+- The deprecated package-owned `turbo-search` console entry point. Replace only the executable name with `buoy`; command arguments and behavior are unchanged, and Buoy does not delete user-created shell aliases, copied launchers, wrappers, or caches.
+
 
 ## [0.3.0] - 2026-07-16
 

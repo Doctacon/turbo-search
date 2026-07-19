@@ -2088,12 +2088,5 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
 
-def legacy_main(argv: Sequence[str] | None = None) -> int:
-    """Run the compatibility alias retained through 0.3 with a bounded warning."""
-
-    print("Warning: `turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.", file=sys.stderr)
-    return main(argv)
-
-
 if __name__ == "__main__":
     raise SystemExit(main())
