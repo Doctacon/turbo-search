@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-19
 Updated: 2026-07-19
 Parent: None
@@ -55,3 +55,4 @@ Any compatibility beyond the three named aliases; arbitrary user-owned launchers
 ## Progress and notes
 
 - 2026-07-19: User ratified the reviewer's exact recommended command boundary, diagnostics, console deletion, upgrade procedure, retained compatibility, and no-side-effect contract. Opened two bounded implementation children; no implementation began.
+- 2026-07-19: Aggregate candidate commit `68477fdca5a5b5f7b890d059c484739f02fc1dd8` non-fast-forward merged both full reviewed child tips onto `31b355a`. Resolved only the shared changelog and CLI-test conflict by retaining both active-spec contracts; automatic shared docs/CLI/release-test reconciliation also retained both child diffs. Local Python 3.11/3.13 suites, exhaustive gate tests, wheel/sdist inspection, clean install, digest-verified released-0.3.0 same-environment upgrade, launcher absence, and diff/reference/history checks passed. Evidence: `.10x/evidence/2026-07-19-buoy-v0-4-compatibility-removal-candidate.md`. Aggregate hosted checks and independent aggregate review remain pending; this non-executable plan stays active.

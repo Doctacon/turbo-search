@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-19
 Updated: 2026-07-19
 Parent: .10x/tickets/2026-07-19-buoy-v0-4-compatibility-removal-plan.md
@@ -55,3 +55,4 @@ Console-script/`legacy_main` changes; version/tag/publication work; changes to c
 - 2026-07-19: Implemented the exact pre-dispatch presence gate in the primary and autoresearch entry points, removed config fallback/warning/conflict selection, added exhaustive command/help/version/matrix/no-dispatch coverage, and updated focused migration/changelog/active-spec references. Local Python 3.11 and 3.13 suites each pass 422 tests; focused tests and temporary wheel/sdist construction/inspection pass. Evidence: `.10x/evidence/2026-07-19-remove-buoy-v0-4-environment-aliases.md`.
 - 2026-07-19: Candidate version metadata remains intentionally unchanged because the parent plan assigns it to the console-alias sibling; aggregate reconciliation must produce coherent 0.4.0 metadata. Opened PR #48 from implementation commit `96ff96e563a0e5b57207446534040fe881e5e2cb`; hosted Python 3.11, Python 3.13, and distribution-build jobs passed in workflow `29708193056`.
 - 2026-07-19: Independent bounded review passed implementation head `6d9e050176c46722a89c5daa00bbc872efb0fc2a` and observed exact-head hosted checks. Integration remains blocked until aggregate 0.4 reconciliation passes. Review: `.10x/reviews/2026-07-19-buoy-v0-4-environment-alias-removal-review.md`. Ticket remains active.
+- 2026-07-19: Full reviewed tip `a049bbf` is preserved as an ancestor of aggregate candidate `68477fdca5a5b5f7b890d059c484739f02fc1dd8`. Aggregate exhaustive gate, distribution, clean/upgrade launcher, diff/reference, and Python 3.11/3.13 validation passed with coherent sibling-owned 0.4.0 metadata and console removal present. Evidence: `.10x/evidence/2026-07-19-buoy-v0-4-compatibility-removal-candidate.md`. Independent aggregate review remains pending; ticket stays active.
