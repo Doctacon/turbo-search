@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-06-28
 Updated: 2026-07-19
-Depends-On: .10x/decisions/namespace-ranking-defaults.md, .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
+Depends-On: .10x/decisions/namespace-ranking-defaults.md
 
 # Cross-Corpus Validation Basket
 
@@ -50,6 +50,7 @@ None. The recorded execution used the current public docs URLs and separately ap
 ## References
 
 - `.10x/decisions/namespace-ranking-defaults.md`
+- `.10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md` — active umbrella that receives context and evidence from this independently completed basket; it was not an execution dependency.
 - `.10x/evidence/2026-06-28-repo-adaptive-aggregation-validation.md`
 - `.10x/evidence/2026-06-28-cross-repo-click-validation.md`
 - `.10x/knowledge/repo-search-ranking-defaults.md`

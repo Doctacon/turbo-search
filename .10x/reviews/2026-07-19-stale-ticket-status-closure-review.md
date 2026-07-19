@@ -58,6 +58,8 @@ Node.js-action and retrieval-tag tickets were not read for disposition and were 
 7. Commands/counts/metrics/limits/conclusion: all are present in the four evidence records.
 8. No-regression before defaults: active `.10x/decisions/namespace-ranking-defaults.md` remains unchanged by this basket; capped repo/site candidates were not promoted on regressing evidence.
 
+**Dependency-coherence gate:** pass. The active namespace-ranking decision remains the basket's dependency. The active heavy-ranking umbrella receives context and evidence from this independently completed basket and is therefore a reference, not a prerequisite to closure.
+
 ### Repo oversize source indexing
 
 1. Added files/chunks: supported for pytest and Typer, not the full then-current repo basket.
@@ -97,7 +99,7 @@ The existing baseline records the authorized local-only Oscilar plan and all req
 - No Node.js-action or retrieval-tag record was changed.
 - No source, tests, benchmarks, live operations, external state, defaults, or residual-risk decisions were changed.
 - Completed experiments remain completed; rejected hypotheses remain negative evidence, not failed implementation.
-- The heavy-ranking umbrella remains the durable owner for its unsupported terminal scope.
+- The heavy-ranking umbrella remains the durable owner for its unsupported terminal scope and receives the completed cross-corpus basket as context/evidence rather than blocking that basket's closure.
 - Terminal paths and all affected `.10x` references were mechanically repaired and validated before the review ticket closed.
 
 ## Verdict

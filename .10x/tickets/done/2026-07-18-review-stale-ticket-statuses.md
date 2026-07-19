@@ -53,6 +53,7 @@ Running new tests/benchmarks/live operations; fixing code; accepting residual ri
 - 2026-07-19: Disposed five tickets as `done`, cancelled two with explicit evidence-backed no-action rationales, and kept the heavy-ranking umbrella active with exact missing terminal support. Node.js-action and retrieval-tag tickets remained out of scope.
 - 2026-07-19: Aggregate adversarial review passed: `.10x/reviews/2026-07-19-stale-ticket-status-closure-review.md`.
 - 2026-07-19: Read-only graph validation found 1,809 existing current references, six valid commit-qualified historical references, zero missing current/commit references, zero top-level terminal statuses, zero terminal-directory status errors, and zero stale moved-path references. Changed paths are `.10x` Markdown only and `git diff --check` passes.
+- 2026-07-19: Follow-up review corrected the cross-corpus graph edge: the active namespace-ranking decision remains its dependency, while the independently completed basket now references the active heavy-ranking umbrella as downstream context/evidence rather than treating that umbrella as a prerequisite. No disposition or historical result changed.
 
 ## Disposition table
 
