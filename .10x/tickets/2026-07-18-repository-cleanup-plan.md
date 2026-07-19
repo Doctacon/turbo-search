@@ -15,7 +15,7 @@ The already authorized clean merged-worktree cleanup is complete and recorded at
 ## Child sequence
 
 1. `.10x/tickets/done/2026-07-18-triage-thistle-qdrant-dead-end.md`
-2. `.10x/tickets/2026-07-18-enforce-website-exact-host-crawl-boundary.md`
+2. `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md`
 3. `.10x/tickets/2026-07-18-remove-unreachable-local-catalog-persistence.md`
 4. `.10x/tickets/2026-07-18-normalize-terminal-ticket-placement.md`
 5. `.10x/tickets/2026-07-18-review-stale-ticket-statuses.md`

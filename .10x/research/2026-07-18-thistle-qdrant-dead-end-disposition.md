@@ -85,7 +85,7 @@ The historical local two-server evidence reported zero unauthorized destination 
 Current owners:
 
 - `.10x/specs/website-exact-host-crawl-boundary.md` (active, record-backed);
-- `.10x/tickets/2026-07-18-enforce-website-exact-host-crawl-boundary.md` (bounded executable repair).
+- `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md` (bounded executable repair).
 
 ### Significant — sitemap/robots reads and gzip expansion are currently unbounded
 
@@ -155,7 +155,7 @@ Every draft left by the timed-out worker was inspected:
 | Five files under `.10x/evidence/.storage/2026-07-18-thistle-qdrant-dead-end/` | Keep. Exhaustive mechanical inventories and before-state hashes. Owner classifications corrected to the final no-action decisions. |
 | `.10x/research/2026-07-18-thistle-qdrant-dead-end-disposition.md` | Keep as done research; corrected to final user ratification. |
 | `.10x/specs/website-exact-host-crawl-boundary.md` | Keep active; historical ratification and current source gap support it. |
-| `.10x/tickets/2026-07-18-enforce-website-exact-host-crawl-boundary.md` | Keep open; bounded current-architecture repair. |
+| `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md` | Keep open; bounded current-architecture repair. |
 | `.10x/specs/sitemap-resource-limits.md` and `.10x/tickets/2026-07-18-bound-sitemap-resource-usage.md` | Keep active/open; exact limits were previously user-ratified and current source is unbounded. |
 | `.10x/tickets/2026-07-18-restore-markitdown-control-character-normalization.md` | Keep open; unique commit plus its ticket/evidence/review prove user authorization and current source lacks the fix. |
 | Prior draft `specs/website-exact-chunk-deduplication.md` | Discard. Candidate current semantics are unratified and the user selected retirement. |

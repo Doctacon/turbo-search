@@ -18,7 +18,7 @@ The first authorized plan stopped before Qdrant/model/retrieval work after manif
 
 The Qdrant package/runtime/collection workflow is abandoned. Valuable findings now have explicit dispositions:
 
-- exact-host safety: `.10x/specs/website-exact-host-crawl-boundary.md` and `.10x/tickets/2026-07-18-enforce-website-exact-host-crawl-boundary.md`;
+- exact-host safety: `.10x/specs/website-exact-host-crawl-boundary.md` and `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md`;
 - exact-chunk/citation behavior: retired as historical non-authority at `.10x/tickets/cancelled/2026-07-18-reconcile-website-exact-chunk-deduplication.md`;
 - historical live/safety observations: `.10x/research/2026-07-18-thistle-qdrant-dead-end-disposition.md`.
 

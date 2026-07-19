@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-19
 Updated: 2026-07-19
-Relates-To: .10x/tickets/2026-07-18-enforce-website-exact-host-crawl-boundary.md, .10x/specs/website-exact-host-crawl-boundary.md
+Relates-To: .10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md, .10x/specs/website-exact-host-crawl-boundary.md
 
 # Website Exact-Host Crawl Boundary Implementation Evidence
 
