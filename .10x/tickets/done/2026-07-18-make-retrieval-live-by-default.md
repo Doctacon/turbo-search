@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-18
 Updated: 2026-07-18
-Parent: .10x/tickets/2026-07-18-direct-command-defaults-plan.md
+Parent: .10x/tickets/done/2026-07-18-direct-command-defaults-plan.md
 Depends-On: None
 
 # Make Retrieval Live by Default
@@ -42,7 +42,7 @@ Apply prompt/mode implementation; catalog command defaults; routing algorithm/ca
 
 ## References
 
-- `.10x/tickets/2026-07-18-direct-command-defaults-plan.md`
+- `.10x/tickets/done/2026-07-18-direct-command-defaults-plan.md`
 - `.10x/decisions/direct-commands-execute-by-default.md`
 - `.10x/specs/default-remote-namespace-routing.md`
 - `.10x/specs/apply-to-retrieval-handoff.md`

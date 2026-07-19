@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-18
 Updated: 2026-07-18
-Parent: .10x/tickets/2026-07-18-direct-command-defaults-plan.md
+Parent: .10x/tickets/done/2026-07-18-direct-command-defaults-plan.md
 Depends-On: .10x/tickets/done/2026-07-18-make-retrieval-live-by-default.md
 
 # Remove Legacy JSON Applied-State Compatibility
@@ -40,7 +40,7 @@ Deleting obsolete user files; importing JSON rows; changing state-root fallback;
 
 ## References
 
-- `.10x/tickets/2026-07-18-direct-command-defaults-plan.md`
+- `.10x/tickets/done/2026-07-18-direct-command-defaults-plan.md`
 - `.10x/decisions/duckdb-only-applied-state-hard-cutover.md`
 - `.10x/specs/compact-duckdb-applied-state.md`
 

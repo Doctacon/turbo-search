@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: None
@@ -47,3 +47,16 @@ Default catalog mutations; removed `--live`/`--approve` flags; automatic apply a
 - 2026-07-18: User ratified live-by-default retrieval and interactive prompt-before-write apply. Safe cancellation, explicit `--dry-run`, and non-interactive `--approve` behavior were confirmed separately.
 - 2026-07-18: User superseded JSON migration with a JSON-applied-state-only hard cutover: DuckDB is sole authority and obsolete JSON files are ignored without reads, mutation, warnings, or errors. Unrelated compatibility remains in scope.
 - 2026-07-18: Independent shaping review passed after correcting child dependency coverage, invalid-DuckDB fail-closed semantics, ledger-before-catalog sequencing, and record references. Review: `.10x/reviews/2026-07-18-direct-command-defaults-shaping-review.md`.
+- 2026-07-18: Retrieval live-by-default integrated at `9fdcd0c`, DuckDB-only applied-state hard cutover at `686435c`, and interactive apply confirmation at `d731723`. Each child closed with evidence, independent pass review, and hosted checks.
+- 2026-07-18: Aggregate closure review passed. Review: `.10x/reviews/2026-07-18-direct-command-defaults-closure-review.md`.
+
+## Closure mapping
+
+- Retrieval defaults, preview aliases, compatibility no-op, routing boundaries, output truthfulness, and generated handoff commands: first child evidence/review and integrated commit `9fdcd0c`.
+- DuckDB-only state authority, inert obsolete JSON, invalid-state fail-closed behavior, and unchanged apply sequencing: second child evidence/review and integrated commit `686435c`.
+- Interactive preflight/prompt/cancellation, explicit dry-run, automation approval, non-TTY boundary, streams, and side-effect ordering: third child evidence/review and integrated commit `d731723`.
+- Aggregate docs/help/changelog/tests/builds/hosted checks: child evidence and final closure review.
+
+## Retrospective
+
+The plan benefited from sequencing overlapping CLI/docs/state changes rather than combining them into one broad diff. Independent review found two cross-object/record-boundary defects—automatic preview top-level truthfulness and apply/catalog failure wording—that passing local suites alone did not expose. Keeping focused specs and reviewing command-level output plus lifecycle ordering prevented those defects from becoming defaults.

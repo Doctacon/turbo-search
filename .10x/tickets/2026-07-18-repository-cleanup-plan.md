@@ -2,7 +2,7 @@ Status: open
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: None
-Depends-On: .10x/tickets/2026-07-18-direct-command-defaults-plan.md
+Depends-On: .10x/tickets/done/2026-07-18-direct-command-defaults-plan.md
 
 # Repository Cleanup Plan
 
@@ -40,7 +40,7 @@ Deleting ignored `artifacts/`, `.buoy/`, credentials, remote namespaces, local/r
 
 - `.10x/research/2026-07-18-repository-dead-end-inventory.md`
 - `.10x/evidence/2026-07-18-merged-worktree-cleanup.md`
-- `.10x/tickets/2026-07-18-direct-command-defaults-plan.md`
+- `.10x/tickets/done/2026-07-18-direct-command-defaults-plan.md`
 
 ## Progress and notes
 

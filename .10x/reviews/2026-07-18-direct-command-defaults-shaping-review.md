@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-18
 Updated: 2026-07-18
-Target: .10x/tickets/2026-07-18-direct-command-defaults-plan.md
+Target: .10x/tickets/done/2026-07-18-direct-command-defaults-plan.md
 Verdict: pass
 
 # Direct Command Defaults Shaping Review
