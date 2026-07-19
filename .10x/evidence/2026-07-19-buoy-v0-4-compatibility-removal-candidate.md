@@ -72,9 +72,13 @@ Without recreating the environment, `uv pip install --python /tmp/buoy-v040-cand
 - Migration/reference searches retained both exact substitutions, console executable-only guidance, current variables, vendor variables, and unrelated compatibility references.
 - One optional installed-wheel gate attempt used `--no-deps` and failed at import with `ModuleNotFoundError: duckdb`; this was a validation-harness mistake, not a product failure. The same assertion then passed in the normally installed clean candidate environment.
 
+## Hosted candidate checks
+
+Aggregate PR [#49](https://github.com/Doctacon/buoy-search/pull/49) targets `develop` without merging. Workflow `29708550897` on pushed evidence head `6d4a24c27c215cc40ddcb9e8d4d66211ed2d445d` passed Python 3.11 job `88249318152` in 47 seconds, Python 3.13 job `88249318150` in 1 minute 3 seconds, and distribution job `88249388732` in 9 seconds. A subsequent record-only commit documents these observations; its exact-head hosted status remains observable on PR #49.
+
 ## Side-effect attestation
 
-No package was published; no tag or GitHub Release was created; no registry write, live Turbopuffer call, namespace operation, remote data read/write, user-state discovery, state/data migration, local data deletion, or user-owned launcher operation occurred. Build, install, upgrade, test, and artifact outputs were confined to disposable `/tmp` locations. Network reads were limited to dependency resolution/downloads and the immutable GitHub 0.3.0 artifact. Authorized Git branch push and pull-request creation are delivery operations and are recorded separately from product/data effects.
+No package was published; no tag or GitHub Release was created; no registry write, live Turbopuffer call, namespace operation, remote data read/write, user-state discovery, state/data migration, local data deletion, or user-owned launcher operation occurred. Build, install, upgrade, test, and artifact outputs were confined to disposable `/tmp` locations. Network reads were limited to dependency resolution/downloads and the immutable GitHub 0.3.0 artifact. Authorized Git branch push and pull-request creation were the only remote writes and did not merge either child or aggregate PR.
 
 ## What this supports
 
@@ -85,4 +89,4 @@ This supports aggregate source, history, version, console removal, exact environ
 - Local build/install/upgrade validation ran on macOS/Python 3.13; complete source suites separately passed on Python 3.11 and 3.13.
 - Normal 0.3.0-to-0.4.0 upgrade reconciled the candidate's reviewed `scrapling==0.4.9` pin and related transitive versions; neither child changed that dependency contract.
 - No live remote behavior was exercised; gate safety is supported by sentinel/non-dispatch tests and existing non-live suites.
-- Hosted aggregate checks and independent aggregate review are pending. Parent and children remain active and must not close until that review gate is satisfied.
+- Hosted aggregate checks pass. Independent aggregate review remains pending. Parent and children remain active and must not close until that review gate is satisfied.
