@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-direct-command-defaults-plan.md
@@ -47,3 +47,5 @@ Deleting obsolete user files; importing JSON rows; changing state-root fallback;
 ## Progress and notes
 
 - 2026-07-18: User ratified a JSON-applied-state-only hard cutover. Obsolete files are ignored, not migrated, deleted, or treated as errors.
+- 2026-07-18: Removed JSON path discovery, parsing, migration, archive cleanup, and deletion from production applied state; updated active migration guidance and added inode/byte-preservation regressions across plan, preflight, successful/failed confirmed apply, missing/empty/populated DuckDB, and invalid DuckDB paths.
+- 2026-07-18: Focused suites passed on Python 3.11/3.13 (99 tests each); full suites passed on Python 3.11/3.13 (407 tests each); wheel/sdist build, release asset validation, source search, and diff checks passed. Evidence: `.10x/evidence/2026-07-18-remove-legacy-json-applied-state.md`.
