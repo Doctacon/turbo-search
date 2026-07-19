@@ -45,12 +45,18 @@ if rg -n 'legacy `last-applied\.json` is (removed|deleted)|legacy JSON.*(removed
 
 git diff --check
 # exit 0
+
+gh pr checks 36 --watch --interval 10
+# Actions run 29691090597
+# Python 3.11 — pass (58s), job 88203840298
+# Python 3.13 — pass (41s), job 88203840297
+# Build distributions — pass (10s), job 88203930341
 ```
 
 ## What this supports or challenges
 
-This supports the ticket's hard-cutover, inert-file, first-apply, DuckDB-authority, fail-closed, lock, content/state sequencing, pending-recovery, documentation, focused/full Python, and distribution-build acceptance claims. Independent review remains a separate required gate and this evidence does not close the ticket.
+This supports the ticket's hard-cutover, inert-file, first-apply, DuckDB-authority, fail-closed, lock, content/state sequencing, pending-recovery, documentation, focused/full Python, distribution-build, and hosted-check acceptance claims. Pull request `#36` passed both versioned test jobs and the dependent distribution build in Actions run `29691090597`. Independent review remains a separate required gate and this evidence does not close the ticket.
 
 ## Limits
 
-All remote content and catalog behavior used injected fakes; no live Turbopuffer operation, credential use, release, or interactive apply confirmation occurred. Hosted pull-request checks are recorded below after the branch is pushed.
+All remote content and catalog behavior used injected fakes; no live Turbopuffer operation, credential use, release, interactive apply confirmation, independent review, or merge occurred.
