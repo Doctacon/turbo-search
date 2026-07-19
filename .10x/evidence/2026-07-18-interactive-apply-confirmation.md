@@ -43,6 +43,10 @@ rg -n 'last-applied\.json|legacy-json' src/buoy_search
 python3 -m compileall -q src tests scripts
 # Exit 0.
 
+gh pr checks 37 --watch --interval 10
+# Actions run 29692276509: Python 3.11 passed (job 88206987593),
+# Python 3.13 passed (job 88206987591), and Build distributions passed (job 88207053952).
+
 git diff --check
 # Exit 0.
 
@@ -59,5 +63,5 @@ This supports the ticket's local behavior, output, ordering, compatibility, iner
 ## Limits
 
 - All content/model/API effects were faked; no live Turbopuffer, credential-provider, catalog, namespace, or external data mutation occurred.
-- Hosted pull-request check identities will be appended after the branch is pushed and the PR runs.
+- Hosted run `29692276509` validates implementation commit `7b6d684`; the final evidence-only metadata commit triggers a second equivalent PR run, whose identity is reported at handoff rather than recursively mutating this record.
 - Independent review is intentionally not performed by this implementation session; the ticket remains active.
