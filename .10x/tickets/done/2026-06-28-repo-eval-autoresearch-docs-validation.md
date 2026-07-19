@@ -1,8 +1,8 @@
 Status: done
 Created: 2026-06-28
 Updated: 2026-06-28
-Parent: .10x/tickets/2026-06-28-repo-search-eval-autoresearch-plan.md
-Depends-On: .10x/tickets/2026-06-28-graded-repo-eval-metric.md, .10x/tickets/2026-06-28-turbo-search-seed-repo-eval-dataset.md, .10x/tickets/2026-06-28-config-autoresearch-runner.md
+Parent: .10x/tickets/done/2026-06-28-repo-search-eval-autoresearch-plan.md
+Depends-On: .10x/tickets/done/2026-06-28-graded-repo-eval-metric.md, .10x/tickets/done/2026-06-28-turbo-search-seed-repo-eval-dataset.md, .10x/tickets/done/2026-06-28-config-autoresearch-runner.md
 
 # Repo Eval Autoresearch Docs and Validation
 
@@ -31,7 +31,7 @@ Document and validate the first repo search composite eval and config-only autor
 ## References
 
 - `.10x/specs/repo-search-eval-autoresearch.md`
-- `.10x/tickets/2026-06-28-repo-search-eval-autoresearch-plan.md`
+- `.10x/tickets/done/2026-06-28-repo-search-eval-autoresearch-plan.md`
 
 ## Progress and notes
 

@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-06-28
 Updated: 2026-06-28
-Parent: .10x/tickets/2026-06-28-repo-search-eval-autoresearch-plan.md
+Parent: .10x/tickets/done/2026-06-28-repo-search-eval-autoresearch-plan.md
 Depends-On: None
 
 # Graded Repo Eval Metric

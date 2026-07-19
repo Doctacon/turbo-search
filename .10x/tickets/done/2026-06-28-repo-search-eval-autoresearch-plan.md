@@ -19,10 +19,10 @@ The slice is governed by `.10x/specs/repo-search-eval-autoresearch.md` and inclu
 
 ## Child tickets
 
-- `.10x/tickets/2026-06-28-graded-repo-eval-metric.md`
-- `.10x/tickets/2026-06-28-turbo-search-seed-repo-eval-dataset.md`
-- `.10x/tickets/2026-06-28-config-autoresearch-runner.md`
-- `.10x/tickets/2026-06-28-repo-eval-autoresearch-docs-validation.md`
+- `.10x/tickets/done/2026-06-28-graded-repo-eval-metric.md`
+- `.10x/tickets/done/2026-06-28-turbo-search-seed-repo-eval-dataset.md`
+- `.10x/tickets/done/2026-06-28-config-autoresearch-runner.md`
+- `.10x/tickets/done/2026-06-28-repo-eval-autoresearch-docs-validation.md`
 
 ## Acceptance criteria
 
@@ -50,13 +50,13 @@ The slice is governed by `.10x/specs/repo-search-eval-autoresearch.md` and inclu
 ## Progress and notes
 
 - 2026-06-28: User selected `turbo-search` as first repo target, authorized assistant-drafted graded labels, allowed live eval-only validation, and chose metric + runner as first implementation slice.
-- 2026-06-28: Completed child `.10x/tickets/2026-06-28-graded-repo-eval-metric.md`; evidence: `.10x/evidence/2026-06-28-graded-repo-eval-metric-validation.md`.
-- 2026-06-28: Completed child `.10x/tickets/2026-06-28-turbo-search-seed-repo-eval-dataset.md`; evidence: `.10x/evidence/2026-06-28-turbo-search-seed-repo-eval-dataset-validation.md`.
-- 2026-06-28: Completed child `.10x/tickets/2026-06-28-config-autoresearch-runner.md`; evidence: `.10x/evidence/2026-06-28-config-autoresearch-runner-validation.md`.
-- 2026-06-28: Completed child `.10x/tickets/2026-06-28-repo-eval-autoresearch-docs-validation.md`; evidence: `.10x/evidence/2026-06-28-repo-eval-autoresearch-docs-validation.md`.
+- 2026-06-28: Completed child `.10x/tickets/done/2026-06-28-graded-repo-eval-metric.md`; evidence: `.10x/evidence/2026-06-28-graded-repo-eval-metric-validation.md`.
+- 2026-06-28: Completed child `.10x/tickets/done/2026-06-28-turbo-search-seed-repo-eval-dataset.md`; evidence: `.10x/evidence/2026-06-28-turbo-search-seed-repo-eval-dataset-validation.md`.
+- 2026-06-28: Completed child `.10x/tickets/done/2026-06-28-config-autoresearch-runner.md`; evidence: `.10x/evidence/2026-06-28-config-autoresearch-runner-validation.md`.
+- 2026-06-28: Completed child `.10x/tickets/done/2026-06-28-repo-eval-autoresearch-docs-validation.md`; evidence: `.10x/evidence/2026-06-28-repo-eval-autoresearch-docs-validation.md`.
 - 2026-06-28: Reviewer found no initial blockers; two minor findings were fixed. Follow-up review surfaced and verified a live `repo_path` normalization blocker fix. Review: `.10x/reviews/2026-06-28-repo-eval-autoresearch-review.md`; fix evidence: `.10x/evidence/2026-06-28-repo-eval-autoresearch-review-minor-fixes.md`, `.10x/evidence/2026-06-28-live-retrieval-repo-path-normalization-validation.md`.
 - 2026-06-28: Final validation passed after follow-up fix: `uv run python -m unittest tests.test_autoresearch tests.test_evals tests.test_cli tests.test_retriever` ran 44 tests OK; `uv run python -m unittest discover tests` ran 121 tests OK; `git diff --check` reported no whitespace errors; fixture experiment returned `passed 100.0 10 10 False`. Evidence: `.10x/evidence/2026-06-28-repo-search-eval-autoresearch-final-validation.md`.
-- 2026-06-28: After user expanded scope to live writes/namespaces, completed live index and eval follow-up in `.10x/tickets/2026-06-28-live-turbo-search-repo-index-and-eval.md`; evidence: `.10x/evidence/2026-06-28-live-turbo-search-repo-index-and-eval.md`.
+- 2026-06-28: After user expanded scope to live writes/namespaces, completed live index and eval follow-up in `.10x/tickets/done/2026-06-28-live-turbo-search-repo-index-and-eval.md`; evidence: `.10x/evidence/2026-06-28-live-turbo-search-repo-index-and-eval.md`.
 
 ## Current State
 

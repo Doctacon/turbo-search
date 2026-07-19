@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-repo-eval-autoresearch-docs-validation.md
+Relates-To: .10x/tickets/done/2026-06-28-repo-eval-autoresearch-docs-validation.md
 
 # Repo Eval Autoresearch Docs and Validation
 
@@ -21,7 +21,7 @@ Changed files for this ticket:
   - Added fixture-mode-only experiment that uses ideal judged hits from the seed dataset and performs no credential reads or turbopuffer calls.
 - `tests/test_autoresearch.py`
   - Added coverage that loads and runs the checked-in fixture experiment and asserts no turbopuffer calls plus a 100-point fixture score.
-- `.10x/tickets/2026-06-28-repo-eval-autoresearch-docs-validation.md`
+- `.10x/tickets/done/2026-06-28-repo-eval-autoresearch-docs-validation.md`
   - Updated progress, current state, and blockers.
 
 Validation commands:

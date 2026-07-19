@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Target: .10x/specs/repo-search-eval-autoresearch.md, .10x/tickets/2026-06-28-repo-search-eval-autoresearch-plan.md
+Target: .10x/specs/repo-search-eval-autoresearch.md, .10x/tickets/done/2026-06-28-repo-search-eval-autoresearch-plan.md
 Verdict: pass
 
 # Repo Eval Autoresearch Review

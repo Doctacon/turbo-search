@@ -39,4 +39,4 @@ Use existing applied namespaces only. Do not run new indexing, live writes, stal
 
 ## Current State
 
-Done. Cross-site validation supports page-level website ranking; default promotion remains a separate decision tracked by `.10x/tickets/2026-06-28-website-ranking-default-promotion-decision.md`.
+Done. Cross-site validation supports page-level website ranking; default promotion remains a separate decision tracked by `.10x/tickets/done/2026-06-28-website-ranking-default-promotion-decision.md`.

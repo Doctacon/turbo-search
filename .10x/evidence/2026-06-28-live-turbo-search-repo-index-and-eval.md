@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-live-turbo-search-repo-index-and-eval.md, .10x/specs/repo-search-eval-autoresearch.md
+Relates-To: .10x/tickets/done/2026-06-28-live-turbo-search-repo-index-and-eval.md, .10x/specs/repo-search-eval-autoresearch.md
 
 # Live turbo-search Repo Index and Eval
 

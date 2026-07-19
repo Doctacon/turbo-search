@@ -48,7 +48,7 @@ Defaults must not change until the optimization target and evidence threshold ar
 
 - 2026-06-28: Opened after cross-site validation showed page ranking generalizes, while capped aggregation benefits vary by pool/site.
 - 2026-06-28: User approved promotion with “yup, send it”. Decision recorded in `.10x/decisions/superseded/website-ranking-defaults.md`.
-- 2026-06-28: Implementation owner opened: `.10x/tickets/2026-06-28-promote-website-page-ranking-default.md`.
+- 2026-06-28: Implementation owner opened: `.10x/tickets/done/2026-06-28-promote-website-page-ranking-default.md`.
 
 ## Current State
 

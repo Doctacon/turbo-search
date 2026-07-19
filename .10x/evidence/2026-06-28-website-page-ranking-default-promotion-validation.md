@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-promote-website-page-ranking-default.md, .10x/decisions/superseded/website-ranking-defaults.md
+Relates-To: .10x/tickets/done/2026-06-28-promote-website-page-ranking-default.md, .10x/decisions/superseded/website-ranking-defaults.md
 
 # Website Page Ranking Default Promotion Validation
 
@@ -43,8 +43,8 @@ Changed files:
 Records added/updated:
 
 - `.10x/decisions/superseded/website-ranking-defaults.md`
-- `.10x/tickets/2026-06-28-promote-website-page-ranking-default.md`
-- `.10x/tickets/2026-06-28-website-ranking-default-promotion-decision.md`
+- `.10x/tickets/done/2026-06-28-promote-website-page-ranking-default.md`
+- `.10x/tickets/done/2026-06-28-website-ranking-default-promotion-decision.md`
 
 ## Validation commands
 

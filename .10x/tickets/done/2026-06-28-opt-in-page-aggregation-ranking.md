@@ -32,7 +32,7 @@ Defaults must remain unchanged unless separately approved.
 ## References
 
 - `.10x/evidence/2026-06-28-website-page-aggregation-experiments.md`
-- `.10x/tickets/2026-06-28-website-page-aggregation-experiments.md`
+- `.10x/tickets/done/2026-06-28-website-page-aggregation-experiments.md`
 
 ## Progress and notes
 
