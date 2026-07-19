@@ -1,8 +1,8 @@
-Status: blocked
+Status: open
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
-Depends-On: .10x/tickets/2026-07-18-direct-command-defaults-plan.md
+Depends-On: .10x/tickets/done/2026-07-18-direct-command-defaults-plan.md
 
 # Triage Thistle/Qdrant Dead End
 
@@ -34,7 +34,7 @@ Path/commit inventory, current-vs-branch behavior matrix, record provenance map,
 
 ## Blockers
 
-The direct-command-defaults plan must integrate first under the user-selected sequence. Deduplication/citation semantics may require a separate user checkpoint after source comparison.
+None for read-only triage. Deduplication/citation semantics may require a separate user checkpoint after source comparison.
 
 ## Explicit exclusions
 

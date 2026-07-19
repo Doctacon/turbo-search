@@ -44,6 +44,6 @@ Implementing removals; changing version numbers; publishing a release; deleting 
 - `.10x/research/2026-07-18-repository-dead-end-inventory.md`
 - `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md`
 - `.10x/specs/buoy-local-compatibility.md`
-- `.10x/tickets/2026-07-18-direct-command-defaults-plan.md`
+- `.10x/tickets/done/2026-07-18-direct-command-defaults-plan.md`
 
 ## Progress and notes
