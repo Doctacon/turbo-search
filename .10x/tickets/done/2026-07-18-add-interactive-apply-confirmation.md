@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-direct-command-defaults-plan.md
@@ -38,7 +38,7 @@ Captured TTY/non-TTY call ordering and streams; exact side-effect sentinels; tex
 
 ## Blockers
 
-The DuckDB-only hard-cutover child must integrate after retrieval defaults and before this ticket so applied-state handling plus shared help/docs each have one writer and one final authority.
+None.
 
 ## Explicit exclusions
 
@@ -61,4 +61,19 @@ Catalog command prompts/defaults; immediate non-interactive writes; config/env a
 - 2026-07-18: Dependency `.10x/tickets/done/2026-07-18-remove-legacy-json-applied-state.md` is integrated at `686435c`; implementation started on `work/add-interactive-apply-confirmation` from the matching `develop` head.
 - 2026-07-18: Implemented apply mode gating, explicit prompt-free dry-run, exact TTY confirmation, safe cancellation/prompt failure, clean JSON/text output, and confirmation entry into the unchanged approved pipeline with locked revalidation. Updated help, README, indexing guide, changelog, workflow skill/reference, and focused tests.
 - 2026-07-18: Focused 109-test and full 413-test suites passed on Python 3.11 and 3.13; wheel/sdist build, exact asset validation, compile, diff, staged-file, and obsolete-JSON production-source checks passed. Evidence: `.10x/evidence/2026-07-18-interactive-apply-confirmation.md`.
-- 2026-07-18: Opened PR #37. Hosted Python 3.11, Python 3.13, and distribution-build checks passed in Actions run `29692276509` for implementation commit `7b6d684`; ticket remains active for independent review.
+- 2026-07-18: Opened PR #37. Hosted Python 3.11, Python 3.13, and distribution-build checks passed in Actions run `29692276509` for implementation commit `7b6d684`; implementation session left the ticket active for independent review.
+- 2026-07-18: Independent review passed at final implementation/evidence head `b74263f267148f162817216ea01696386e183091`; no blocker remained. Review: `.10x/reviews/2026-07-18-interactive-apply-confirmation-review.md`.
+
+## Closure mapping
+
+- Mode precedence/non-TTY boundary: focused call-order tests and independent source review.
+- Complete preflight/prompt/confirmation semantics: TTY input matrix, exact stderr prompt assertions, cancellation/prompt-failure tests, and reviewed CLI flow.
+- Approved-path identity and revalidation: unchanged approved implementation plus lock/artifact/state/pending tests and review.
+- Cancellation/dry-run output and zero side effects: text/JSON snapshots and exact model/credential/API/pending/state/catalog/content sentinels.
+- DuckDB-only obsolete JSON behavior: integrated hard-cutover regressions plus interactive apply fixtures.
+- Stale deletion, timing, batching, locks, recovery, catalog registration, cleanup: protective focused/full suites remain passing.
+- Validation: 109 focused and 413 full tests on Python 3.11/3.13, distributions, assets, compile, source/diff checks, hosted checks, evidence, and pass review.
+
+## Retrospective
+
+The safest simplification was to keep one approved pipeline and make interactive confirmation only a gate into it. Reusing the full locked revalidation path avoids creating a second write implementation or trusting stale preflight results. Prompt and diagnostics on stderr preserve one-document JSON stdout.
