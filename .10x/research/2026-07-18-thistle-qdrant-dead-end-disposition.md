@@ -94,7 +94,7 @@ Current owners:
 Current owners:
 
 - `.10x/specs/sitemap-resource-limits.md` (active preserved contract);
-- `.10x/tickets/2026-07-18-bound-sitemap-resource-usage.md`.
+- `.10x/tickets/done/2026-07-18-bound-sitemap-resource-usage.md` (subsequently completed by PR #54).
 
 ### No action — exact-chunk deduplication is retired
 
@@ -129,14 +129,14 @@ Qdrant/Tantivy runtime, BM25/RRF experiments, compose/config/dependency changes,
 | Untracked Thistle retry ticket/raw results | Provider run indexed here; ticket preserved as cancelled at `.10x/tickets/cancelled/2026-07-11-test-thistle-site-qdrant-rag.md`. |
 | `b48f13c` normalization records/source/tests | Exact behavior summarized in a current open restoration ticket; old records remain non-authoritative provenance. |
 | `d7a37d7` Qdrant/Tantivy records/source/evidence | Per-path classification TSV; no current authority. Named product-neutral gaps have current owners. |
-| Historical namespace deletion, sitemap limits, compact artifacts | Current active sitemap spec/ticket; namespace deletion and compact artifacts indexed as no-action absent a current requirement/measurement. |
+| Historical namespace deletion, sitemap limits, compact artifacts | Current active sitemap spec and completed ticket; namespace deletion and compact artifacts indexed as no-action absent a current requirement/measurement. |
 
 ## Current-versus-branch behavior matrix
 
 | Surface | Dirty branch | Current develop | Disposition |
 |---|---|---|---|
 | Final-response/redirect host safety | Explicit exact-host manual redirect guards and counts | Candidate URL filtering only; automatic redirects/final response unchecked | Active spec + open repair |
-| Sitemap resource bounds | Bounded/fail-closed on committed branch | Unbounded response/gzip accumulation | Active spec + open repair |
+| Sitemap resource bounds | Bounded/fail-closed on committed branch | Unbounded response/gzip accumulation | Active spec; subsequently completed by PR #54 |
 | Exact chunk dedup | Website exact hashes, deterministic primary, aliases | No ingestion dedup; only page-level retrieval collapse | Retired; historical non-authority only |
 | Alias citations | Qdrant native list, JSON and compact text | One URL only | No action; do not port |
 | Alias-only diff | SQLite `record_hash` | DuckDB equality uses embedding hash only | No action; do not port |
@@ -156,7 +156,7 @@ Every draft left by the timed-out worker was inspected:
 | `.10x/research/2026-07-18-thistle-qdrant-dead-end-disposition.md` | Keep as done research; corrected to final user ratification. |
 | `.10x/specs/website-exact-host-crawl-boundary.md` | Keep active; historical ratification and current source gap support it. |
 | `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md` | Keep open; bounded current-architecture repair. |
-| `.10x/specs/sitemap-resource-limits.md` and `.10x/tickets/2026-07-18-bound-sitemap-resource-usage.md` | Keep active/open; exact limits were previously user-ratified and current source is unbounded. |
+| `.10x/specs/sitemap-resource-limits.md` and `.10x/tickets/done/2026-07-18-bound-sitemap-resource-usage.md` | Keep the spec active; exact limits were previously user-ratified and source was unbounded. Subsequently completed by PR #54. |
 | `.10x/tickets/done/2026-07-18-restore-markitdown-control-character-normalization.md` | Keep open; unique commit plus its ticket/evidence/review prove user authorization and current source lacks the fix. Subsequently completed by PR #52. |
 | Prior draft `specs/website-exact-chunk-deduplication.md` | Discard. Candidate current semantics are unratified and the user selected retirement. |
 | Prior draft `tickets/2026-07-18-reconcile-website-exact-chunk-deduplication.md` | Replace with cancelled/no-action record under `tickets/cancelled/`. |

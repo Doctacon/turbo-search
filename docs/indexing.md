@@ -20,7 +20,7 @@ Stale rows are retained unless `--delete-stale` is also explicit. Namespace dele
 uv run buoy plan https://example.com/
 ```
 
-Website planning uses Scrapling, stays on the source host, obeys robots.txt, and derives a namespace such as `site-example-com-v1`.
+Website planning uses Scrapling, stays on the source host, obeys robots.txt, and derives a namespace such as `site-example-com-v1`. Supply website URLs only as a trusted local operator: exact-host crawl containment is enforced, but private-network SSRF blocking is not part of this local CLI.
 
 ### Public GitHub repositories
 
