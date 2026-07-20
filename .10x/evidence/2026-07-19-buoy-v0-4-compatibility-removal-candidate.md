@@ -95,3 +95,7 @@ It does not support final aggregate artifact acceptance under `.10x/specs/buoy-v
 - Hosted aggregate checks passed for the pre-exclusion candidate, but do not resolve the `.10x/**` artifact blocker.
 - `.10x/tickets/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md` must implement the exact exclusion, prove both-artifact controlled determinism across a record-only delta, rerun aggregate install/upgrade validation, and pass independent review plus exact-head hosted checks.
 - Independent final aggregate review remains pending. Parent and all children remain active and must not close while the packaging child is incomplete.
+
+## Subsequent packaging disposition
+
+The packaging-blocker statements above describe the pre-exclusion candidate at implementation commit `68477fdca5a5b5f7b890d059c484739f02fc1dd8`; they do not describe the current candidate. Exact reviewed head `9e7ec237d31d9fb4ef79209df1d45fcc2b0dd6cf` implements and validates the exclusion. Superseding evidence is `.10x/evidence/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md`, and current review disposition is `.10x/reviews/2026-07-19-buoy-v0-4-compatibility-removal-final-aggregate-review.md`. Parent and all three children remain active/open pending final bounded re-review, not pending implementation of the exclusion.

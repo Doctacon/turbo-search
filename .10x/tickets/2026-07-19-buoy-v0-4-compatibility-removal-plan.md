@@ -39,7 +39,7 @@ The two stale retrieval-mode and apply-namespace statements in `.pi/skills/turbo
 
 ## Blockers
 
-Aggregate acceptance is blocked by the candidate sdist containing `.10x/**`, which makes record-only evidence alter the artifact. The user ratified the exact exclusion boundary on 2026-07-19, and `.10x/tickets/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md` owns the executable repair, controlled determinism proof, aggregate install/upgrade rerun, independent review, and exact-head hosted checks. The parent and all children remain active.
+None. The previously observed `.10x/**` sdist defect is resolved at exact reviewed head `9e7ec237d31d9fb4ef79209df1d45fcc2b0dd6cf`: `.10x/evidence/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md` records the exact repository-root exclusion, zero `.10x` members in both artifacts, byte-identical controlled record-only builds, refreshed aggregate install/upgrade validation, and passing exact-head hosted checks. The parent and all three children remain active/open pending final bounded re-review; that acceptance step is not a current implementation blocker.
 
 ## Explicit exclusions
 
@@ -54,6 +54,7 @@ Any compatibility beyond the three named aliases; any artifact exclusion beyond 
 - `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`
 - `.10x/reviews/2026-07-19-v0-4-compatibility-removal-shaping-review-response.md`
 - `.10x/reviews/2026-07-19-buoy-v0-4-aggregate-packaging-blocker-review.md`
+- `.10x/reviews/2026-07-19-buoy-v0-4-compatibility-removal-final-aggregate-review.md`
 - `.10x/tickets/done/2026-07-18-shape-v0-4-compatibility-removal.md`
 
 ## Progress and notes
@@ -63,3 +64,4 @@ Any compatibility beyond the three named aliases; any artifact exclusion beyond 
 - 2026-07-19: Opened aggregate PR #49 against `develop` without merging. Hosted workflow `29708550897` passed Python 3.11 (`88249318152`), Python 3.13 (`88249318150`), and distribution (`88249388732`) jobs on pushed evidence head `6d4a24c27c215cc40ddcb9e8d4d66211ed2d445d`. A record-only follow-up documents hosted results; exact final-head checks remain visible on PR #49.
 - 2026-07-19: Aggregate packaging review found that the recorded 536-entry candidate sdist contains 441 `.10x` entries while the 45-entry wheel contains none. The user ratified excluding exactly repository-root `.10x/**` from both artifacts while retaining the records, plus a controlled record-only determinism proof and aggregate clean-install/upgrade rerun. Opened the focused active spec and executable packaging child; no exclusion was implemented. Parent and all children remain active and aggregate acceptance is blocked pending that child.
 - 2026-07-19: Packaging child implementation now excludes only repository-root `.10x/**`; controlled before/after builds across one staged evidence-record delta were byte-identical with zero `.10x` members, and aggregate Python 3.11/3.13, exact gate/no-side-effect, clean-install, and digest-verified same-environment upgrade validation passed. Evidence: `.10x/evidence/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md`. Parent and all children remain active pending independent bounded/final aggregate review and exact-head hosted checks; no merge, publication, tag, release, state/data mutation, or live product-service operation occurred.
+- 2026-07-19: Final aggregate review of exact head `9e7ec237d31d9fb4ef79209df1d45fcc2b0dd6cf` passed the implementation and raised one record-coherence concern: this plan and the packaging child still described the already-proven exclusion as unimplemented/currently blocking. Reconciled both current Blockers sections against the final packaging evidence and review `.10x/reviews/2026-07-19-buoy-v0-4-compatibility-removal-final-aggregate-review.md`. Parent and all three children remain active/open pending final bounded re-review; no ticket was closed or moved.

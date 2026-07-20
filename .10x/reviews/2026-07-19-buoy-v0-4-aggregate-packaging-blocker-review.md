@@ -27,3 +27,7 @@ Concerns raised. The aggregate candidate, parent plan, and aggregate acceptance 
 ## Residual risk
 
 The exclusion has not been implemented or validated. Current wheel absence is incidental to its existing package target and does not prove an explicit both-artifact boundary. Exact archive stability across a controlled `.10x/**`-only delta, refreshed clean-install/upgrade behavior, and final aggregate review remain pending.
+
+## Subsequent disposition
+
+The finding and residual-risk statement above describe only the pre-repair target through `d05bcef00338c56de8edcee561428817edcfd358`. They are not claims about the current candidate. Exact reviewed head `9e7ec237d31d9fb4ef79209df1d45fcc2b0dd6cf` implements and validates the exclusion; `.10x/evidence/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md` records zero `.10x` members in both artifacts, controlled record-only byte stability, refreshed install/upgrade validation, and passing exact-head hosted checks. Current disposition and residual risks are recorded in `.10x/reviews/2026-07-19-buoy-v0-4-compatibility-removal-final-aggregate-review.md`.
