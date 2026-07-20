@@ -42,6 +42,11 @@ RETRIEVAL_ATTRIBUTES = [
     "chunk_index",
 ]
 OPTIONAL_RETRIEVAL_ATTRIBUTES = ("repo_path", "tags")
+MISSING_SCHEMA_ATTRIBUTE_RE = re.compile(
+    r"\battribute\s+(?P<quote>[\"'])(?P<attribute>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?P=quote)\s+not found in schema\b",
+    re.IGNORECASE,
+)
 
 
 def namespace_uses_website_defaults(namespace: str) -> bool:
@@ -391,17 +396,16 @@ class HybridRetriever:
                 response, fusion = run_multi_query(self._namespace, subqueries)
                 break
             except Exception as exc:  # pragma: no cover - SDK/network/schema failure paths are integration-tested.
-                missing_attributes = [
-                    attribute
-                    for attribute in OPTIONAL_RETRIEVAL_ATTRIBUTES
-                    if attribute in include_attributes and is_missing_attribute_error(exc, attribute)
-                ]
-                if not missing_attributes:
+                missing_attribute = missing_schema_attribute(exc)
+                if (
+                    missing_attribute not in OPTIONAL_RETRIEVAL_ATTRIBUTES
+                    or missing_attribute not in include_attributes
+                ):
                     raise RuntimeError(user_friendly_query_error(exc)) from exc
                 include_attributes = [
                     attribute
                     for attribute in include_attributes
-                    if attribute not in missing_attributes
+                    if attribute != missing_attribute
                 ]
 
         result_lists = extract_result_lists(response)
@@ -634,10 +638,11 @@ def is_unsupported_rerank_type_error(exc: TypeError) -> bool:
     return "rerank_by" in message or "unexpected keyword" in message or "unexpected argument" in message
 
 
-def is_missing_attribute_error(exc: BaseException, attribute: str) -> bool:
-    message = str(exc).casefold()
-    attribute_text = attribute.casefold()
-    return attribute_text in message and "not found in schema" in message
+def missing_schema_attribute(exc: BaseException) -> str | None:
+    matches = list(MISSING_SCHEMA_ATTRIBUTE_RE.finditer(str(exc)))
+    if len(matches) != 1:
+        return None
+    return matches[0].group("attribute").casefold()
 
 
 def user_friendly_query_error(exc: BaseException) -> str:

@@ -105,8 +105,9 @@ class DuplicateRepoPathNamespace:
 
 
 class MissingOptionalAttributesNamespace:
-    def __init__(self, missing_order: list[str]) -> None:
+    def __init__(self, missing_order: list[str], *, list_requested_attributes: bool = False) -> None:
         self.missing_order = list(missing_order)
+        self.list_requested_attributes = list_requested_attributes
         self.calls: list[dict[str, object]] = []
 
     def multi_query(self, **kwargs: object) -> dict[str, object]:
@@ -115,7 +116,14 @@ class MissingOptionalAttributesNamespace:
         for attribute in self.missing_order:
             if attribute in include_attributes:
                 self.missing_order.remove(attribute)
-                raise RuntimeError(f'attribute "{attribute}" not found in schema')
+                context = (
+                    f"requested attributes: {include_attributes}; "
+                    if self.list_requested_attributes
+                    else ""
+                )
+                raise RuntimeError(
+                    f'{context}attribute "{attribute}" not found in schema'
+                )
         attributes: dict[str, object] = {
             "title": "Page",
             "url": "https://example.com/docs",
@@ -129,12 +137,13 @@ class MissingOptionalAttributesNamespace:
 
 
 class UnrelatedSchemaErrorNamespace:
-    def __init__(self) -> None:
+    def __init__(self, attribute: str = "content") -> None:
+        self.attribute = attribute
         self.calls: list[dict[str, object]] = []
 
     def multi_query(self, **kwargs: object) -> dict[str, object]:
         self.calls.append(kwargs)
-        raise RuntimeError('attribute "content" not found in schema')
+        raise RuntimeError(f'attribute "{self.attribute}" not found in schema')
 
 
 class MalformedTagsNamespace:
@@ -933,18 +942,58 @@ class RetrieverTests(unittest.TestCase):
                 self.assertEqual(result.hits[0].repo_path, expected_repo_path)
                 self.assertEqual(result.hits[0].tags, expected_tags)
 
+    def test_live_retriever_omits_only_diagnostic_attribute_when_request_is_listed(self) -> None:
+        cases = [
+            (
+                ["tags", "repo_path"],
+                [(True, True), (True, False), (False, False)],
+            ),
+            (
+                ["repo_path", "tags"],
+                [(True, True), (False, True), (False, False)],
+            ),
+        ]
+        for missing_order, expected_attempts in cases:
+            with self.subTest(missing_order=missing_order):
+                namespace = MissingOptionalAttributesNamespace(
+                    missing_order,
+                    list_requested_attributes=True,
+                )
+                retriever = HybridRetriever(
+                    namespace=namespace,
+                    embedder=FakeEmbedder(),
+                    config=RuntimeConfig(),
+                )
+
+                retriever.retrieve(
+                    "website docs", RetrievalOptions(top_k=1, candidates=10)
+                )
+
+                attempts = [
+                    (
+                        "repo_path" in call["queries"][0]["include_attributes"],
+                        "tags" in call["queries"][0]["include_attributes"],
+                    )
+                    for call in namespace.calls
+                ]
+                self.assertEqual(attempts, expected_attempts)
+
     def test_live_retriever_does_not_fallback_for_unrelated_errors(self) -> None:
-        namespace = UnrelatedSchemaErrorNamespace()
-        retriever = HybridRetriever(
-            namespace=namespace,
-            embedder=FakeEmbedder(),
-            config=RuntimeConfig(),
-        )
+        for attribute in ("content", "repo_tags"):
+            with self.subTest(attribute=attribute):
+                namespace = UnrelatedSchemaErrorNamespace(attribute)
+                retriever = HybridRetriever(
+                    namespace=namespace,
+                    embedder=FakeEmbedder(),
+                    config=RuntimeConfig(),
+                )
 
-        with self.assertRaisesRegex(RuntimeError, "content"):
-            retriever.retrieve("website docs", RetrievalOptions(top_k=1, candidates=10))
+                with self.assertRaisesRegex(RuntimeError, attribute):
+                    retriever.retrieve(
+                        "website docs", RetrievalOptions(top_k=1, candidates=10)
+                    )
 
-        self.assertEqual(len(namespace.calls), 1)
+                self.assertEqual(len(namespace.calls), 1)
 
     def test_live_retriever_propagates_malformed_tags_without_fallback(self) -> None:
         namespace = MalformedTagsNamespace()
