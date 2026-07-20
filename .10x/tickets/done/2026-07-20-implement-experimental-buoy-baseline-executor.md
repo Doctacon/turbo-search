@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-20
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -8,7 +8,7 @@ Depends-On: .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract
 
 ## Outcome
 
-Implement and test the smallest isolated executor that exactly satisfies `.10x/specs/experimental-buoy-baseline-executor.md`. This ticket authorizes source and focused test changes only. It does not authorize reading a credential, loading or invoking a model, contacting Turbopuffer, or mutating namespace, catalog, pending, or DuckDB applied state during implementation or validation.
+Completed the smallest isolated executor that exactly satisfies `.10x/specs/experimental-buoy-baseline-executor.md`. Independent implementation review passed PR #70 head `f6cd38dba1bc7cf8fbcb542133ca264e6cb3d61c`. Live execution remains mechanically disabled by source-pinned Approval A grant constants set to `None`; Approval A and Approval B remain ungranted, C3 remains blocked, and no credential, model, provider, namespace, catalog, pending, or DuckDB domain-state operation occurred.
 
 ## Scope
 
@@ -57,10 +57,29 @@ Focused and full-test output; static inspection proving `max_retries=0` and no f
 
 ## Blockers
 
-None for bounded source/test implementation. Approval A remains ungranted and blocks every real credential/model/provider/domain-state operation. Approval B and C3 remain separately blocked.
+None for the closed implementation outcome. Approval A remains ungranted and blocks every real credential/model/provider/domain-state operation. Approval B remains ungranted, and C3 remains separately blocked.
 
 ## Progress and notes
 
 - 2026-07-20: Opened after the user ratified the independently reviewed PR #65 specification unchanged. No source/test implementation, credential read, model operation, provider call, or namespace/card/catalog/pending/DuckDB mutation occurred in this record turn. Approval A and Approval B remain ungranted; C3 remains blocked.
 - 2026-07-20: Implemented the isolated non-default executor and 19 fake-backed tests. The executor fixes all 26 slots, enforces the exact request/write/read/delete ceilings and commit order, validates immutable plan/cache/model/row/card/state contracts before credential access, requires locked SDK `max_retries=0`, and preserves redacted partial accounting. CI-equivalent Python 3.11 and 3.13 suites each passed 465 tests; ranking validation, distribution build, and `git diff --check` passed. Evidence is recorded at `.10x/evidence/2026-07-20-experimental-buoy-baseline-executor-implementation.md`. No credential was read, model loaded, provider contacted, retained plan/state inspected, or namespace/catalog/pending/DuckDB domain state mutated. Ticket remains active pending independent implementation review; Approval A/B remain ungranted and no live execution is authorized.
 - 2026-07-20: Repaired all reported independent-review blockers without adding a CLI or live invocation. Public live construction now accepts only durable paths, requires exact source-pinned Approval A record bytes/provenance, and is mechanically disabled because the grant pins remain `None`. Simulation is a separate fake-only identity and cannot report live/max-retry attestation. Live internally reloads the exact plan, rehashes the exact cache, constructs the pinned offline float32 normalized CLS model, literal-zero-retry SDK client, and integrity-bound pending/DuckDB effects. Accounting now enforces every slot's returned-row ceiling, exact write counts/IDs and object shapes, preserves attached exception response/metrics, and rejects missing distance/unknown schema keys. The focused matrix expanded to 28 tests including existing-card states, malformed accounting, local partial effects, every gate, and failures in all 26 slots. After incorporating current `origin/develop` (`687fe30`), CI-equivalent Python 3.11 and 3.13 runs each passed 493 tests; both ranking validations, distribution build, and diff hygiene passed. No credential/model/provider/domain-state/live operation occurred. PR #70 GitHub Actions run `29773872982` passed Python 3.11, Python 3.13, and distribution build on repair commit `54fb751`. Approval A/B remain ungranted and the ticket remains active pending independent review.
+- 2026-07-20: Independent review passed PR #70 head `f6cd38dba1bc7cf8fbcb542133ca264e6cb3d61c` with no blocker. Current `origin/develop` remained incorporated at `687fe304a0ab2f2b2ba88c95b39eb04048104b7d`; final local Python 3.11 and 3.13 ranking/full-suite runs each passed 493 tests, the distribution build and diff hygiene passed, and exact-head hosted run `29774022595` passed all three CI jobs. Closed and moved this ticket to `done` without merging PR #70, setting either grant constant, reading a credential, loading a model, contacting a provider, or mutating domain state. Approval A/B remain ungranted and C3 remains blocked.
+
+## Closure mapping
+
+- **Exact active contract and identity gates:** `.10x/specs/experimental-buoy-baseline-executor.md`, its ratification evidence, and `src/buoy_search/experimental_baseline.py` bind the one region/plan/artifact/source/namespace/model/revision/cache/license/903-row operation and fail before credential access on mismatch.
+- **No live authority:** `APPROVAL_A_GRANTED_RECORD_SHA256` and `APPROVAL_A_GRANTED_PROVENANCE` remain source-pinned to `None`; the four-path live entry point cannot accept caller-supplied authority, model, provider, effects, or attestation. The executor grants neither Approval A nor Approval B.
+- **Offline model and zero-retry provider boundary:** live construction sets both offline controls before internally loading the pinned float32 normalized 384-dimensional CLS model, rehashes the immutable cache at the model boundary, and internally constructs locked `turbopuffer==2.4.0` with literal `max_retries=0` and direct non-paginating operations.
+- **Fixed operation and accounting limits:** the implementation fixes 26 non-reassignable slots, 10 reads, 16 writes, 904 write-row positions, 1,817 returned-row positions, and zero deletes; accounting precedes physical calls and preserves redacted exact/present markers for success, failure, malformed, timeout, and indeterminate responses.
+- **Verification and commit order:** two exact stable 903-row target reads precede the one conditional card write; two exact stable card reads precede the 903-row local commit; partial failures retain/re-observe pending, card, and local-state effects without retry, fallback, rollback, or cleanup delete.
+- **Focused and full validation:** `tests/test_experimental_baseline.py` contains 28 fake-backed tests covering exact success, both allowed target states, existing-card states, every immutable/plan gate, malformed accounting, local partial effects, and every one of the 26 failure slots. `.10x/evidence/2026-07-20-experimental-buoy-baseline-executor-implementation.md` records Python 3.11/3.13 ranking and 493-test passes, build success, exact-head hosted CI, diff hygiene, and the no-live attestation.
+- **Independent review:** `.10x/reviews/2026-07-20-experimental-buoy-baseline-executor-implementation-review.md` records PASS at `f6cd38dba1bc7cf8fbcb542133ca264e6cb3d61c` and explicitly preserves Approval A/B and C3 as separate blocked authority.
+
+## Residual risk
+
+No real model, SDK resource, remote namespace/card/account response, billing object, retained `/tmp` artifact, or domain state was exercised. These are future-operation facts, not implementation gaps: C3 durably owns the remaining Approval A, compatible-baseline evidence, and Approval B blockers and remains blocked.
+
+## Retrospective
+
+A callable experimental executor is not safely isolated merely because it lacks a CLI: live authority, model/provider/effect construction, retry identity, and post-write evidence must also be non-injectable and source-pinned. Separating fake-only simulation identity from the durable-path live entry point, installing accounting before every physical attempt, and re-observing local partial effects make the fail-closed boundary mechanically reviewable. The focused tests and review preserve these lessons; no separate knowledge or skill record is warranted.

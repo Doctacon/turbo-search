@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-20-implement-experimental-buoy-baseline-executor.md, .10x/specs/experimental-buoy-baseline-executor.md
+Relates-To: .10x/tickets/done/2026-07-20-implement-experimental-buoy-baseline-executor.md, .10x/specs/experimental-buoy-baseline-executor.md
 
 # Experimental Buoy Baseline Executor Implementation Evidence
 
@@ -34,13 +34,14 @@ Static inspection and 28 focused fake-backed tests establish:
 8. `git diff --check` — passed.
 9. Static inspection confirms 26 slots, 10 reads, 16 writes, 904 write positions, 1,817 returned-row ceilings, no executor delete method, no retry/fallback/pagination loop, literal `max_retries=0`, exact offline revision construction, no live CLI import, and source-pinned Approval A grant constants intentionally `None`.
 10. PR #70 GitHub Actions run `29773872982` on pushed repair commit `54fb751` — passed Python 3.11, Python 3.13, and Build distributions.
+11. Final review-head validation at `f6cd38dba1bc7cf8fbcb542133ca264e6cb3d61c` repeated locked Python 3.11 and 3.13 ranking/full-suite runs (493 tests each), built both distributions outside the repository, passed `git diff --check`, and confirmed current `origin/develop` `687fe304a0ab2f2b2ba88c95b39eb04048104b7d` was already incorporated. Exact-head PR #70 hosted run `29774022595` passed Python 3.11, Python 3.13, and Build distributions.
 
 The full suite emitted two existing temporary plan-cleanup warning lines per interpreter and still completed successfully; no executor test touched retained plan/state paths.
 
 ## What this supports
 
-This supports independent implementation review of the bounded executor and tests. It does not support ticket closure, Approval A, Approval B, a live/model/provider operation, or Buoy baseline compatibility. The ticket remains active pending the required independent review.
+Combined with the independent PASS at `.10x/reviews/2026-07-20-experimental-buoy-baseline-executor-implementation-review.md`, this supports closure of the bounded implementation ticket. It does not support Approval A, Approval B, a live/model/provider operation, Buoy baseline compatibility, or C3 execution.
 
 ## Limits and no-live attestation
 
-Validation used only the separately named simulation path with in-memory provider/model/local-effect fakes and temporary approval-record files. It did not read `TURBOPUFFER_API_KEY`, import/load/invoke the real embedding model, inspect the retained `/tmp` plan or state, construct a real provider client, make a network call, or mutate a namespace, routing catalog, pending record, DuckDB applied state, project default, dependency, or lockfile. No provider delete was attempted. Approval A is source-pinned as ungranted; Approval B remains ungranted; no live execution or merge occurred. The ticket remains active for the required independent review and CI on the pushed repair.
+Validation used only the separately named simulation path with in-memory provider/model/local-effect fakes and temporary approval-record files. It did not read `TURBOPUFFER_API_KEY`, import/load/invoke the real embedding model, inspect the retained `/tmp` plan or state, construct a real provider client, make a network call, or mutate a namespace, routing catalog, pending record, DuckDB applied state, project default, dependency, or lockfile. No provider delete was attempted. Approval A remains source-pinned as ungranted; Approval B remains ungranted; C3 remains blocked; no live execution or merge occurred.

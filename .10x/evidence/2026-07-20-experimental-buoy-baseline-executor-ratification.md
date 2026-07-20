@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/specs/experimental-buoy-baseline-executor.md, .10x/reviews/2026-07-20-experimental-buoy-baseline-executor-spec-review.md, .10x/tickets/2026-07-20-implement-experimental-buoy-baseline-executor.md, .10x/tickets/2026-07-19-capture-current-repo-candidates-and-baselines.md
+Relates-To: .10x/specs/experimental-buoy-baseline-executor.md, .10x/reviews/2026-07-20-experimental-buoy-baseline-executor-spec-review.md, .10x/tickets/done/2026-07-20-implement-experimental-buoy-baseline-executor.md, .10x/tickets/2026-07-19-capture-current-repo-candidates-and-baselines.md
 
 # Experimental Buoy Baseline Executor Ratification
 
@@ -11,7 +11,7 @@ On 2026-07-20 the user explicitly ratified the exact fail-closed baseline execut
 
 Ratification activates `.10x/specs/experimental-buoy-baseline-executor.md` without changing its region, plan/artifact/source/model/cache/license identities; 903-row/15-batch write shape; `max_retries=0`; preflight absence/emptiness/card checks; 26-attempt, 904-write-row-position, and 1,817-returned-row-position ceilings; exact response/accounting requirements; two target and two card post-write verification reads; commit order; zero-delete rule; failure behavior; or evidence contract. Only obsolete draft/authority prose changed to record active status and point to the separately bounded implementation owner.
 
-One executable source/test ticket now owns implementation at `.10x/tickets/2026-07-20-implement-experimental-buoy-baseline-executor.md`. This record turn does not implement or exercise it.
+One executable source/test ticket was opened for implementation and has since completed at `.10x/tickets/done/2026-07-20-implement-experimental-buoy-baseline-executor.md`. This ratification record turn did not implement or exercise it.
 
 ## Approval boundary
 
