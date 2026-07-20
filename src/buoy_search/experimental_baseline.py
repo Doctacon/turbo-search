@@ -1,38 +1,72 @@
 """Fail-closed executor for the one ratified experimental Buoy baseline.
 
-This module is intentionally not connected to the ordinary CLI or apply path.
-Its public executor accepts local/model/state hooks so dry validation can use
-credential-free fakes. The default provider factory is inert until explicitly
-called and constructs the locked SDK with retries disabled.
+The live entry point accepts only durable paths. It verifies an exact Approval A
+record and constructs the plan, immutable model, provider, and local effects
+internally. A separately named simulation entry point accepts fakes for tests;
+simulation can never enter the live construction path or claim live success.
+Neither entry point is connected to the ordinary CLI or apply path.
 """
 
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
+from datetime import datetime, timezone
 import hashlib
 from importlib.metadata import version as package_version
+import json
 import math
 import os
 from pathlib import Path
 import re
+import stat
 from typing import Any, Callable, Mapping, Protocol, Sequence
 
-from buoy_search.applied_state import AppliedState, AppliedStateRow
-from buoy_search.apply import VerifiedApplyPlan
+from buoy_search.applied_state import (
+    ApplyRunSummary,
+    AppliedState,
+    AppliedStateRow,
+    acquire_namespace_apply_lock,
+    applied_state_paths,
+    load_applied_state,
+    save_applied_state,
+)
+from buoy_search.apply import (
+    VerifiedApplyPlan,
+    build_state_after_apply,
+    embedding_text_for_chunk,
+    load_verified_apply_plan,
+    verified_source_metadata,
+)
 from buoy_search.catalog import (
+    CardFields,
     NamespaceCard,
     ROUTING_DIMENSIONS,
     ROUTING_MODEL,
     ROUTING_MODEL_REVISION,
     card_to_dict,
+    generated_semantics,
     parse_card,
+    prepare_card,
+    prepare_prospective_card,
+)
+from buoy_search.catalog_pending import (
+    applied_state_hash,
+    build_pending_payload,
+    confirm_pending,
+    create_pending,
+    inspect_apply_collision,
+    load_pending_snapshot,
+    pending_path_for_plan,
+    remove_expected_pending,
 )
 from buoy_search.plan_artifacts import (
     GENERIC_SITE_TURBOPUFFER_SCHEMA,
+    PLAN_SCHEMA_VERSION,
     build_generic_site_row,
     stable_hash,
 )
+from buoy_search.retriever import ranking_defaults_for_namespace
 from buoy_search.remote_catalog import (
     DISTANCE_METRIC,
     REMOTE_CARD_ATTRIBUTES,
@@ -65,6 +99,45 @@ MAX_ATTEMPTS = 26
 MAX_WRITE_ROW_POSITIONS = 904
 MAX_RETURNED_ROW_POSITIONS = 1817
 SDK_VERSION = "2.4.0"
+APPROVAL_A_TEXT = (
+    "Approve one fail-closed experimental baseline operation in `gcp-us-central1` for retained plan "
+    "`plan_b6c5d128295f442f` (artifact "
+    "`b6c5d128295f442fcae21472c9bcb037ecb44101ca648115e8f666ba59a6f0ce`) from "
+    "`Doctacon/buoy-search@fcb7abbe1652d2eab4ee23816b6d992d893603ac` into only "
+    "`github-doctacon-buoy-search-v1`. Before writes, require the target namespace to be "
+    "unambiguously absent or exact-schema/cosine-compatible and verified empty. Use 903 offline "
+    "local float32 embeddings from MIT-licensed "
+    "`BAAI/bge-small-en-v1.5@5c38ec7c405ec4b44b94cc5a9bb96e735b38267a` only after cache "
+    "manifest `5f783ebce23b6ac957d2741399b46e19502b1751acfd3c744b8c41103b138f35` and "
+    "README/license hash `ddb964361a55c6e5dfca6361615854b260c9c960205d04c7520151aaa1d75837` "
+    "revalidate. Set the `turbopuffer==2.4.0` SDK to `max_retries=0`; permit at most 26 physical "
+    "provider attempts: 10 bounded reads and 16 writes, comprising exactly 15 content upserts "
+    "(14 × 64 rows plus 1 × 7 rows), at most one conditional catalog-card upsert, at most 904 "
+    "attempted write-row positions, and at most 1,817 returned read-row positions. Capture every "
+    "content/catalog attempt and response with request counts, exact or explicitly absent "
+    "`rows_affected`, redacted billing or explicitly absent billing, and partial/indeterminate "
+    "outcomes. Permit zero row/namespace/card deletes and no retry, pagination, schema/signature "
+    "fallback, cleanup delete, other namespace/card, or reassignment of unused request slots. "
+    "After writes, require two bounded strong reads to match exactly all 903 intended rows before "
+    "the catalog mutation, then two exact-card reads to match the intended stable card revision "
+    "before local DuckDB applied-state success commit. Abort on any "
+    "source/artifact/model/license/cache/state/schema/distance/row/card/count/budget mismatch; on "
+    "content mismatch make no catalog-card or local-state commit, and on catalog mismatch make no "
+    "local-state or card-success commit while reporting any possible remote partial effect. "
+    "Provider/account dollar pricing is unknown, so this approval binds operational exposure "
+    "rather than a dollar ceiling. It does not authorize C3 retrieval, a recrawl/replan, another "
+    "namespace, a default change, or promotion."
+)
+APPROVAL_A_TEXT_SHA256 = hashlib.sha256(APPROVAL_A_TEXT.encode("utf-8")).hexdigest()
+APPROVAL_RECORD_FIELDS = {
+    "schema_version", "approval", "status", "approval_text", "approval_text_sha256",
+    "granted_at", "granted_by", "provenance",
+}
+APPROVAL_PROVENANCE_FIELDS = {"source_system", "conversation_id", "message_id"}
+# Approval A is intentionally ungranted. A later reviewed source change must pin
+# the exact durable grant bytes and provenance before any record can unlock live.
+APPROVAL_A_GRANTED_RECORD_SHA256: str | None = None
+APPROVAL_A_GRANTED_PROVENANCE: JsonObject | None = None
 
 CONTENT_SCHEMA: JsonObject = {
     **GENERIC_SITE_TURBOPUFFER_SCHEMA,
@@ -110,6 +183,7 @@ class PreparedBaseline:
 
     rows: tuple[JsonObject, ...]
     card: NamespaceCard
+    prospective_card: NamespaceCard
     next_state: AppliedState
     model: str
     model_revision: str
@@ -121,26 +195,25 @@ class PreparedBaseline:
 
 @dataclass(frozen=True)
 class ProviderResources:
+    """Simulation-only provider fakes used by the fake-backed matrix."""
+
     target: NamespaceResource
     catalog: NamespaceResource
-    sdk_version: str
-    max_retries: int
-    wrapper_retries_disabled: bool = True
-    fallbacks_disabled: bool = True
-    pagination_disabled: bool = True
-    simulated: bool = False
+    sdk_version: str = "simulation"
+    max_retries: int = -1
 
 
 @dataclass(frozen=True)
 class LocalEffects:
-    """Plan-bound local effects; production callers bind existing primitives."""
+    """Simulation-only local effects used by the fake-backed matrix."""
 
     lock: Callable[[], AbstractContextManager[None]]
     validate_preconditions: Callable[[VerifiedApplyPlan], None]
-    create_pending: Callable[[PreparedBaseline], None]
+    create_pending: Callable[[PreparedBaseline, NamespaceCard | None], None]
     commit_state: Callable[[PreparedBaseline], None]
     remove_pending: Callable[[], None]
-    simulated: bool = False
+    pending_exists: Callable[[], bool]
+    state_matches: Callable[[PreparedBaseline], bool]
 
 
 @dataclass(frozen=True)
@@ -152,6 +225,7 @@ class Slot:
     kind: str
     requested_rows: int | None = None
     top_k: int | None = None
+    returned_rows_ceiling: int = 0
 
 
 @dataclass
@@ -163,6 +237,8 @@ class Attempt:
     returned_rows: int = 0
     billing: JsonObject | None = None
     billing_present: bool = False
+    metrics: JsonObject | None = None
+    metrics_present: bool = False
     request_identity: str | None = None
     request_identity_present: bool = False
     affected_ids: list[str] | None = None
@@ -175,18 +251,18 @@ class Attempt:
 
 SLOTS: tuple[Slot, ...] = (
     Slot(1, "target_preflight_metadata", TARGET_NAMESPACE, 1, "read"),
-    Slot(2, "target_empty_check", TARGET_NAMESPACE, 1, "read", top_k=1),
+    Slot(2, "target_empty_check", TARGET_NAMESPACE, 1, "read", top_k=1, returned_rows_ceiling=1),
     Slot(3, "catalog_preflight_metadata", REMOTE_CATALOG_NAMESPACE, 1, "read"),
-    Slot(4, "catalog_card_preflight", REMOTE_CATALOG_NAMESPACE, 1, "read", top_k=2),
-    Slot(5, "catalog_card_preflight", REMOTE_CATALOG_NAMESPACE, 2, "read", top_k=2),
+    Slot(4, "catalog_card_preflight", REMOTE_CATALOG_NAMESPACE, 1, "read", top_k=2, returned_rows_ceiling=2),
+    Slot(5, "catalog_card_preflight", REMOTE_CATALOG_NAMESPACE, 2, "read", top_k=2, returned_rows_ceiling=2),
     *(Slot(6 + index, "content_write", TARGET_NAMESPACE, index + 1, "write", requested_rows=size)
       for index, size in enumerate(CONTENT_BATCH_SIZES)),
     Slot(21, "target_postwrite_metadata", TARGET_NAMESPACE, 1, "read"),
-    Slot(22, "target_postwrite_verification", TARGET_NAMESPACE, 1, "read", top_k=904),
-    Slot(23, "target_postwrite_verification", TARGET_NAMESPACE, 2, "read", top_k=904),
+    Slot(22, "target_postwrite_verification", TARGET_NAMESPACE, 1, "read", top_k=904, returned_rows_ceiling=904),
+    Slot(23, "target_postwrite_verification", TARGET_NAMESPACE, 2, "read", top_k=904, returned_rows_ceiling=904),
     Slot(24, "catalog_conditional_write", REMOTE_CATALOG_NAMESPACE, 1, "write", requested_rows=1),
-    Slot(25, "catalog_postwrite_verification", REMOTE_CATALOG_NAMESPACE, 1, "read", top_k=2),
-    Slot(26, "catalog_postwrite_verification", REMOTE_CATALOG_NAMESPACE, 2, "read", top_k=2),
+    Slot(25, "catalog_postwrite_verification", REMOTE_CATALOG_NAMESPACE, 1, "read", top_k=2, returned_rows_ceiling=2),
+    Slot(26, "catalog_postwrite_verification", REMOTE_CATALOG_NAMESPACE, 2, "read", top_k=2, returned_rows_ceiling=2),
 )
 
 
@@ -198,7 +274,13 @@ class _Ledger:
     returned_row_positions: int = 0
     delete_attempts: int = 0
 
-    def invoke(self, slot_number: int, call: Callable[[], object]) -> JsonObject:
+    def invoke(
+        self,
+        slot_number: int,
+        call: Callable[[], object],
+        *,
+        expected_affected_ids: Sequence[str] | None = None,
+    ) -> JsonObject:
         slot = SLOTS[slot_number - 1]
         if slot.number != slot_number or slot_number in self.attempts:
             raise ExperimentalBaselineError("attempt slot reuse or reassignment is forbidden", self.evidence())
@@ -218,14 +300,26 @@ class _Ledger:
         except BaseException as exc:
             attempt.status = "failed" if isinstance(exc, DefinitiveProviderError) else "indeterminate"
             attempt.error = _safe_error(exc)
+            response_errors = _capture_attached_error_accounting(attempt, exc)
+            self.returned_row_positions += attempt.returned_rows
+            attempt.cumulative_returned_row_positions = self.returned_row_positions
+            try:
+                self._check_budgets()
+            except ExperimentalBaselineError as budget_error:
+                response_errors.append(str(budget_error))
+            detail = f"; attached accounting malformed: {'; '.join(response_errors)}" if response_errors else ""
             raise ExperimentalBaselineError(
-                f"provider attempt {slot_number} did not complete ({attempt.error})", self.evidence()
+                f"provider attempt {slot_number} did not complete ({attempt.error}){detail}", self.evidence()
             ) from None
         try:
             payload = _plain_response(response)
             response_errors = _capture_response(
                 attempt, payload, require_rows_affected=slot.kind == "write"
             )
+            if slot.kind == "write" and attempt.rows_affected != slot.requested_rows:
+                response_errors.append("successful write rows_affected mismatch")
+            if expected_affected_ids is not None and attempt.affected_ids != list(expected_affected_ids):
+                response_errors.append("successful write affected IDs mismatch")
             self.returned_row_positions += attempt.returned_rows
             attempt.cumulative_returned_row_positions = self.returned_row_positions
             self._check_budgets()
@@ -421,6 +515,21 @@ def validate_prepared(verified: VerifiedApplyPlan, prepared: PreparedBaseline) -
     if actual_ids != expected_ids or len(set(actual_ids)) != CONTENT_ROWS:
         raise ExperimentalBaselineError("prepared content IDs/order mismatch")
     card = parse_card(card_to_dict(prepared.card, include_vector=True))
+    prospective = prepared.prospective_card
+    if (
+        prospective.last_plan_id != PLAN_ID
+        or prospective.last_apply_id is not None
+        or card.last_plan_id != PLAN_ID
+        or card.last_apply_id != prepared.next_state.last_apply_id
+    ):
+        raise ExperimentalBaselineError("prepared catalog card lineage mismatch")
+    comparable_card = card_to_dict(card, include_vector=True)
+    comparable_prospective = card_to_dict(prospective, include_vector=True)
+    for volatile in ("card_revision", "last_apply_id"):
+        comparable_card.pop(volatile)
+        comparable_prospective.pop(volatile)
+    if comparable_card != comparable_prospective:
+        raise ExperimentalBaselineError("prepared prospective/final card mismatch")
     exact_card_values = {
         "namespace": TARGET_NAMESPACE,
         "enabled": True,
@@ -512,37 +621,110 @@ def create_provider_resources(*, api_key: str, region: str, max_retries: int) ->
     )
 
 
+def validate_approval_a_record(path: Path) -> JsonObject:
+    """Verify the exact durable Approval A grant and its user-message provenance."""
+
+    absolute = path.expanduser().absolute()
+    try:
+        metadata = absolute.lstat()
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+            raise ExperimentalBaselineError("Approval A record must be a regular non-symlink file")
+        raw = absolute.read_bytes()
+        payload = json.loads(raw)
+    except ExperimentalBaselineError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ExperimentalBaselineError(f"Approval A record is unreadable ({_safe_error(exc)})") from None
+    if not isinstance(payload, dict) or set(payload) != APPROVAL_RECORD_FIELDS:
+        raise ExperimentalBaselineError("Approval A record has missing or extra fields")
+    if (
+        type(payload["schema_version"]) is not int
+        or payload["schema_version"] != 1
+        or payload["approval"] != "experimental-buoy-baseline-approval-a"
+        or payload["status"] != "granted"
+        or payload["approval_text"] != APPROVAL_A_TEXT
+        or payload["approval_text_sha256"] != APPROVAL_A_TEXT_SHA256
+    ):
+        raise ExperimentalBaselineError("Approval A record does not contain the exact granted contract")
+    for name in ("granted_at", "granted_by"):
+        if not isinstance(payload[name], str) or not payload[name].strip():
+            raise ExperimentalBaselineError(f"Approval A record field {name} must be non-empty")
+    try:
+        granted_at = datetime.fromisoformat(payload["granted_at"].replace("Z", "+00:00"))
+    except ValueError:
+        raise ExperimentalBaselineError("Approval A granted_at must be an ISO-8601 timestamp") from None
+    if granted_at.tzinfo is None:
+        raise ExperimentalBaselineError("Approval A granted_at must include a timezone")
+    provenance = payload["provenance"]
+    if not isinstance(provenance, dict) or set(provenance) != APPROVAL_PROVENANCE_FIELDS:
+        raise ExperimentalBaselineError("Approval A provenance has missing or extra fields")
+    if any(not isinstance(provenance[name], str) or not provenance[name].strip() for name in APPROVAL_PROVENANCE_FIELDS):
+        raise ExperimentalBaselineError("Approval A provenance fields must be non-empty")
+    record_hash = hashlib.sha256(raw).hexdigest()
+    if APPROVAL_A_GRANTED_RECORD_SHA256 is None or APPROVAL_A_GRANTED_PROVENANCE is None:
+        raise ExperimentalBaselineError("Approval A remains ungranted in this reviewed build")
+    if (
+        record_hash != APPROVAL_A_GRANTED_RECORD_SHA256
+        or provenance != APPROVAL_A_GRANTED_PROVENANCE
+    ):
+        raise ExperimentalBaselineError("Approval A record/provenance is not the source-pinned grant")
+    return {
+        "record_sha256": record_hash,
+        "approval_text_sha256": APPROVAL_A_TEXT_SHA256,
+        "granted_at": payload["granted_at"],
+        "granted_by": payload["granted_by"],
+        "provenance": dict(provenance),
+    }
+
+
 def execute_experimental_baseline(
+    *, approval_record: Path, plan_path: Path, cache_root: Path, state_root: Path
+) -> JsonObject:
+    """Run the live operation from exact durable inputs; there is no CLI route."""
+
+    approval = validate_approval_a_record(approval_record)
+    with acquire_namespace_apply_lock(
+        site_id=SITE_ID, namespace=TARGET_NAMESPACE, state_root=state_root
+    ):
+        verified = load_verified_apply_plan(
+            plan_path=plan_path, namespace=TARGET_NAMESPACE, state_root=state_root
+        )
+        cache_attestation = validate_model_cache(cache_root)
+        effects = _LiveLocalEffects(verified)
+        result = _execute_locked(
+            verified,
+            cache_attestation=cache_attestation,
+            prepare=lambda value: _prepare_live_baseline(value, cache_root),
+            credential_reader=_read_live_credential,
+            provider_factory=create_provider_resources,
+            local_effects=effects,
+            simulation=False,
+        )
+    result["approval_a"] = approval
+    return result
+
+
+def simulate_experimental_baseline(
     verified: VerifiedApplyPlan,
     *,
     cache_attestation: CacheAttestation,
     prepare: Callable[[VerifiedApplyPlan], PreparedBaseline],
-    credential_reader: Callable[[], str],
-    provider_factory: Callable[..., ProviderResources],
+    provider: ProviderResources,
     local_effects: LocalEffects,
-    approval_a_granted: bool = False,
-    simulation: bool = False,
 ) -> JsonObject:
-    """Execute the bounded operation; callers must separately possess Approval A.
+    """Exercise the contract with fakes; this can never report a live operation."""
 
-    No CLI routes here. Tests inject every external/model/local side effect.
-    """
-
-    if not approval_a_granted and not simulation:
-        raise ExperimentalBaselineError("a separately granted Approval A is required for non-simulated execution")
-    if approval_a_granted and simulation:
-        raise ExperimentalBaselineError("simulation cannot claim live Approval A")
-    if local_effects.simulated != simulation:
-        raise ExperimentalBaselineError("local-effect simulation attestation mismatch")
+    if provider.sdk_version != "simulation" or provider.max_retries != -1:
+        raise ExperimentalBaselineError("simulation provider must carry simulation-only identity")
     with local_effects.lock():
         return _execute_locked(
             verified,
             cache_attestation=cache_attestation,
             prepare=prepare,
-            credential_reader=credential_reader,
-            provider_factory=provider_factory,
+            credential_reader=lambda: "simulation-no-credential",
+            provider_factory=lambda **_kwargs: provider,
             local_effects=local_effects,
-            simulation=simulation,
+            simulation=True,
         )
 
 
@@ -573,19 +755,26 @@ def _execute_locked(
         if not isinstance(credential, str) or not credential:
             raise ExperimentalBaselineError("TURBOPUFFER_API_KEY is required for an approved operation")
         provider = provider_factory(api_key=credential, region=REGION, max_retries=0)
-        _validate_provider(provider, simulation=simulation)
-        provider_attested = True
+        if simulation:
+            if provider.sdk_version != "simulation" or provider.max_retries != -1:
+                raise ExperimentalBaselineError("simulation provider identity mismatch")
+        elif provider.sdk_version != SDK_VERSION or provider.max_retries != 0:
+            raise ExperimentalBaselineError("live provider construction did not bind max_retries=0")
+        provider_attested = not simulation
 
         target_absent = _target_preflight(ledger, provider.target)
         if target_absent:
             ledger.mark_unused(2)
         existing_card = _catalog_preflight(ledger, provider.catalog, prepared.card)
 
-        local_effects.create_pending(prepared)
-        pending_created = True
+        local_effects.create_pending(prepared, existing_card)
+        pending_created = local_effects.pending_exists()
+        if not pending_created:
+            raise ExperimentalBaselineError("pending record was not durably created")
         for batch_number, size in enumerate(CONTENT_BATCH_SIZES, start=1):
             start = sum(CONTENT_BATCH_SIZES[: batch_number - 1])
             rows = list(prepared.rows[start : start + size])
+            expected_ids = [str(row["id"]) for row in rows]
             response = ledger.invoke(
                 5 + batch_number,
                 lambda rows=rows: provider.target.write(
@@ -594,8 +783,11 @@ def _execute_locked(
                     upsert_rows=rows,
                     return_affected_ids=True,
                 ),
+                expected_affected_ids=expected_ids,
             )
-            _require_write_response(response, expected_rows=size)
+            _require_write_response(
+                response, expected_rows=size, expected_ids=expected_ids
+            )
 
         metadata = ledger.invoke(21, lambda: provider.target.metadata())
         _validate_content_metadata(metadata, allow_absent=False)
@@ -621,6 +813,7 @@ def _execute_locked(
                 upsert_condition=condition,
                 return_affected_ids=True,
             ),
+            expected_affected_ids=[str(card_row["id"])],
         )
         _require_write_response(response, expected_rows=1, expected_ids=[str(card_row["id"])])
         first_card = _card_read(ledger, provider.catalog, 25, allow_missing=False)
@@ -639,14 +832,18 @@ def _execute_locked(
             raise ExperimentalBaselineError("successful request count is outside the fixed ledger")
 
         local_effects.commit_state(prepared)
-        state_committed = True
+        state_committed = local_effects.state_matches(prepared)
+        if not state_committed:
+            raise ExperimentalBaselineError("local applied-state commit could not be verified")
         local_effects.remove_pending()
-        pending_created = False
+        pending_created = local_effects.pending_exists()
+        if pending_created:
+            raise ExperimentalBaselineError("pending record still exists after verified cleanup")
         evidence = ledger.evidence(success=True)
         evidence.update({
-            "provider_attested": True,
-            "sdk_version": provider.sdk_version,
-            "max_retries": provider.max_retries,
+            "provider_attested": provider_attested,
+            "sdk_version": provider.sdk_version if not simulation else None,
+            "max_retries": provider.max_retries if not simulation else None,
             "target_namespace": TARGET_NAMESPACE,
             "catalog_namespace": REMOTE_CATALOG_NAMESPACE,
             "content_rows_verified": CONTENT_ROWS,
@@ -655,9 +852,14 @@ def _execute_locked(
             "remote_card_verified": True,
             "pending_retained": False,
             "simulation": simulation,
+            "execution_mode": "simulation" if simulation else "live",
         })
         return evidence
     except ExperimentalBaselineError as exc:
+        pending_created, state_committed = _observe_local_effects(
+            local_effects, prepared=locals().get("prepared"),
+            pending_default=pending_created, state_default=state_committed,
+        )
         evidence = exc.evidence or ledger.evidence()
         evidence["provider_attested"] = provider_attested
         evidence["pending_retained"] = pending_created
@@ -665,9 +867,14 @@ def _execute_locked(
         evidence["remote_card_verified"] = card_verified
         evidence["card_success"] = card_verified
         evidence["simulation"] = simulation
+        evidence["execution_mode"] = "simulation" if simulation else "live"
         exc.evidence = evidence
         raise
     except BaseException as exc:
+        pending_created, state_committed = _observe_local_effects(
+            local_effects, prepared=locals().get("prepared"),
+            pending_default=pending_created, state_default=state_committed,
+        )
         evidence = ledger.evidence()
         evidence.update({
             "provider_attested": provider_attested,
@@ -676,20 +883,241 @@ def _execute_locked(
             "remote_card_verified": card_verified,
             "card_success": card_verified,
             "simulation": simulation,
+            "execution_mode": "simulation" if simulation else "live",
         })
         raise ExperimentalBaselineError(f"experimental baseline aborted ({_safe_error(exc)})", evidence) from None
 
 
-def _validate_provider(provider: ProviderResources, *, simulation: bool) -> None:
-    if (
-        provider.sdk_version != SDK_VERSION
-        or provider.max_retries != 0
-        or not provider.wrapper_retries_disabled
-        or not provider.fallbacks_disabled
-        or not provider.pagination_disabled
-        or provider.simulated != simulation
-    ):
-        raise ExperimentalBaselineError("provider resources cannot attest zero retry/fallback/pagination")
+def _read_live_credential() -> str:
+    value = os.environ.get("TURBOPUFFER_API_KEY")
+    if not value:
+        raise ExperimentalBaselineError("TURBOPUFFER_API_KEY is required for an approved operation")
+    return value
+
+
+class _PinnedClsEmbedder:
+    """One exact offline model instance with normalized float32 CLS pooling."""
+
+    def __init__(self, cache_root: Path) -> None:
+        snapshot = cache_root.expanduser().resolve(strict=True) / "snapshots" / MODEL_REVISION
+        try:
+            import torch
+            from transformers import AutoModel, AutoTokenizer
+
+            self._torch = torch
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                snapshot, local_files_only=True, revision=MODEL_REVISION
+            )
+            self._model = AutoModel.from_pretrained(
+                snapshot, local_files_only=True, revision=MODEL_REVISION
+            ).float().eval()
+        except Exception as exc:
+            raise ExperimentalBaselineError(
+                f"pinned offline model construction failed ({_safe_error(exc)})"
+            ) from None
+        config = self._model.config
+        if getattr(config, "hidden_size", None) != ROUTING_DIMENSIONS:
+            raise ExperimentalBaselineError("pinned model hidden dimension mismatch")
+
+    def encode(self, texts: Sequence[str], *, batch_size: int = 32) -> list[list[float]]:
+        values: list[list[float]] = []
+        for start in range(0, len(texts), batch_size):
+            tokens = self._tokenizer(
+                list(texts[start : start + batch_size]),
+                padding=True,
+                truncation=True,
+                return_tensors="pt",
+            )
+            with self._torch.no_grad():
+                output = self._model(**tokens)
+                cls = output.last_hidden_state[:, 0, :].to(dtype=self._torch.float32)
+                normalized = self._torch.nn.functional.normalize(cls, p=2, dim=1)
+            values.extend(normalized.cpu().tolist())
+        return [_validate_vector(value, label="pinned CLS output") for value in values]
+
+
+def _prepare_live_baseline(verified: VerifiedApplyPlan, cache_root: Path) -> PreparedBaseline:
+    # Rehash immediately at the model boundary; callers cannot substitute an
+    # attestation object for the exact immutable cache bytes.
+    validate_model_cache(cache_root)
+    embedder = _PinnedClsEmbedder(cache_root)
+    texts = [embedding_text_for_chunk(chunk) for chunk in verified.manifest.chunks]
+    vectors = embedder.encode(texts, batch_size=32)
+    if len(vectors) != CONTENT_ROWS:
+        raise ExperimentalBaselineError("pinned model returned an incorrect embedding count")
+    applied_at = datetime.now(timezone.utc).isoformat()
+    next_state = build_state_after_apply(verified, applied_at=applied_at, delete_stale=False)
+    rows = tuple(
+        build_generic_site_row(chunk, vector, plan_id=PLAN_ID, applied_at=applied_at)
+        for chunk, vector in zip(verified.manifest.chunks, vectors, strict=True)
+    )
+    semantics = generated_semantics(
+        base_url=verified.manifest.base_url,
+        site_id=verified.manifest.site_id,
+        plan_schema_version=PLAN_SCHEMA_VERSION,
+        source_metadata=verified_source_metadata(verified),
+    )
+    ranking = ranking_defaults_for_namespace(TARGET_NAMESPACE)
+    common = dict(
+        namespace=TARGET_NAMESPACE,
+        enabled=True,
+        source_kind=semantics.source_kind,
+        source_uri=semantics.source_uri,
+        site_id=SITE_ID,
+        title=semantics.title,
+        summary=semantics.summary,
+        aliases=list(semantics.aliases),
+        tags=list(semantics.tags),
+        semantic_origin="generated",
+        region=REGION,
+        embedding_model=MODEL,
+        embedding_precision=MODEL_PRECISION,
+        plan_schema_version=PLAN_SCHEMA_VERSION,
+        ranking_mode=str(ranking["ranking_mode"]),
+        ranking_profile=str(ranking["ranking_profile"]),
+        ranking_pool=int(ranking["ranking_pool"]),
+        ranking_aggregation=str(ranking["ranking_aggregation"]),
+        last_plan_id=PLAN_ID,
+    )
+    prospective = prepare_prospective_card(
+        CardFields(**common, last_apply_id=None), embedder=embedder, now=applied_at
+    )
+    card = prepare_card(
+        CardFields(**common, last_apply_id=next_state.last_apply_id),
+        existing=prospective,
+        embedder=embedder,
+        now=applied_at,
+    )
+    return PreparedBaseline(
+        rows=rows,
+        card=card,
+        prospective_card=prospective,
+        next_state=next_state,
+        model=MODEL,
+        model_revision=MODEL_REVISION,
+        precision=MODEL_PRECISION,
+        dimensions=ROUTING_DIMENSIONS,
+        normalized=True,
+        pooling="cls",
+    )
+
+
+class _LiveLocalEffects:
+    def __init__(self, verified: VerifiedApplyPlan) -> None:
+        self.verified = verified
+        self.pending_path = pending_path_for_plan(verified.state_root, PLAN_ID)
+        self.pending_snapshot: Any = None
+
+    def validate_preconditions(self, verified: VerifiedApplyPlan) -> None:
+        if verified is not self.verified:
+            raise ExperimentalBaselineError("live verified-plan identity changed under lock")
+        state_path = applied_state_paths(
+            site_id=SITE_ID, namespace=TARGET_NAMESPACE, state_root=verified.state_root
+        ).database_path.resolve(strict=False)
+        inspect_apply_collision(
+            self.pending_path,
+            expected={
+                "state_root": str(verified.state_root.expanduser().resolve(strict=False)),
+                "catalog_namespace": REMOTE_CATALOG_NAMESPACE,
+                "applied_state_path": str(state_path),
+                "site_id": SITE_ID,
+                "namespace": TARGET_NAMESPACE,
+                "plan_id": PLAN_ID,
+                "base_url": SOURCE_URI,
+            },
+        )
+
+    def create_pending(
+        self, prepared: PreparedBaseline, existing_card: NamespaceCard | None
+    ) -> None:
+        state_root = self.verified.state_root.expanduser().resolve(strict=False)
+        state_path = applied_state_paths(
+            site_id=SITE_ID, namespace=TARGET_NAMESPACE, state_root=state_root
+        ).database_path.resolve(strict=False)
+        pending = build_pending_payload(
+            state_root=state_root,
+            applied_state_path=state_path,
+            site_id=SITE_ID,
+            namespace=TARGET_NAMESPACE,
+            plan_id=PLAN_ID,
+            base_url=SOURCE_URI,
+            prospective_card=prepared.prospective_card,
+            existing_card=existing_card,
+            prior_applied_plan_id=None,
+            prior_applied_apply_id=None,
+            intended_state_hash=applied_state_hash(prepared.next_state),
+            region=REGION,
+            ranking_contract=ranking_defaults_for_namespace(TARGET_NAMESPACE),
+        )
+        create_pending(self.pending_path, pending)
+        confirm_pending(
+            self.pending_path,
+            pending,
+            apply_id=prepared.next_state.last_apply_id,
+            now=prepared.card.updated_at,
+        )
+        self.pending_snapshot = load_pending_snapshot(self.pending_path)
+        if self.pending_snapshot.payload["prospective_card"] != card_to_dict(
+            prepared.card, include_vector=True
+        ):
+            raise ExperimentalBaselineError("confirmed pending card does not match the intended card")
+
+    def commit_state(self, prepared: PreparedBaseline) -> None:
+        save_applied_state(
+            prepared.next_state,
+            state_root=self.verified.state_root,
+            apply_run=ApplyRunSummary(
+                apply_id=prepared.next_state.last_apply_id,
+                plan_id=PLAN_ID,
+                applied_at=prepared.next_state.updated_at,
+                rows_upserted=CONTENT_ROWS,
+                rows_deleted=0,
+                retained_stale_rows=0,
+            ),
+        )
+
+    def remove_pending(self) -> None:
+        if self.pending_snapshot is None:
+            raise ExperimentalBaselineError("pending snapshot is unavailable for exact cleanup")
+        remove_expected_pending(
+            self.pending_path,
+            self.pending_snapshot.payload,
+            expected_device=self.pending_snapshot.device,
+            expected_inode=self.pending_snapshot.inode,
+        )
+
+    def pending_exists(self) -> bool:
+        return self.pending_path.exists() or self.pending_path.is_symlink()
+
+    def state_matches(self, prepared: PreparedBaseline) -> bool:
+        try:
+            current = load_applied_state(
+                site_id=SITE_ID,
+                namespace=TARGET_NAMESPACE,
+                base_url=SOURCE_URI,
+                state_root=self.verified.state_root,
+            )
+        except Exception:
+            return False
+        return applied_state_hash(current) == applied_state_hash(prepared.next_state)
+
+
+def _observe_local_effects(
+    effects: LocalEffects,
+    *,
+    prepared: object,
+    pending_default: bool,
+    state_default: bool,
+) -> tuple[bool, bool]:
+    try:
+        pending = effects.pending_exists()
+    except BaseException:
+        pending = pending_default
+    try:
+        committed = effects.state_matches(prepared) if isinstance(prepared, PreparedBaseline) else state_default
+    except BaseException:
+        committed = state_default
+    return pending, committed
 
 
 def _target_preflight(ledger: _Ledger, resource: NamespaceResource) -> bool:
@@ -716,6 +1144,8 @@ def _catalog_preflight(
 ) -> NamespaceCard | None:
     metadata = ledger.invoke(3, lambda: resource.metadata())
     validate_remote_schema(metadata)
+    if metadata.get("distance_metric") != DISTANCE_METRIC:
+        raise ExperimentalBaselineError("catalog namespace distance_metric is missing or mismatched")
     first = _card_read(ledger, resource, 4, allow_missing=True)
     second = _card_read(ledger, resource, 5, allow_missing=True)
     if (first is None) != (second is None):
@@ -810,9 +1240,8 @@ def _validate_content_metadata(payload: Mapping[str, Any], *, allow_absent: bool
         "id": {"type": "string", "filterable": True}, **CONTENT_SCHEMA,
     }):
         raise ExperimentalBaselineError("target namespace schema mismatch")
-    distance = payload.get("distance_metric")
-    if distance is not None and distance != DISTANCE_METRIC:
-        raise ExperimentalBaselineError("target namespace distance mismatch")
+    if payload.get("distance_metric") != DISTANCE_METRIC:
+        raise ExperimentalBaselineError("target namespace distance_metric is missing or mismatched")
 
 
 def _normalize_content_schema(value: object) -> JsonObject:
@@ -824,6 +1253,15 @@ def _normalize_content_schema(value: object) -> JsonObject:
         config = {"type": raw_config} if isinstance(raw_config, str) else raw_config
         if not isinstance(config, Mapping) or not isinstance(config.get("type"), str):
             raise ExperimentalBaselineError("target namespace schema contains an invalid attribute")
+        allowed = {
+            "type", "filterable", "full_text_search", "regex", "glob", "fuzzy",
+            "sparse_knn", "ann", "embed",
+        }
+        unknown = set(config) - allowed
+        if unknown:
+            raise ExperimentalBaselineError(
+                f"target namespace schema attribute {name!r} has unknown config keys"
+            )
         type_name = str(config["type"])
         result: JsonObject = {
             "type": type_name,
@@ -877,8 +1315,8 @@ def _capture_response(
         errors.append("response rows must be an array")
     else:
         attempt.returned_rows = len(rows)
-        if attempt.slot.top_k is not None and len(rows) > attempt.slot.top_k:
-            errors.append("read returned more rows than top_k")
+        if len(rows) > attempt.slot.returned_rows_ceiling:
+            errors.append("response exceeded the slot returned-row ceiling")
 
     attempt.billing_present = "billing" in payload
     billing = payload.get("billing")
@@ -888,9 +1326,22 @@ def _capture_response(
         else:
             attempt.billing = _redact_mapping(billing)
 
-    identity = payload.get("request_id", payload.get("request_identity"))
-    attempt.request_identity_present = identity is not None
-    if identity is not None:
+    attempt.metrics_present = "metrics" in payload
+    metrics = payload.get("metrics")
+    if attempt.metrics_present:
+        if not isinstance(metrics, Mapping):
+            errors.append("metrics must be an object when present")
+        else:
+            attempt.metrics = _redact_mapping(metrics)
+
+    identity_key = (
+        "request_id" if "request_id" in payload
+        else "request_identity" if "request_identity" in payload
+        else None
+    )
+    attempt.request_identity_present = identity_key is not None
+    if identity_key is not None:
+        identity = payload[identity_key]
         if not isinstance(identity, str) or not identity:
             errors.append("request identity must be a non-empty string")
         else:
@@ -906,9 +1357,51 @@ def _capture_response(
     return errors
 
 
+def _capture_attached_error_accounting(attempt: Attempt, exc: BaseException) -> list[str]:
+    """Retain all parseable response/metrics accounting attached to an error."""
+
+    payload: JsonObject = {}
+    errors: list[str] = []
+    for attribute in ("response", "body"):
+        attached = getattr(exc, attribute, None)
+        if attached is None:
+            continue
+        try:
+            payload.update(_plain_response(attached))
+        except ExperimentalBaselineError as parse_error:
+            errors.append(f"{attribute}: {parse_error}")
+    metrics = getattr(exc, "metrics", None)
+    if metrics is not None:
+        try:
+            metrics_payload = _plain_response(metrics)
+            payload.setdefault("metrics", metrics_payload)
+            for key, value in metrics_payload.items():
+                payload.setdefault(key, value)
+        except ExperimentalBaselineError as parse_error:
+            errors.append(f"metrics: {parse_error}")
+    for attribute, field_name in (
+        ("billing", "billing"), ("request_id", "request_id"),
+        ("request_identity", "request_identity"), ("rows_affected", "rows_affected"),
+    ):
+        value = getattr(exc, attribute, None)
+        if value is not None:
+            payload.setdefault(field_name, _plain_value(value))
+    if payload:
+        errors.extend(_capture_response(attempt, payload, require_rows_affected=False))
+    return errors
+
+
 def _plain_response(value: object) -> JsonObject:
     if isinstance(value, Mapping):
         return {str(key): _plain_value(item) for key, item in value.items()}
+    json_method = getattr(value, "json", None)
+    if callable(json_method):
+        try:
+            result = json_method()
+        except Exception:
+            result = None
+        if isinstance(result, Mapping):
+            return {str(key): _plain_value(item) for key, item in result.items()}
     for method_name in ("to_dict", "model_dump"):
         method = getattr(value, method_name, None)
         if callable(method):

@@ -3,9 +3,11 @@ from __future__ import annotations
 import copy
 from contextlib import contextmanager
 from dataclasses import replace
+import inspect
 import json
 from pathlib import Path
 from types import SimpleNamespace
+import tempfile
 import unittest
 
 from buoy_search.applied_state import (
@@ -14,8 +16,15 @@ from buoy_search.applied_state import (
     AppliedStateRow,
 )
 from buoy_search.apply import VerifiedApplyPlan
-from buoy_search.catalog import CardFields, ROUTING_DIMENSIONS, prepare_card
+from buoy_search.catalog import (
+    CardFields,
+    ROUTING_DIMENSIONS,
+    prepare_card,
+    prepare_prospective_card,
+)
 from buoy_search.experimental_baseline import (
+    APPROVAL_A_TEXT,
+    APPROVAL_A_TEXT_SHA256,
     ARTIFACT_HASH,
     CACHE_MANIFEST_HASH,
     CONTENT_ROWS,
@@ -31,11 +40,13 @@ from buoy_search.experimental_baseline import (
     SOURCE_REPOSITORY,
     TARGET_NAMESPACE,
     CacheAttestation,
+    DefinitiveProviderError,
     ExperimentalBaselineError,
     LocalEffects,
     PreparedBaseline,
     ProviderResources,
-    execute_experimental_baseline,
+    simulate_experimental_baseline,
+    validate_approval_a_record,
 )
 from buoy_search.plan_artifacts import (
     ChunkManifestRecord,
@@ -195,35 +206,41 @@ def make_prepared(verified: VerifiedApplyPlan) -> PreparedBaseline:
         build_generic_site_row(chunk, UNIT_VECTOR, plan_id=PLAN_ID, applied_at=NOW)
         for chunk in verified.manifest.chunks
     )
+    common = dict(
+        namespace=TARGET_NAMESPACE,
+        enabled=True,
+        source_kind="github_repo",
+        source_uri=BASE_URL,
+        site_id=SITE_ID,
+        title=SOURCE_REPOSITORY,
+        summary=f"Public GitHub repository {SOURCE_REPOSITORY} indexed from {BASE_URL}.",
+        aliases=["buoy-search"],
+        tags=["github", "repository"],
+        semantic_origin="generated",
+        region=REGION,
+        embedding_model=MODEL,
+        embedding_precision=MODEL_PRECISION,
+        plan_schema_version=1,
+        ranking_mode="file",
+        ranking_profile="repo_code",
+        ranking_pool=100,
+        ranking_aggregation="adaptive_sum_3",
+        last_plan_id=PLAN_ID,
+    )
+    embedder = SimpleNamespace(encode=lambda _texts: [list(UNIT_VECTOR)])
+    prospective = prepare_prospective_card(
+        CardFields(**common, last_apply_id=None), embedder=embedder, now=NOW
+    )
     card = prepare_card(
-        CardFields(
-            namespace=TARGET_NAMESPACE,
-            enabled=True,
-            source_kind="github_repo",
-            source_uri=BASE_URL,
-            site_id=SITE_ID,
-            title=SOURCE_REPOSITORY,
-            summary=f"Public GitHub repository {SOURCE_REPOSITORY} indexed from {BASE_URL}.",
-            aliases=["buoy-search"],
-            tags=["github", "repository"],
-            semantic_origin="generated",
-            region=REGION,
-            embedding_model=MODEL,
-            embedding_precision=MODEL_PRECISION,
-            plan_schema_version=1,
-            ranking_mode="file",
-            ranking_profile="repo_code",
-            ranking_pool=100,
-            ranking_aggregation="adaptive_sum_3",
-            last_plan_id=PLAN_ID,
-            last_apply_id=APPLY_ID,
-        ),
-        embedder=SimpleNamespace(encode=lambda _texts: [list(UNIT_VECTOR)]),
+        CardFields(**common, last_apply_id=APPLY_ID),
+        existing=prospective,
+        embedder=embedder,
         now=NOW,
     )
     return PreparedBaseline(
         rows=rows,
         card=card,
+        prospective_card=prospective,
         next_state=next_state,
         model=MODEL,
         model_revision=MODEL_REVISION,
@@ -240,9 +257,35 @@ def catalog_metadata() -> dict[str, object]:
             "id": {"type": "string", "filterable": True},
             **copy.deepcopy(REMOTE_CATALOG_SCHEMA),
         },
+        "distance_metric": DISTANCE_METRIC,
         "billing": {"logical_bytes": 1},
         "request_id": "catalog-metadata-request",
     }
+
+
+class InterceptResource:
+    def __init__(self, resource: object, harness: "Harness") -> None:
+        self.resource = resource
+        self.harness = harness
+
+    def _call(self, method: str, kwargs: dict[str, object]) -> object:
+        self.harness.attempt_count += 1
+        slot = self.harness.attempt_count
+        if self.harness.fail_attempt == slot:
+            raise self.harness.failure or DefinitiveProviderError("fake definitive failure")
+        result = getattr(self.resource, method)(**kwargs)
+        if self.harness.transform_attempt == slot and self.harness.transform is not None:
+            result = self.harness.transform(result)
+        return result
+
+    def metadata(self, **kwargs: object) -> object:
+        return self._call("metadata", kwargs)
+
+    def query(self, **kwargs: object) -> object:
+        return self._call("query", kwargs)
+
+    def write(self, **kwargs: object) -> object:
+        return self._call("write", kwargs)
 
 
 class FakeTarget:
@@ -325,6 +368,7 @@ class FakeCatalog:
         self.missing_rows_affected = False
         self.mismatched_verify = False
         self.unstable_preflight = False
+        self.duplicate_rows = False
         self.query_calls = 0
 
     def metadata(self, **kwargs: object) -> object:
@@ -344,6 +388,8 @@ class FakeCatalog:
             rows = [card_to_remote_row(self.prepared.card)]
         if self.mismatched_verify and self.write_calls and rows:
             rows[0]["title"] = "mismatch"
+        if self.duplicate_rows and rows:
+            rows.append(copy.deepcopy(rows[0]))
         return response(rows=rows)
 
     def write(self, **kwargs: object) -> object:
@@ -357,6 +403,14 @@ class FakeCatalog:
         if self.missing_rows_affected:
             payload.pop("rows_affected")
         return payload
+
+
+def changed_response(value: object, **changes: object) -> object:
+    if not isinstance(value, dict):
+        return value
+    payload = copy.deepcopy(value)
+    payload.update(changes)
+    return payload
 
 
 def response(**values: object) -> dict[str, object]:
@@ -380,11 +434,17 @@ class Harness:
         self.events: list[str] = []
         self.target = FakeTarget(self.prepared, self.events, absent=absent)
         self.catalog = FakeCatalog(self.prepared, self.events)
-        self.provider_args: dict[str, object] | None = None
         self.pending = False
         self.committed = False
         self.removed = False
         self.fail_remove = False
+        self.fail_create_after_effect = False
+        self.fail_commit_after_effect = False
+        self.attempt_count = 0
+        self.fail_attempt: int | None = None
+        self.failure: BaseException | None = None
+        self.transform_attempt: int | None = None
+        self.transform = None
 
     def prepare(self, verified: VerifiedApplyPlan) -> PreparedBaseline:
         self.events.append("prepare-model")
@@ -392,29 +452,24 @@ class Harness:
         self.assert_same(verified, self.verified)
         return self.prepared
 
-    def credential(self) -> str:
-        self.events.append("read-credential")
-        return "tpuf_FAKE_CREDENTIAL"
-
-    def provider(self, **kwargs: object) -> ProviderResources:
-        self.events.append("construct-provider")
-        self.provider_args = kwargs
+    def provider(self) -> ProviderResources:
         return ProviderResources(
-            target=self.target,
-            catalog=self.catalog,
-            sdk_version=SDK_VERSION,
-            max_retries=0,
-            simulated=True,
+            target=InterceptResource(self.target, self),
+            catalog=InterceptResource(self.catalog, self),
         )
 
     def effects(self) -> LocalEffects:
-        def create(_prepared: PreparedBaseline) -> None:
+        def create(_prepared: PreparedBaseline, _existing: object) -> None:
             self.events.append("create-pending")
             self.pending = True
+            if self.fail_create_after_effect:
+                raise OSError("fake partial pending creation")
 
         def commit(_prepared: PreparedBaseline) -> None:
             self.events.append("commit-state")
             self.committed = True
+            if self.fail_commit_after_effect:
+                raise OSError("fake partial state commit")
 
         def remove() -> None:
             self.events.append("remove-pending")
@@ -441,18 +496,17 @@ class Harness:
             create_pending=create,
             commit_state=commit,
             remove_pending=remove,
-            simulated=True,
+            pending_exists=lambda: self.pending,
+            state_matches=lambda _prepared: self.committed,
         )
 
     def execute(self) -> dict[str, object]:
-        return execute_experimental_baseline(
+        return simulate_experimental_baseline(
             self.verified,
             cache_attestation=cache_attestation(),
             prepare=self.prepare,
-            credential_reader=self.credential,
-            provider_factory=self.provider,
+            provider=self.provider(),
             local_effects=self.effects(),
-            simulation=True,
         )
 
     def assert_offline(self) -> None:
@@ -479,9 +533,10 @@ class ExperimentalBaselineTests(unittest.TestCase):
         self.assertEqual(harness.target.write_calls, 15)
         self.assertEqual(harness.target.write_sizes, [64] * 14 + [7])
         self.assertEqual(len(harness.target.written), CONTENT_ROWS)
-        self.assertEqual(harness.provider_args["max_retries"], 0)
-        self.assertLess(harness.events.index("prepare-model"), harness.events.index("read-credential"))
-        self.assertLess(harness.events.index("read-credential"), harness.events.index("construct-provider"))
+        self.assertTrue(result["simulation"])
+        self.assertEqual(result["execution_mode"], "simulation")
+        self.assertFalse(result["provider_attested"])
+        self.assertIsNone(result["max_retries"])
         self.assertLess(harness.events.index("create-pending"), harness.events.index("content-write-1"))
         self.assertLess(harness.events.index("catalog-query"), harness.events.index("create-pending"))
         self.assertLess(harness.events.index("content-write-15"), harness.events.index("card-write"))
@@ -515,14 +570,12 @@ class ExperimentalBaselineTests(unittest.TestCase):
     def test_cache_mismatch_aborts_before_model_credential_or_provider(self) -> None:
         harness = Harness()
         with self.assertRaises(ExperimentalBaselineError):
-            execute_experimental_baseline(
+            simulate_experimental_baseline(
                 harness.verified,
                 cache_attestation=replace(cache_attestation(), readme_sha256="wrong"),
                 prepare=harness.prepare,
-                credential_reader=harness.credential,
-                provider_factory=harness.provider,
+                provider=harness.provider(),
                 local_effects=harness.effects(),
-                simulation=True,
             )
         self.assertEqual(
             harness.events,
@@ -658,17 +711,21 @@ class ExperimentalBaselineTests(unittest.TestCase):
         self.assertTrue(raised.exception.evidence["remote_card_verified"])
         self.assertTrue(raised.exception.evidence["pending_retained"])
 
-    def test_provider_attestation_mismatch_aborts_before_calls(self) -> None:
+    def test_simulation_cannot_claim_live_sdk_or_zero_retries(self) -> None:
         harness = Harness()
-        harness.provider = lambda **_kwargs: ProviderResources(  # type: ignore[method-assign]
-            target=harness.target,
-            catalog=harness.catalog,
-            sdk_version=SDK_VERSION,
-            max_retries=1,
-            simulated=True,
-        )
         with self.assertRaises(ExperimentalBaselineError):
-            harness.execute()
+            simulate_experimental_baseline(
+                harness.verified,
+                cache_attestation=cache_attestation(),
+                prepare=harness.prepare,
+                provider=ProviderResources(
+                    target=harness.target,
+                    catalog=harness.catalog,
+                    sdk_version=SDK_VERSION,
+                    max_retries=0,
+                ),
+                local_effects=harness.effects(),
+            )
         self.assertEqual(harness.target.metadata_calls, 0)
         self.assertFalse(harness.pending)
 
@@ -681,8 +738,241 @@ class ExperimentalBaselineTests(unittest.TestCase):
         harness.catalog.prepared = harness.prepared
         with self.assertRaises(ExperimentalBaselineError):
             harness.execute()
-        self.assertNotIn("read-credential", harness.events)
+        self.assertNotIn("create-pending", harness.events)
         self.assertFalse(harness.pending)
+
+    def test_existing_card_compatible_incompatible_and_duplicate_matrix(self) -> None:
+        compatible = Harness(absent=False)
+        compatible.catalog.card_row = card_to_remote_row(compatible.prepared.card)
+        self.assertTrue(compatible.execute()["success"])
+
+        incompatible = Harness(absent=False)
+        incompatible.catalog.card_row = card_to_remote_row(incompatible.prepared.card)
+        incompatible.catalog.card_row["title"] = "incompatible"
+        with self.assertRaises(ExperimentalBaselineError):
+            incompatible.execute()
+        self.assertEqual(incompatible.target.write_calls, 0)
+        self.assertFalse(incompatible.pending)
+
+        duplicate = Harness(absent=False)
+        duplicate.catalog.card_row = card_to_remote_row(duplicate.prepared.card)
+        duplicate.catalog.duplicate_rows = True
+        with self.assertRaises(ExperimentalBaselineError):
+            duplicate.execute()
+        self.assertEqual(duplicate.target.write_calls, 0)
+        self.assertFalse(duplicate.pending)
+
+    def test_every_one_of_26_slots_fails_without_reassignment_or_retry(self) -> None:
+        for slot in range(1, 27):
+            with self.subTest(slot=slot):
+                harness = Harness(absent=False)
+                harness.fail_attempt = slot
+                with self.assertRaises(ExperimentalBaselineError) as raised:
+                    harness.execute()
+                evidence = raised.exception.evidence
+                self.assertEqual(evidence["physical_attempts"], slot)
+                self.assertEqual(evidence["slots"][slot - 1]["status"], "failed")
+                self.assertTrue(
+                    all(item["status"] == "unused" for item in evidence["slots"][slot:])
+                )
+                self.assertEqual(evidence["delete_attempts"], 0)
+
+    def test_malformed_response_and_accounting_matrix(self) -> None:
+        cases = [
+            (1, lambda _value: []),
+            (1, lambda value: changed_response(value, rows=[{"id": "forbidden"}])),
+            (1, lambda value: changed_response(value, billing="not-an-object")),
+            (1, lambda value: changed_response(value, request_id=None)),
+            (2, lambda value: changed_response(value, rows="not-an-array")),
+            (2, lambda value: changed_response(value, rows=[{"id": "a"}, {"id": "b"}])),
+            (6, lambda value: changed_response(value, rows_affected=True)),
+            (6, lambda value: changed_response(value, rows_affected=-1)),
+            (6, lambda value: changed_response(value, rows_affected=64.0)),
+            (6, lambda value: changed_response(value, rows_affected=63)),
+            (6, lambda value: changed_response(value, upserted_ids=None)),
+            (6, lambda value: changed_response(value, upserted_ids=["wrong"] * 64)),
+            (6, lambda value: changed_response(value, rows=[{"id": "forbidden"}])),
+            (24, lambda value: changed_response(value, rows_affected=2)),
+            (24, lambda value: changed_response(value, upserted_ids=[])),
+        ]
+        for slot, transform in cases:
+            with self.subTest(slot=slot, transform=transform):
+                harness = Harness(absent=False)
+                harness.transform_attempt = slot
+                harness.transform = transform
+                with self.assertRaises(ExperimentalBaselineError) as raised:
+                    harness.execute()
+                self.assertEqual(raised.exception.evidence["slots"][slot - 1]["status"], "failed")
+
+    def test_missing_distance_and_unknown_schema_keys_are_rejected(self) -> None:
+        def remove_distance(value: object) -> object:
+            payload = copy.deepcopy(value)
+            assert isinstance(payload, dict)
+            payload.pop("distance_metric", None)
+            return payload
+
+        def add_unknown_schema_key(value: object) -> object:
+            payload = copy.deepcopy(value)
+            assert isinstance(payload, dict)
+            schema = payload["schema"]
+            assert isinstance(schema, dict)
+            vector = schema["vector"]
+            assert isinstance(vector, dict)
+            vector["unknown"] = True
+            return payload
+
+        for slot, transform in (
+            (1, remove_distance),
+            (1, add_unknown_schema_key),
+            (3, remove_distance),
+            (3, add_unknown_schema_key),
+            (21, remove_distance),
+            (21, add_unknown_schema_key),
+        ):
+            with self.subTest(slot=slot):
+                harness = Harness(absent=False)
+                harness.transform_attempt = slot
+                harness.transform = transform
+                with self.assertRaises(ExperimentalBaselineError):
+                    harness.execute()
+                if slot <= 3:
+                    self.assertEqual(harness.target.write_calls, 0)
+
+    def test_attached_error_response_and_metrics_accounting_is_preserved(self) -> None:
+        class AttachedError(DefinitiveProviderError):
+            def __init__(self) -> None:
+                super().__init__("secret error text")
+                self.response = {
+                    "rows_affected": 17,
+                    "billing": {"logical_bytes": 91, "account_id": "secret"},
+                    "request_id": "attached-request",
+                }
+                self.metrics = {"other_metric": 4}
+
+        harness = Harness(absent=False)
+        harness.fail_attempt = 6
+        harness.failure = AttachedError()
+        with self.assertRaises(ExperimentalBaselineError) as raised:
+            harness.execute()
+        attempt = raised.exception.evidence["slots"][5]
+        self.assertEqual(attempt["status"], "failed")
+        self.assertEqual(attempt["rows_affected"], 17)
+        self.assertTrue(attempt["rows_affected_present"])
+        self.assertEqual(attempt["billing"]["logical_bytes"], 91)
+        self.assertEqual(attempt["billing"]["account_id"], "<redacted>")
+        self.assertTrue(attempt["request_identity_present"])
+        self.assertTrue(attempt["metrics_present"])
+        self.assertEqual(attempt["metrics"]["other_metric"], 4)
+        self.assertNotIn("attached-request", json.dumps(attempt))
+        self.assertNotIn("secret error text", json.dumps(attempt))
+
+    def test_local_partial_create_commit_and_cleanup_failures_are_observed(self) -> None:
+        create = Harness()
+        create.fail_create_after_effect = True
+        with self.assertRaises(ExperimentalBaselineError) as raised:
+            create.execute()
+        self.assertTrue(raised.exception.evidence["pending_retained"])
+        self.assertFalse(raised.exception.evidence["local_state_committed"])
+        self.assertEqual(create.target.write_calls, 0)
+
+        commit = Harness()
+        commit.fail_commit_after_effect = True
+        with self.assertRaises(ExperimentalBaselineError) as raised:
+            commit.execute()
+        self.assertTrue(raised.exception.evidence["pending_retained"])
+        self.assertTrue(raised.exception.evidence["local_state_committed"])
+        self.assertTrue(raised.exception.evidence["remote_card_verified"])
+
+    def test_every_immutable_cache_and_prepared_attestation_fails_closed(self) -> None:
+        cache_changes = {
+            "revision": "wrong",
+            "manifest_sha256": "wrong",
+            "readme_sha256": "wrong",
+            "license": "apache",
+            "license_statement_present": False,
+            "file_count": 11,
+        }
+        for field, value in cache_changes.items():
+            with self.subTest(cache_field=field):
+                harness = Harness()
+                with self.assertRaises(ExperimentalBaselineError):
+                    simulate_experimental_baseline(
+                        harness.verified,
+                        cache_attestation=replace(cache_attestation(), **{field: value}),
+                        prepare=harness.prepare,
+                        provider=harness.provider(),
+                        local_effects=harness.effects(),
+                    )
+                self.assertNotIn("prepare-model", harness.events)
+
+        prepared_changes = {
+            "model": "wrong",
+            "model_revision": "wrong",
+            "precision": "float16",
+            "dimensions": 3,
+            "normalized": False,
+            "pooling": "mean",
+        }
+        for field, value in prepared_changes.items():
+            with self.subTest(prepared_field=field):
+                harness = Harness()
+                harness.prepared = replace(harness.prepared, **{field: value})
+                with self.assertRaises(ExperimentalBaselineError):
+                    harness.execute()
+                self.assertEqual(harness.attempt_count, 0)
+                self.assertFalse(harness.pending)
+
+    def test_exact_plan_identity_gate_matrix(self) -> None:
+        for field in ("plan_id", "artifact_hash", "namespace", "embedding_model", "embedding_precision"):
+            with self.subTest(field=field):
+                harness = Harness()
+                harness.verified.plan[field] = "wrong"
+                with self.assertRaises(ExperimentalBaselineError):
+                    harness.execute()
+                self.assertEqual(harness.attempt_count, 0)
+                self.assertNotIn("prepare-model", harness.events)
+
+    def test_durable_approval_record_exactness_and_live_signature(self) -> None:
+        signature = inspect.signature(__import__(
+            "buoy_search.experimental_baseline", fromlist=["execute_experimental_baseline"]
+        ).execute_experimental_baseline)
+        self.assertEqual(
+            list(signature.parameters),
+            ["approval_record", "plan_path", "cache_root", "state_root"],
+        )
+        self.assertTrue(all(parameter.kind is inspect.Parameter.KEYWORD_ONLY for parameter in signature.parameters.values()))
+
+        record = {
+            "schema_version": 1,
+            "approval": "experimental-buoy-baseline-approval-a",
+            "status": "granted",
+            "approval_text": APPROVAL_A_TEXT,
+            "approval_text_sha256": APPROVAL_A_TEXT_SHA256,
+            "granted_at": "2026-07-20T20:00:00Z",
+            "granted_by": "user",
+            "provenance": {
+                "source_system": "pi",
+                "conversation_id": "conversation",
+                "message_id": "message",
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "approval-a.json"
+            path.write_text(json.dumps(record), encoding="utf-8")
+            with self.assertRaisesRegex(ExperimentalBaselineError, "remains ungranted"):
+                validate_approval_a_record(path)
+            for mutation in (
+                {"status": "proposed"},
+                {"approval_text": APPROVAL_A_TEXT + " altered"},
+                {"approval_text_sha256": "0" * 64},
+                {"extra": True},
+                {"provenance": {"source_system": "pi"}},
+            ):
+                broken = copy.deepcopy(record)
+                broken.update(mutation)
+                path.write_text(json.dumps(broken), encoding="utf-8")
+                with self.assertRaises(ExperimentalBaselineError):
+                    validate_approval_a_record(path)
 
 
 if __name__ == "__main__":

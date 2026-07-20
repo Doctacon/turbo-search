@@ -238,7 +238,9 @@ def create_pending(path: Path, payload: dict[str, Any]) -> None:
     _atomic_write(path, payload, exclusive=True)
 
 
-def confirm_pending(path: Path, payload: dict[str, Any], *, apply_id: str) -> dict[str, Any]:
+def confirm_pending(
+    path: Path, payload: dict[str, Any], *, apply_id: str, now: str | None = None
+) -> dict[str, Any]:
     validated = validate_pending_payload(payload)
     if validated["remote_apply_confirmed"]:
         return validated
@@ -252,6 +254,7 @@ def confirm_pending(path: Path, payload: dict[str, Any], *, apply_id: str) -> di
             last_apply_id=apply_id,
         ),
         existing=prospective,
+        now=now,
     )
     confirmed = dict(validated)
     confirmed["prospective_card"] = card_to_dict(finalized, include_vector=True)
