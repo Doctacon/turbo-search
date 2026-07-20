@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-20
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -62,3 +62,4 @@ None for bounded source/test implementation. Approval A remains ungranted and bl
 ## Progress and notes
 
 - 2026-07-20: Opened after the user ratified the independently reviewed PR #65 specification unchanged. No source/test implementation, credential read, model operation, provider call, or namespace/card/catalog/pending/DuckDB mutation occurred in this record turn. Approval A and Approval B remain ungranted; C3 remains blocked.
+- 2026-07-20: Implemented the isolated non-default executor and 19 fake-backed tests. The executor fixes all 26 slots, enforces the exact request/write/read/delete ceilings and commit order, validates immutable plan/cache/model/row/card/state contracts before credential access, requires locked SDK `max_retries=0`, and preserves redacted partial accounting. CI-equivalent Python 3.11 and 3.13 suites each passed 465 tests; ranking validation, distribution build, and `git diff --check` passed. Evidence is recorded at `.10x/evidence/2026-07-20-experimental-buoy-baseline-executor-implementation.md`. No credential was read, model loaded, provider contacted, retained plan/state inspected, or namespace/catalog/pending/DuckDB domain state mutated. Ticket remains active pending independent implementation review; Approval A/B remain ungranted and no live execution is authorized.
