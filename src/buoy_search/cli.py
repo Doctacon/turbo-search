@@ -66,6 +66,7 @@ from buoy_search.crawler import (
     detect_source,
 )
 from buoy_search.github_repo import GitHubRepoError, crawl_github_repo, crawl_github_repo_with_plan
+from buoy_search.repo_syntax_chunking import REPO_CHUNKING_ARMS
 from buoy_search.evals import (
     build_dry_run_eval_report,
     load_eval_cases,
@@ -239,6 +240,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=positive_int,
         default=DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
         help="GitHub repo only: maximum bytes per text file to include before chunking.",
+    )
+    crawl_parser.add_argument(
+        "--repo-chunking-arm",
+        choices=REPO_CHUNKING_ARMS,
+        default=None,
+        help="GitHub repo only: opt into one local Python syntax chunking experiment arm.",
     )
     crawl_parser.add_argument(
         "--repo-search-metadata",
@@ -420,6 +427,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=positive_int,
         default=DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
         help="GitHub repo only: maximum bytes per text file to include before chunking.",
+    )
+    plan_parser.add_argument(
+        "--repo-chunking-arm",
+        choices=REPO_CHUNKING_ARMS,
+        default=None,
+        help="GitHub repo only: opt into one local Python syntax chunking experiment arm.",
     )
     plan_parser.add_argument(
         "--repo-search-metadata",
@@ -996,6 +1009,9 @@ def _run_crawl(args: argparse.Namespace) -> int:
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    if args.repo_chunking_arm and not isinstance(source, GitHubRepoSource):
+        print("--repo-chunking-arm is supported only for GitHub repositories.", file=sys.stderr)
+        return 2
 
     _apply_source_cap_defaults(args, source)
     out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url)
@@ -1007,6 +1023,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
         max_pages=args.max_pages,
         max_chunks=args.max_chunks,
         repo_max_file_bytes=args.repo_max_file_bytes,
+        repo_chunking_arm=args.repo_chunking_arm,
         repo_search_metadata=args.repo_search_metadata,
         repo_file_cards=args.repo_file_cards,
         repo_oversize_file_cards=args.repo_oversize_file_cards,
@@ -1055,6 +1072,9 @@ def _run_plan(args: argparse.Namespace) -> int:
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    if args.repo_chunking_arm and not isinstance(source, GitHubRepoSource):
+        print("--repo-chunking-arm is supported only for GitHub repositories.", file=sys.stderr)
+        return 2
 
     _apply_source_cap_defaults(args, source)
     out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url).with_name(
@@ -1068,6 +1088,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         max_pages=args.max_pages,
         max_chunks=args.max_chunks,
         repo_max_file_bytes=args.repo_max_file_bytes,
+        repo_chunking_arm=args.repo_chunking_arm,
         repo_search_metadata=args.repo_search_metadata,
         repo_file_cards=args.repo_file_cards,
         repo_oversize_file_cards=args.repo_oversize_file_cards,
@@ -1169,7 +1190,7 @@ def _run_plan(args: argparse.Namespace) -> int:
 
 
 def plan_crawl_options(args: argparse.Namespace, crawl_summary: dict[str, object] | None = None) -> dict[str, object]:
-    return {
+    options = {
         "max_pages": args.max_pages,
         "max_chunks": args.max_chunks,
         "repo_max_file_bytes": args.repo_max_file_bytes,
@@ -1187,6 +1208,9 @@ def plan_crawl_options(args: argparse.Namespace, crawl_summary: dict[str, object
         "strip_trailing_slash": args.strip_trailing_slash,
         "css_selector": args.css_selector,
     }
+    if args.repo_chunking_arm is not None:
+        options["repo_chunking_arm"] = args.repo_chunking_arm
+    return options
 
 
 def plan_chunk_options(args: argparse.Namespace) -> dict[str, object]:

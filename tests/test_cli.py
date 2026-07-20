@@ -12,8 +12,9 @@ from unittest.mock import patch
 
 from buoy_search.applied_state import AppliedStateRow, applied_state_paths, build_applied_state, save_applied_state
 from buoy_search.cli import OneLineProgress, build_parser, main, print_eval_text, print_retrieval_text
-from buoy_search.crawler import CrawlExecution, CrawlOptions
+from buoy_search.crawler import CrawlExecution, CrawlOptions, parse_github_repo_url
 from buoy_search.chunker import process_corpus
+from buoy_search.github_repo import GitHubRepoAcquisition, GitHubRepoMetadata
 from buoy_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
 
 
@@ -116,6 +117,7 @@ def fake_github_crawl_summary(source, options: CrawlOptions) -> dict[str, object
         "max_pages": options.max_pages,
         "max_chunks": options.max_chunks,
         "repo_max_file_bytes": options.repo_max_file_bytes,
+        "repo_chunking_arm": options.repo_chunking_arm,
         "repo_search_metadata": options.repo_search_metadata,
         "repo_file_cards": options.repo_file_cards,
         "repo_oversize_file_cards": options.repo_oversize_file_cards,
@@ -575,6 +577,53 @@ class CliTests(unittest.TestCase):
         github_mock.assert_called_once()
         site_mock.assert_not_called()
 
+    def test_crawl_command_propagates_opt_in_repo_chunking_arm(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp) / "github-crawl"
+
+            def fake_github_crawl(source, options: CrawlOptions) -> dict[str, object]:  # noqa: ANN001
+                self.assertEqual(options.repo_chunking_arm, "python-ast")
+                self.assertFalse(options.repo_search_metadata)
+                self.assertFalse(options.repo_file_cards)
+                self.assertFalse(options.repo_oversize_file_cards)
+                return fake_github_crawl_summary(source, options)
+
+            stdout = StringIO()
+            with patch("buoy_search.cli.crawl_github_repo", side_effect=fake_github_crawl):
+                with redirect_stdout(stdout):
+                    result = main(
+                        [
+                            "crawl",
+                            "--base-url",
+                            "https://github.com/Doctacon/open-streaming-lab",
+                            "--out-dir",
+                            str(out_dir),
+                            "--repo-chunking-arm",
+                            "python-ast",
+                            "--json",
+                        ]
+                    )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(json.loads(stdout.getvalue())["repo_chunking_arm"], "python-ast")
+
+    def test_repo_chunking_arm_rejects_non_repository_source_before_crawl(self) -> None:
+        stderr = StringIO()
+        with patch("buoy_search.cli.crawl_site") as crawl_mock:
+            with redirect_stderr(stderr):
+                result = main(
+                    [
+                        "crawl",
+                        "--base-url",
+                        "https://example.com/docs/",
+                        "--repo-chunking-arm",
+                        "python-ast",
+                    ]
+                )
+        self.assertEqual(result, 2)
+        self.assertIn("only for GitHub repositories", stderr.getvalue())
+        crawl_mock.assert_not_called()
+
     def test_crawl_command_accepts_local_pdf_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -894,6 +943,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(chunk["source_metadata"]["repo_path"], "README.md")
         plan = json.loads((out_dir / "plan.json").read_text(encoding="utf-8"))
         self.assertEqual(plan["crawl_options"]["repo_max_file_bytes"], 123456)
+        self.assertNotIn("repo_chunking_arm", plan["crawl_options"])
         self.assertTrue(plan["crawl_options"]["repo_search_metadata"])
         self.assertTrue(plan["crawl_options"]["repo_file_cards"])
         self.assertTrue(plan["crawl_options"]["repo_oversize_file_cards"])
@@ -901,6 +951,76 @@ class CliTests(unittest.TestCase):
         site_mock.assert_not_called()
         process_mock.assert_called_once()
         artifacts_mock.assert_called_once()
+
+    def test_plan_command_propagates_repo_chunking_arm_into_bounded_artifacts(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        checkout = root / "checkout"
+        source_path = checkout / "src/app.py"
+        source_path.parent.mkdir(parents=True)
+        source_path.write_text(
+            "MODULE = 1\nclass App:\n    def run(self):\n        return MODULE",
+            encoding="utf-8",
+        )
+        source = parse_github_repo_url("https://github.com/owner/repo")
+        assert source is not None
+        acquisition = GitHubRepoAcquisition(
+            source=source,
+            metadata=GitHubRepoMetadata(
+                owner="owner",
+                repo="repo",
+                repo_full_name="owner/repo",
+                repo_root_url=source.repo_root_url,
+                clone_url=source.clone_url,
+                default_branch="main",
+            ),
+            checkout_dir=checkout,
+            requested_ref=None,
+            resolved_ref="main",
+            repo_subdir="",
+            commit_sha="abc123",
+            clone_url=source.clone_url,
+        )
+        out_dir = root / "plan"
+
+        stdout = StringIO()
+        with patch("buoy_search.github_repo.acquire_github_repo", return_value=acquisition), patch(
+            "buoy_search.github_repo.list_tracked_files", return_value=["src/app.py"]
+        ), redirect_stdout(stdout):
+            result = main(
+                [
+                    "plan",
+                    source.repo_root_url,
+                    "--out-dir",
+                    str(out_dir),
+                    "--state-root",
+                    str(root / "state"),
+                    "--max-pages",
+                    "1",
+                    "--max-chunks",
+                    "10",
+                    "--repo-chunking-arm",
+                    "python-ast",
+                    "--no-progress",
+                    "--json",
+                ]
+            )
+
+        payload = json.loads(stdout.getvalue())
+        plan = json.loads((out_dir / "plan.json").read_text(encoding="utf-8"))
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["repo_chunking_arm"], "python-ast")
+        self.assertEqual(payload["selected_files"], ["src/app.py"])
+        self.assertEqual(payload["repo_header_chunks"], 1)
+        self.assertEqual(plan["crawl_options"]["repo_chunking_arm"], "python-ast")
+        self.assertEqual(plan["crawl_options"]["max_pages"], 1)
+        self.assertEqual(plan["crawl_options"]["max_chunks"], 10)
+        self.assertFalse(payload["api_calls_occurred"])
+        app_rows = [row for row in manifest["chunks"] if row["source_metadata"]["repo_path"] == "src/app.py"]
+        self.assertEqual(app_rows[0]["section_path"], "src/app.py")
+        self.assertTrue(all(" > Lines " in row["section_path"] for row in app_rows[1:]))
 
     def test_plan_command_writes_pdf_artifacts_without_source_path(self) -> None:
         tmp = tempfile.TemporaryDirectory()

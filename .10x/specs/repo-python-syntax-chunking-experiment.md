@@ -6,7 +6,7 @@ Updated: 2026-07-20
 
 ## Authority and activation gate
 
-This is the active exact contract for C5 in `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`. Independent review passed PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`, and the user ratified all seven numbered items exactly as reviewed on 2026-07-20. The ratification changed no arm, coordinate, AST/tokenizer, ownership, subdivision, header, coverage/citation, fallback, validation, or safety semantics.
+This is the active exact contract for C5 in `.10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md`. Independent review passed PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`, and the user ratified all seven numbered items exactly as reviewed on 2026-07-20. The ratification changed no arm, coordinate, AST/tokenizer, ownership, subdivision, header, coverage/citation, fallback, validation, or safety semantics.
 
 The following boundaries are already established by the task and active records:
 
@@ -203,7 +203,7 @@ Ratification provenance is recorded in `.10x/evidence/2026-07-20-python-syntax-c
 ## References
 
 - `.10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md`
-- `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`
+- `.10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md`
 - `.10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md`
 - `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`
 - `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`

@@ -21,7 +21,28 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from buoy_search.chunker import IndexingPlan, process_corpus, sha256_text
+from buoy_search.chunker import (
+    DEFAULT_OVERLAP_SENTENCES,
+    DEFAULT_TARGET_TOKENS,
+    IndexingPlan,
+    IndexingStats,
+    MarkdownChunk,
+    chunk_document,
+    clean_markdown_inline,
+    derive_doc_kind_and_tags,
+    deterministic_chunk_id,
+    discover_markdown_files,
+    parse_markdown_file,
+    process_corpus,
+    sha256_text,
+)
+from buoy_search.repo_syntax_chunking import (
+    PYTHON_SYNTAX_ARMS,
+    REPO_CHUNKING_ARMS,
+    RepoSyntaxChunkingError,
+    chunk_source,
+    source_payload,
+)
 from buoy_search.crawler import (
     DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
     GitHubRepoSource,
@@ -177,6 +198,10 @@ class GitHubRepoCorpusStats:
     files_skipped_filtered: int = 0
     files_skipped_limit: int = 0
     files_error: int = 0
+    python_parse_fallbacks: int = 0
+    non_python_fallbacks: int = 0
+    repo_header_chunks: int = 0
+    repo_source_chunks: int = 0
     errors: list[dict[str, str]] = field(default_factory=list)
     limit_reached: bool = False
 
@@ -187,6 +212,7 @@ class GitHubRepoCorpus:
 
     pages_dir: Path
     selected_files: list[GitHubRepoFile]
+    page_paths: dict[str, Path]
     stats: GitHubRepoCorpusStats
 
 
@@ -404,6 +430,7 @@ def acquire_github_repo(
 def crawl_github_repo_with_plan(source: GitHubRepoSource, options: CrawlOptions) -> CrawlExecution:
     """Acquire a repository and retain its already-built indexing plan."""
 
+    validate_repo_chunking_options(options)
     total_started_at = observe_monotonic()
     crawl_started_at = observe_monotonic()
     acquisition = acquire_github_repo(source, options.out_dir)
@@ -423,12 +450,28 @@ def crawl_github_repo_with_plan(source: GitHubRepoSource, options: CrawlOptions)
     )
     corpus_write_seconds = elapsed_since(corpus_started_at)
     chunk_started_at = observe_monotonic()
-    plan = process_corpus(
-        pages_dir,
-        limit_chunks=options.max_chunks,
-        target_tokens=options.target_tokens,
-        overlap_sentences=options.overlap_sentences,
-    )
+    if options.repo_chunking_arm in PYTHON_SYNTAX_ARMS:
+        plan = process_syntax_repo_corpus(
+            corpus,
+            arm=options.repo_chunking_arm,
+            limit_chunks=options.max_chunks,
+            target_tokens=options.target_tokens,
+            overlap_sentences=options.overlap_sentences,
+        )
+    else:
+        plan = process_corpus(
+            pages_dir,
+            limit_chunks=options.max_chunks,
+            target_tokens=options.target_tokens,
+            overlap_sentences=options.overlap_sentences,
+        )
+        if options.repo_chunking_arm == "current-default":
+            validate_and_count_control_chunks(
+                corpus,
+                plan,
+                target_tokens=options.target_tokens,
+                overlap_sentences=options.overlap_sentences,
+            )
     chunking_seconds = elapsed_since(chunk_started_at)
     summary = build_github_repo_summary(
         source=source,
@@ -456,6 +499,29 @@ def crawl_github_repo(source: GitHubRepoSource, options: CrawlOptions) -> dict[s
     return crawl_github_repo_with_plan(source, options).summary
 
 
+def validate_repo_chunking_options(options: CrawlOptions) -> None:
+    arm = options.repo_chunking_arm
+    if arm is None:
+        return
+    if arm not in REPO_CHUNKING_ARMS:
+        raise GitHubRepoError(f"unsupported repository chunking arm: {arm}")
+    incompatible = []
+    if options.repo_search_metadata:
+        incompatible.append("--repo-search-metadata")
+    if options.repo_file_cards:
+        incompatible.append("--repo-file-cards")
+    if options.repo_oversize_file_cards:
+        incompatible.append("--repo-oversize-file-cards")
+    if incompatible:
+        raise GitHubRepoError(
+            f"--repo-chunking-arm {arm} cannot be combined with {', '.join(incompatible)}"
+        )
+    if options.target_tokens != DEFAULT_TARGET_TOKENS or options.overlap_sentences != DEFAULT_OVERLAP_SENTENCES:
+        raise GitHubRepoError(
+            "--repo-chunking-arm requires the experiment's fixed --target-tokens 300 and --overlap-sentences 2"
+        )
+
+
 def build_github_repo_summary(
     *,
     source: GitHubRepoSource,
@@ -466,7 +532,7 @@ def build_github_repo_summary(
     pages_dir: Path,
 ) -> dict[str, object]:
     stats = corpus.stats
-    return {
+    summary: dict[str, object] = {
         "command": "crawl",
         "dry_run": True,
         "credentials_required": False,
@@ -525,6 +591,18 @@ def build_github_repo_summary(
         "sample_chunks": summarize_sample_chunks(plan),
         "errors": [*stats.errors, *[error.__dict__ for error in plan.stats.errors[:10]]],
     }
+    if options.repo_chunking_arm is not None:
+        summary.update(
+            {
+                "repo_chunking_arm": options.repo_chunking_arm,
+                "selected_files": [repo_file.repo_path for repo_file in corpus.selected_files],
+                "python_parse_fallbacks": stats.python_parse_fallbacks,
+                "non_python_fallbacks": stats.non_python_fallbacks,
+                "repo_header_chunks": stats.repo_header_chunks,
+                "repo_source_chunks": stats.repo_source_chunks,
+            }
+        )
+    return summary
 
 
 def build_github_repo_corpus(
@@ -597,6 +675,7 @@ def build_github_repo_corpus(
         raise GitHubRepoError("No eligible repository files remained after GitHub file filtering")
 
     crawl_timestamp = datetime.now(timezone.utc).isoformat()
+    page_paths: dict[str, Path] = {}
     for index, repo_file in enumerate(selected, start=1):
         markdown = markdown_for_repo_file(
             repo_file,
@@ -604,6 +683,7 @@ def build_github_repo_corpus(
             include_search_metadata=include_search_metadata,
         )
         path = pages_dir / page_filename(repo_file.blob_url, repo_file.repo_path, index)
+        page_paths[repo_file.repo_path] = path
         write_repo_markdown_page(
             path,
             repo_file,
@@ -645,7 +725,180 @@ def build_github_repo_corpus(
     stats.file_card_pages_generated = file_card_count
 
     stats.files_selected = len(selected)
-    return GitHubRepoCorpus(pages_dir=pages_dir, selected_files=selected, stats=stats)
+    return GitHubRepoCorpus(
+        pages_dir=pages_dir,
+        selected_files=selected,
+        page_paths=page_paths,
+        stats=stats,
+    )
+
+
+def validate_and_count_control_chunks(
+    corpus: GitHubRepoCorpus,
+    plan: IndexingPlan,
+    *,
+    target_tokens: int,
+    overlap_sentences: int,
+) -> None:
+    """Assert the unchanged control header invariant and count final code rows."""
+
+    for repo_file in corpus.selected_files:
+        if Path(repo_file.repo_path).suffix.lower() in REPO_MARKDOWN_EXTENSIONS | REPO_PROSE_EXTENSIONS:
+            continue
+        document = parse_markdown_file(
+            corpus.page_paths[repo_file.repo_path].resolve(),
+            corpus.pages_dir.resolve(),
+        )
+        document_chunks = chunk_document(
+            document,
+            target_tokens=target_tokens,
+            overlap_sentences=overlap_sentences,
+        )
+        expected_section = clean_markdown_inline(repo_file.repo_path)
+        expected_header = (
+            f"Repository file: `{repo_file.repo_path}`\n"
+            f"Language: `{repo_file.language}`"
+        )
+        headers = [
+            chunk
+            for chunk in document_chunks
+            if chunk.section_path == expected_section and chunk.content == expected_header
+        ]
+        if len(headers) != 1 or document_chunks[0] != headers[0]:
+            raise RepoSyntaxChunkingError(
+                f"common repository header for {repo_file.repo_path} is not exactly one unchanged final chunk"
+            )
+        actual = [chunk for chunk in plan.chunks if chunk.url == repo_file.blob_url]
+        if actual != document_chunks:
+            raise RepoSyntaxChunkingError(
+                "explicit current-default requires one header and complete source chunks for every selected "
+                f"code file; --max-chunks omitted part or all of {repo_file.repo_path}"
+            )
+        corpus.stats.repo_header_chunks += 1
+        corpus.stats.repo_source_chunks += len(actual) - 1
+
+
+def process_syntax_repo_corpus(
+    corpus: GitHubRepoCorpus,
+    *,
+    arm: str,
+    limit_chunks: int | None,
+    target_tokens: int,
+    overlap_sentences: int,
+) -> IndexingPlan:
+    """Build isolated exact source chunks for one Python-aware experiment arm."""
+
+    if arm not in PYTHON_SYNTAX_ARMS:
+        raise ValueError(f"unsupported Python syntax chunking arm: {arm}")
+    corpus_dir = corpus.pages_dir.resolve()
+    files = discover_markdown_files(corpus_dir)
+    source_by_page = {
+        corpus.page_paths[repo_file.repo_path].resolve(): repo_file
+        for repo_file in corpus.selected_files
+    }
+    stats = IndexingStats()
+    chunks: list[MarkdownChunk] = []
+
+    for path in files:
+        stats.files_seen += 1
+        document = parse_markdown_file(path, corpus_dir)
+        repo_file = source_by_page.get(path.resolve())
+        if repo_file is None or Path(repo_file.repo_path).suffix.lower() in (
+            REPO_MARKDOWN_EXTENSIONS | REPO_PROSE_EXTENSIONS
+        ):
+            document_chunks = chunk_document(
+                document,
+                target_tokens=target_tokens,
+                overlap_sentences=overlap_sentences,
+            )
+            if not document_chunks:
+                stats.files_skipped_empty += 1
+            chunks.extend(document_chunks)
+            continue
+
+        generic_chunks = chunk_document(
+            document,
+            target_tokens=target_tokens,
+            overlap_sentences=overlap_sentences,
+        )
+        expected_section = clean_markdown_inline(repo_file.repo_path)
+        expected_header = (
+            f"Repository file: `{repo_file.repo_path}`\n"
+            f"Language: `{repo_file.language}`"
+        )
+        headers = [
+            chunk
+            for chunk in generic_chunks
+            if chunk.section_path == expected_section and chunk.content == expected_header
+        ]
+        if len(headers) != 1 or generic_chunks[0] != headers[0]:
+            raise RepoSyntaxChunkingError(
+                f"common repository header for {repo_file.repo_path} is not exactly one unchanged final chunk"
+            )
+        header = headers[0]
+        chunks.append(header)
+        corpus.stats.repo_header_chunks += 1
+
+        source_chunking = chunk_source(repo_file.text, repo_file.repo_path, repo_file.language, arm)
+        if source_chunking.fallback == "python-parse":
+            corpus.stats.python_parse_fallbacks += 1
+        elif source_chunking.fallback == "non-python":
+            corpus.stats.non_python_fallbacks += 1
+        longest_backtick_run = max(
+            (len(match.group(0)) for match in re.finditer(r"`+", repo_file.text)),
+            default=0,
+        )
+        fence = "`" * max(3, longest_backtick_run + 1)
+        language = repo_file.language if repo_file.language != "text" else ""
+        doc_kind, tags = derive_doc_kind_and_tags(document.url, document.relative_path)
+        for chunk_index, source_range in enumerate(source_chunking.ranges, start=1):
+            content_parts: list[str] = []
+            if source_range.breadcrumbs:
+                content_parts.extend(
+                    [f"Symbol breadcrumbs: {'; '.join(source_range.breadcrumbs)}", ""]
+                )
+            content_parts.extend(
+                [
+                    f"{fence}{language}",
+                    source_payload(source_chunking, source_range),
+                    fence,
+                ]
+            )
+            content = "\n".join(content_parts)
+            section_path = f"{expected_section} > Lines {source_range.start}-{source_range.end}"
+            chunks.append(
+                MarkdownChunk(
+                    id=deterministic_chunk_id(
+                        document.relative_path,
+                        chunk_index,
+                        document.source_hash,
+                        content,
+                    ),
+                    content=content,
+                    title=document.title,
+                    url=document.url,
+                    path=document.relative_path,
+                    section_path=section_path,
+                    chunk_index=chunk_index,
+                    doc_kind=doc_kind,
+                    tags=tags,
+                    source_hash=document.source_hash,
+                )
+            )
+            corpus.stats.repo_source_chunks += 1
+
+    if limit_chunks is not None and len(chunks) > limit_chunks:
+        raise RepoSyntaxChunkingError(
+            "Python-aware repository plan exceeds --max-chunks; refusing partial source coverage"
+        )
+    stats.chunks_generated = len(chunks)
+    return IndexingPlan(
+        corpus_dir=corpus_dir,
+        files_discovered=len(files),
+        chunks=chunks,
+        stats=stats,
+        limit_reached=False,
+    )
 
 
 def write_repo_markdown_page(

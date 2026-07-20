@@ -334,6 +334,7 @@ class CrawlOptions:
     max_pages: int = DEFAULT_CRAWL_MAX_PAGES
     max_chunks: int = DEFAULT_CRAWL_MAX_CHUNKS
     repo_max_file_bytes: int = DEFAULT_GITHUB_REPO_MAX_FILE_BYTES
+    repo_chunking_arm: str | None = None
     repo_search_metadata: bool = False
     repo_file_cards: bool = False
     repo_oversize_file_cards: bool = False
