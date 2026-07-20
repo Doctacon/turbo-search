@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-18
 Updated: 2026-07-19
-Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
+Parent: .10x/tickets/done/2026-07-18-repository-cleanup-plan.md
 Depends-On: .10x/tickets/done/2026-07-18-normalize-terminal-ticket-placement.md
 
 # Review Stale Ticket Statuses
@@ -44,7 +44,7 @@ Running new tests/benchmarks/live operations; fixing code; accepting residual ri
 
 ## References
 
-- `.10x/tickets/2026-07-18-repository-cleanup-plan.md`
+- `.10x/tickets/done/2026-07-18-repository-cleanup-plan.md`
 - `.10x/research/2026-07-18-repository-dead-end-inventory.md`
 
 ## Progress and notes

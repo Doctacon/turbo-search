@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-18
 Updated: 2026-07-19
-Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
+Parent: .10x/tickets/done/2026-07-18-repository-cleanup-plan.md
 Depends-On: .10x/tickets/done/2026-07-18-remove-unreachable-local-catalog-persistence.md
 
 # Normalize Terminal Ticket Placement
@@ -33,7 +33,7 @@ Closing, cancelling, rewriting, or deleting any ticket; changing source/tests/do
 
 ## References
 
-- `.10x/tickets/2026-07-18-repository-cleanup-plan.md`
+- `.10x/tickets/done/2026-07-18-repository-cleanup-plan.md`
 - `.10x/research/2026-07-18-repository-dead-end-inventory.md`
 
 ## Progress and notes
