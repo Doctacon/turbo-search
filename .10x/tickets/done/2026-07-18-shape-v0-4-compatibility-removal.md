@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-18
 Updated: 2026-07-19
-Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
+Parent: .10x/tickets/done/2026-07-18-repository-cleanup-plan.md
 Depends-On: .10x/tickets/done/2026-07-18-review-stale-ticket-statuses.md
 
 # Shape Buoy 0.4 Compatibility Removal
@@ -33,7 +33,7 @@ Implementing removals; changing source/tests/user docs/version numbers; publishi
 
 ## References
 
-- `.10x/tickets/2026-07-18-repository-cleanup-plan.md`
+- `.10x/tickets/done/2026-07-18-repository-cleanup-plan.md`
 - `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`
 - `.10x/specs/buoy-v0-4-console-alias-removal.md`
 - `.10x/specs/buoy-v0-4-environment-alias-removal.md`

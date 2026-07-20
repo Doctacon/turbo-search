@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-18
 Updated: 2026-07-18
-Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
+Parent: .10x/tickets/done/2026-07-18-repository-cleanup-plan.md
 Depends-On: .10x/tickets/done/2026-07-18-direct-command-defaults-plan.md
 
 # Triage Thistle/Qdrant Dead End
@@ -42,7 +42,7 @@ Porting the Qdrant backend; running Thistle/Mercury crawls; deleting Qdrant volu
 
 ## References
 
-- `.10x/tickets/2026-07-18-repository-cleanup-plan.md`
+- `.10x/tickets/done/2026-07-18-repository-cleanup-plan.md`
 - `.10x/research/2026-07-18-repository-dead-end-inventory.md`
 - `.10x/research/2026-07-18-thistle-qdrant-dead-end-disposition.md`
 - `.10x/evidence/2026-07-18-thistle-qdrant-dead-end-disposition.md`

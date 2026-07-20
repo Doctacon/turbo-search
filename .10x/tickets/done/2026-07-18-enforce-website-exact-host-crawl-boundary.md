@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-18
 Updated: 2026-07-19
-Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
+Parent: .10x/tickets/done/2026-07-18-repository-cleanup-plan.md
 Depends-On: .10x/tickets/done/2026-07-18-triage-thistle-qdrant-dead-end.md
 
 # Enforce Website Exact-Host Crawl Boundary

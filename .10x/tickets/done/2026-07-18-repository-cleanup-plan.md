@@ -1,6 +1,6 @@
-Status: open
+Status: done
 Created: 2026-07-18
-Updated: 2026-07-19
+Updated: 2026-07-20
 Parent: None
 Depends-On: .10x/tickets/done/2026-07-18-direct-command-defaults-plan.md
 
@@ -51,4 +51,19 @@ Deleting ignored `artifacts/`, `.buoy/`, credentials, remote namespaces, local/r
 - 2026-07-18: Post-merge audit found the exact-host spec cited an original untracked ticket as if it were addressable at commit `d7a37d7`. Repaired the provenance paragraph to cite the merged disposition research and exact path/hash inventories while stating that the retired untracked files are historical provenance, not current authority. Review: `.10x/reviews/2026-07-18-thistle-provenance-reference-repair-review.md`.
 - 2026-07-18: User superseded the earlier dedup-reconciliation direction: retire exact-chunk dedup, preserve it only as historical non-authority, and salvage only the exact-host behavior from the dirty implementation.
 - 2026-07-19: Stale-ticket closure review completed: five target tickets closed `done`, two were cancelled with explicit no-action rationales, and the broad repo-ranking owner remains active with exact missing closure support. No tests, benchmarks, live operations, implementation repair, default changes, or residual-risk acceptance occurred. Review: `.10x/reviews/2026-07-19-stale-ticket-status-closure-review.md`.
-- 2026-07-19: Final compatibility-shaping child completed after user ratification. Two focused active specs, a non-executable implementation plan, two bounded executable children, and a separate stale-guidance owner now capture the 0.4.0 contract. Review response: `.10x/reviews/2026-07-19-v0-4-compatibility-removal-shaping-review-response.md`. No source/tests/user docs/version/release behavior changed. This parent remains open pending its aggregate closure review.
+- 2026-07-19: Final compatibility-shaping child completed after user ratification. Two focused active specs, a non-executable implementation plan, two bounded executable children, and a separate stale-guidance owner captured the 0.4.0 contract. Review response: `.10x/reviews/2026-07-19-v0-4-compatibility-removal-shaping-review-response.md`. The subsequently authorized implementation completed separately under `.10x/tickets/done/2026-07-19-buoy-v0-4-compatibility-removal-plan.md`.
+- 2026-07-20: Independent aggregate closure review passed at develop `474526051821425a9cba649711f793dd8e89ac9d`; all six sequenced children are terminal and every residual has a separate durable owner. Review: `.10x/reviews/2026-07-20-repository-cleanup-plan-closure-review.md`.
+
+## Closure mapping
+
+- Dirty-work classification and safe retirement: Thistle research, disposition review, deletion manifest, and deletion evidence.
+- Exact-host safety and Qdrant/dedup retirement: focused spec, implementation evidence, independent review, and explicit no-action authority.
+- Local-catalog dead-code boundary: reachability evidence and independent review preserving active behavior.
+- Record normalization: terminal move/reference evidence and review.
+- Stale-status reconciliation: aggregate plus independent closure reviews with unsupported work retained or cancelled truthfully.
+- Compatibility shaping: user-ratified focused specs, bounded plan/tickets, and independent shaping review.
+- Protected resources: child evidence confirms no unauthorized ignored-artifact, state, remote, branch/tag, or unrelated-worktree mutation.
+
+## Retrospective
+
+The cleanup succeeded by separating salvageable product-neutral safety from abandoned provider-specific experiments, then sequencing source cleanup before record/status cleanup. Closure reviews caught several record-graph errors that normal CI could not: missing references, incorrect dependency direction, stale blocker text, and artifact evidence self-reference. Future broad cleanups should inventory dirty work first, define terminal placement/reference checks up front, and keep release artifacts free of internal project records before final hashing.
