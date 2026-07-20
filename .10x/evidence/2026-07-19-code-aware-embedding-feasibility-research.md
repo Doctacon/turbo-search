@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-19
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-19-research-code-aware-embedding-candidate.md, .10x/research/2026-07-19-code-aware-embedding-candidate.md, .10x/tickets/2026-07-19-evaluate-code-aware-embedding-pilot.md
+Relates-To: .10x/tickets/done/2026-07-19-research-code-aware-embedding-candidate.md, .10x/research/2026-07-19-code-aware-embedding-candidate.md, .10x/tickets/2026-07-19-evaluate-code-aware-embedding-pilot.md
 
 # Code-Aware Embedding Feasibility Research Evidence
 
