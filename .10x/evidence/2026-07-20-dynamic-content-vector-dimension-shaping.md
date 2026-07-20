@@ -24,7 +24,11 @@ C2's immutable source snapshot records:
 - Crow-Plus: exact revision `96ff525a7aa3bf8bfa90d77337c2b24bd45229af`, 768 dimensions, 1,024-token maximum, no prefixes, CLS pooling, no model Normalize module, 606,681,112 weight bytes, and 611,525,163 total listed bytes;
 - Nomic: exact revision `11114029805cee545ef111d5144b623787462a52`, 3,584 dimensions, 32,768-token maximum, exact query-only prefix, last-token pooling, Normalize module, 28,282,512,976 weight bytes, and 28,298,426,837 total listed bytes.
 
-`.10x/research/2026-07-20-dynamic-content-vector-dimensions.md` records a side-by-side resource/compatibility matrix, strict content/routing separation, card/catalog options, namespace/plan/apply/retrieval/automatic-routing failure behavior, no-migration isolation, pinned offline bootstrap/load controls, role semantics, dependency implications, stop conditions, and a four-part user checkpoint.
+`.10x/research/2026-07-20-dynamic-content-vector-dimensions.md` initially recorded a side-by-side resource/compatibility matrix, strict content/routing separation, card/catalog options, namespace/plan/apply/retrieval/automatic-routing failure behavior, no-migration isolation, pinned offline bootstrap/load controls, role semantics, dependency implications, stop conditions, and a four-part user checkpoint.
+
+The user subsequently ratified Crow-Plus 768 first, explicit namespace only with no cards/catalog/automatic routing, complete vector/resource/output staging before remote content write 1, and separate bootstrap/bounded-measurement/implementation/indexing-write approvals. Read-only host inspection observed `Mac14,9`, Apple M2 Pro (10 CPU/16 GPU cores), 17,179,869,184 bytes unified memory, macOS 26.5.1 (`25F80`), and 34,890,539,008 bytes available disk. No device/model runtime was invoked.
+
+The repaired research and draft focused specifications now define a separate experimental stage-then-write path rather than weakening the active depth-one default. `.10x/specs/crow-plus-resource-verification-checkpoint.md` proposes exact unratified cache/disk/hardware/precision/batch/input/load/RSS/MPS/observation/abort/output bounds. `.10x/specs/crow-plus-explicit-namespace-pilot.md` binds the ratified explicit-only lifecycle and complete-stage gate.
 
 ## Procedure
 
@@ -33,12 +37,13 @@ C2's immutable source snapshot records:
 3. Used arithmetic only to render exact C2 byte values as GB/GiB and raw f16/f32 vector element bytes.
 4. Inspected cached source for the already-locked Hub package only; no package was imported, installed, resolved, or executed.
 5. Wrote record-only research/evidence and updated the shaping ticket. No source/test/configuration/dependency/lockfile file was changed.
+6. After the user's ratification, inspected current host hardware/disk read-only, read the active depth-one apply contract, incorporated `origin/develop` commit `4325a08` from PR #60, and drafted two inactive focused specifications. No source or test command ran.
 
 ## What this supports or challenges
 
-This supports the conclusion that dynamic content dimensions need a complete immutable content contract and must not change the independent 384-dimensional routing projection. It also supports new-namespace isolation and a parallel versioned control-plane option as the safest provisional architecture because in-place v1 expansion would conflict with exact-schema/card readers and require migration.
+This supports the conclusion that dynamic content dimensions need a complete immutable content contract and must not change the independent 384-dimensional routing projection. For the ratified first pilot, the smaller safe boundary is stronger: explicit namespace only and no card/catalog/automatic-routing surface at all.
 
-It challenges any assumption that changing the content schema constant alone is sufficient. Current plans, embedding identity, cards, automatic compatibility, explicit multi-namespace retrieval, apply preflight/order, offline loading, and failure tests all require coordinated behavior after user ratification.
+It challenges any assumption that changing the content schema constant alone is sufficient or that the active depth-one apply can satisfy complete pre-write staging. The pilot needs a separate governed experimental path that stages and validates every vector before a later approved serial write; the current active default remains unchanged.
 
 ## Validation boundary
 
@@ -51,5 +56,6 @@ No model/dependency download or install, model load, inference, credential acces
 ## Residual risk
 
 - Independent review of the record-only PR is required before the shaping ticket can close.
-- Candidate, catalog/control-plane option, namespace policy, resource abort bounds, public selection semantics, and exact card serialization remain deliberately unratified.
-- Construction peak, steady host RSS, and peak/steady device memory are unmeasured by design.
+- Candidate and pilot containment are ratified; exact proposed resource/output thresholds remain unratified, so both focused specs remain draft.
+- Construction peak, steady host RSS, and peak/steady MPS allocation are unknown and unmeasured by design; measured values must pass the approved future checkpoint before implementation/indexing.
+- Exact pilot namespaces, rows, writes, storage, staged-artifact identity, and public experimental selection surface remain unavailable until later local planning and separate approvals.

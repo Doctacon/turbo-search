@@ -8,11 +8,13 @@ Depends-On: .10x/tickets/done/2026-07-19-research-code-aware-embedding-candidate
 
 ## Outcome
 
-Produce a user-legible architecture and product checkpoint for whether and how Buoy could support non-384-dimensional **content** embeddings. This is shaping only. It MUST NOT activate a behavior specification, select or approve a model, implement plumbing, download or load weights, run inference, or perform namespace/card/catalog/default writes.
+Produce a user-legible architecture and product checkpoint for whether and how Buoy could support non-384-dimensional **content** embeddings. This is shaping only. It records the user's ratified first-candidate and containment choices and drafts the remaining exact resource checkpoint. It MUST NOT activate a behavior specification, create an executable implementation/evaluation ticket, implement plumbing, download or load weights, run inference, or perform namespace/card/catalog/default writes.
 
 ## Approval provenance
 
-On 2026-07-20, after C2 established that no credible native 384-dimensional candidate fits the current boundary, the user explicitly approved opening separate shaping for dynamic content-vector dimensions. The approved shaping surface covers the retained 768- and 3,584-dimensional candidates, namespace schema/card/routing compatibility, isolation or migration, resource bounds, offline revision-pinned loading, and Nomic's query-only prefix. No implementation or external side effect was approved.
+On 2026-07-20, after C2 established that no credible native 384-dimensional candidate fits the current boundary, the user explicitly approved opening separate shaping for dynamic content-vector dimensions. The approved shaping surface covers the retained 768- and 3,584-dimensional candidates, namespace schema/card/routing compatibility, isolation or migration, resource bounds, offline revision-pinned loading, and Nomic's query-only prefix.
+
+The user then ratified four choices for the first pilot: Crow-Plus at 768 dimensions; explicit namespace only with no cards, catalogs, or automatic routing; every vector plus resource/output compliance staged and validated before the first remote content write; and separate bootstrap, bounded-measurement, implementation, and indexing/write approvals. No download, load, inference, implementation, test, or external operation was approved.
 
 ## Scope
 
@@ -35,16 +37,16 @@ On 2026-07-20, after C2 established that no credible native 384-dimensional cand
 - Resource bounds distinguish download/disk, model construction peak, steady host RAM, device memory, and precision/loading assumptions. Unmeasured values remain labeled estimates or blockers.
 - Offline loading is revision-pinned, cache-explicit, network-failing after bootstrap, telemetry-disabled, and compatible with the locked open-source dependency path without remote code.
 - Query/document prefixes, pooling, and normalization are explicit for each candidate, including Nomic's query-only prefix.
-- The output ends at a user decision checkpoint. It does not create an active specification or executable implementation/evaluation ticket.
+- The output records the four ratified choices and ends at one exact resource-checkpoint confirm-or-correct boundary. It creates only draft focused specifications and no executable implementation/evaluation ticket.
 - The shaping work records that no model/dependency download or install, model load, inference, credential access, live service call, source/test/lockfile change, or namespace/card/catalog/default write occurred.
 
 ## Blockers
 
-The shaping output is complete but this ticket remains active pending independent review of the record-only PR. All behavior selection, implementation, downloads, model loading, and remote writes remain blocked pending review, explicit semantic ratification at the recorded checkpoint, focused active specifications where required, bounded executable tickets, and exact resource/write approvals.
+The four pilot choices are ratified, but this ticket remains active pending independent review and approval/correction of the exact proposed resource checkpoint in `.10x/specs/crow-plus-resource-verification-checkpoint.md`. Both focused specs remain draft. No executable implementation/evaluation ticket may be created until the checkpoint is approved and the governing specifications are activated. Bootstrap, bounded measurement, implementation, and indexing/write each remain separately blocked on their own later approval.
 
 ## Explicit exclusions
 
-Active behavior specifications or decisions; model selection/promotion; source, tests, configuration, dependencies, or lockfile changes; model/dependency downloads or installs; model loading or inference; credentials or live service calls; namespace, card, catalog, or default mutation; C4 execution or unblocking; migration execution; public CLI/API behavior.
+Active behavior specifications or decisions; executable implementation/evaluation tickets; model promotion; source, tests, configuration, dependencies, or lockfile changes; model/dependency downloads or installs; model loading or inference; credentials or live service calls; namespace, card, catalog, or default mutation; C4 execution or unblocking; migration execution; public CLI/API behavior.
 
 ## Evidence expectations
 
@@ -58,6 +60,9 @@ C2's immutable model evidence, inspected current source and locked open-source p
 - `.10x/reviews/2026-07-20-code-aware-embedding-candidate-review.md`
 - `.10x/research/2026-07-20-dynamic-content-vector-dimensions.md`
 - `.10x/evidence/2026-07-20-dynamic-content-vector-dimension-shaping.md`
+- `.10x/specs/crow-plus-explicit-namespace-pilot.md`
+- `.10x/specs/crow-plus-resource-verification-checkpoint.md`
+- `.10x/specs/depth-one-approved-apply-pipeline.md`
 - `.10x/tickets/2026-07-19-evaluate-code-aware-embedding-pilot.md`
 - `src/buoy_search/chunker.py`
 - `src/buoy_search/apply.py`
@@ -69,4 +74,5 @@ C2's immutable model evidence, inspected current source and locked open-source p
 ## Progress and notes
 
 - 2026-07-20: Opened from the user's explicit approval to shape dynamic content-vector dimensions after C2's reviewed stop. No active behavior spec, candidate approval, download/install, model load, inference, source/test/lockfile change, namespace/card/catalog/default write, credential access, or live Buoy operation was authorized or performed.
-- 2026-07-20: Completed record-only shaping at `.10x/research/2026-07-20-dynamic-content-vector-dimensions.md` with immutable 768/3,584 candidate bytes, explicit unmeasured RAM/device categories, strict 384 routing separation, versioned-card options, new-namespace/no-migration isolation, plan/apply/retrieval/automatic-routing failure contracts, pinned offline bootstrap/runtime controls, model-specific role semantics, implementation implications, stop conditions, and a confirm-or-correct checkpoint. Evidence: `.10x/evidence/2026-07-20-dynamic-content-vector-dimension-shaping.md`. Ticket remains active pending required independent review; no model was selected and no behavior/spec/decision/ticket was activated.
+- 2026-07-20: Completed initial record-only shaping at `.10x/research/2026-07-20-dynamic-content-vector-dimensions.md` with immutable 768/3,584 candidate bytes, explicit unmeasured RAM/device categories, strict 384 routing separation, versioned-card options, new-namespace/no-migration isolation, plan/apply/retrieval/automatic-routing failure contracts, pinned offline bootstrap/runtime controls, model-specific role semantics, implementation implications, stop conditions, and a confirm-or-correct checkpoint. Evidence: `.10x/evidence/2026-07-20-dynamic-content-vector-dimension-shaping.md`. Ticket remained active pending required independent review; no executable implementation/evaluation ticket was created.
+- 2026-07-20: Applied the user's four ratified choices: Crow-Plus 768 first; explicit namespace only with no card/catalog/automatic routing; complete vector/resource/output staging before write 1; and separate bootstrap, bounded-measurement, implementation, and indexing/write approvals. Drafted `.10x/specs/crow-plus-explicit-namespace-pilot.md` and `.10x/specs/crow-plus-resource-verification-checkpoint.md`. The experimental path stages every vector before a separately approved serial write and leaves the active depth-one default untouched. Read-only host inspection informed one exact conservative proposed checkpoint; thresholds remain unratified, both specs remain draft, and no executable implementation/evaluation ticket or operation was authorized.

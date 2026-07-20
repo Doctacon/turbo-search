@@ -8,9 +8,9 @@ Updated: 2026-07-20
 
 How could Buoy support a 768- or 3,584-dimensional **content** embedding without changing the independent 384-dimensional namespace-card routing projection, silently mixing incompatible namespaces, migrating existing namespaces by default, or weakening offline/resource controls?
 
-The architecture is feasible only as a new, exact content-embedding contract. The safest candidate-independent shape is isolated new content namespaces, a versioned card/catalog contract, exact plan/apply/query compatibility checks, and no migration or default change. The routing card's semantic `vector` remains a normalized 384-dimensional float32 BGE vector; only content namespace rows and content query vectors vary.
+The user ratified Crow-Plus at 768 dimensions as the first candidate, contained in an explicit-namespace-only pilot with no cards, catalog participation, or automatic routing. Every vector plus resource/output compliance must be staged and validated before the first remote content write. Bootstrap, bounded measurement, implementation, and indexing/write remain separate approval boundaries.
 
-This record does **not** select a model or architecture option, ratify behavior, supersede an active specification/decision, approve a download/load/inference/write, or make C4 executable. It ends with a confirm-or-correct checkpoint.
+This selection does not supersede the active 384-dimensional default pipeline or C4's stop. It approves no download/load/inference/source change/test/remote operation. Exact resource thresholds remain unratified; focused draft specifications record the selected behavior and one exact conservative checkpoint for confirm-or-correct approval.
 
 ## Authority and observed current boundary
 
@@ -24,7 +24,7 @@ Current source and active records establish:
 - `src/buoy_search/catalog.py` uses `NamespaceCard.vector` as a separate normalized 384-dimensional float32 routing projection. It also sets and validates the card's `vector_dimensions` content-compatibility field from `ROUTING_DIMENSIONS`, which is the current conflation to remove.
 - `src/buoy_search/remote_catalog.py` stores card projection `vector` as `[384]f32`; its `vector_dimensions` attribute is a scalar `uint`, but current card parsing requires exactly 384. Valid-but-nonmatching model/precision cards are incompatible/excluded; a non-384 serialized card is currently malformed/fatal before compatibility classification, as are corrupt cards/schema.
 - `src/buoy_search/routing.py` embeds the routing query with pinned BGE and validates exactly 384 values. Its eligibility function includes a runtime content-dimension comparison, but current card parsing prevents a dynamic-dimension card from reaching that check. Content retrieval embeds the query once and reuses that vector across selected namespaces.
-- Active `.10x/specs/namespace-routing-card-contract.md` requires content `vector_dimensions=384`; `.10x/specs/remote-turbopuffer-routing-catalog.md` fixes the routing vector schema at `[384]f32`; `.10x/specs/default-remote-namespace-routing.md` and `.10x/decisions/production-routing-remote-catalog.md` fix automatic authority at `buoy-routing-catalog-v1`. These active records must be explicitly updated or superseded after ratification; shaping cannot override them.
+- Active `.10x/specs/namespace-routing-card-contract.md` requires content `vector_dimensions=384`; `.10x/specs/remote-turbopuffer-routing-catalog.md` fixes the routing vector schema at `[384]f32`; `.10x/specs/default-remote-namespace-routing.md` and `.10x/decisions/production-routing-remote-catalog.md` fix automatic authority at `buoy-routing-catalog-v1`. The explicit-only pilot leaves these active records unchanged and operates outside cards/catalog/automatic routing.
 - `uv.lock` resolves the existing open-source path: `sentence-transformers==5.6.0`, `transformers==5.12.1`, `torch==2.12.1`, and `huggingface-hub==1.20.1`. C2 metadata found both candidates use built-in modules/architectures and no remote code, but runtime compatibility is unverified because no model was loaded.
 
 ## Non-negotiable separation
@@ -64,23 +64,21 @@ All byte values below are copied from C2's immutable tree snapshot. GB/GiB conve
 
 For comparison, current raw `[384]f16` vector payload is exactly 768 bytes; `[768]f16` is 1,536 bytes; `[3584]f16` is 7,168 bytes. These are raw element bytes only. Turbopuffer ANN/storage overhead, row encoding, replication, billing, cache filesystem allocation, tokenizer files in active use, activations, allocator fragmentation, batch effects, construction peak, steady host RSS, and steady/peak device memory are **unmeasured**.
 
-### Required resource checkpoint before any future download or load
+### Exact proposed resource checkpoint before any future download or load
 
-A later candidate-specific, separately approved ticket must state:
+Read-only host inspection observed an Apple `Mac14,9` with M2 Pro, 17,179,869,184 bytes unified memory, macOS 26.5.1 (`25F80`), and 34,890,539,008 bytes available disk. `.10x/specs/crow-plus-resource-verification-checkpoint.md` proposes one exact host-specific checkpoint:
 
-1. exact immutable repository identity and listed bytes above;
-2. the exact bootstrap file manifest/allowlist and forecast transfer/cache bytes (which may differ from all listed repository bytes);
-3. cache root, existing-cache treatment, required free-disk bound, and abort behavior;
-4. precision and construction strategy, including whether current construct-then-cast is retained or replaced by a locked-library-supported direct-dtype path;
-5. supported CPU/CUDA/MPS hardware and software versions;
-6. approved maximum construction peak host RSS, steady host RSS, peak/steady device allocation, elapsed load time, and batch size;
-7. an observation method and immediate abort if any approved resource bound is reached.
+- bootstrap the complete immutable 611,525,163-byte Crow-Plus tree into one absent dedicated cache root, with a 611,525,163-byte transfer ceiling, 805,306,368-byte allocated-cache ceiling, and 5-GiB start/4-GiB post-bootstrap disk floors;
+- measure only on that exact M2 Pro/MPS host and locked dependencies, constructing float32 then casting to float16, batch size 1, with exactly two sequential inputs (one token and exactly 1,024 tokens);
+- require `[1,768]`, all-finite, L2 norm `[0.999, 1.001]` outputs;
+- start with at least 8 GiB available memory; hard-abort at 4 GiB child RSS, 2 GiB MPS current allocation, 3 GiB MPS driver allocation, 120 seconds load, or 300 seconds total;
+- sample external RSS/time and in-process MPS counters at most every 100 ms and fail on a sample gap over 200 ms; qualification additionally requires 3 GiB RSS, 1.5 GiB MPS-current, 2.25 GiB MPS-driver, 90-second load, and 225-second total ceilings.
 
-Until a permitted load measures them, construction peak, steady host RAM, and peak/steady device memory remain blockers, not facts. C2's 2/24/48 GiB values are planning estimates only.
+These exact values are a **proposal**, not ratified bounds. They resolve the prior circularity: bounds and observation/abort behavior are approved before measurement; measured values must then pass the qualification gate before implementation or indexing can be requested. Until a permitted measurement, construction peak, steady host RAM, and peak/steady device memory remain unknown blockers, not facts. C2's 2/24/48 GiB values remain analytical planning estimates only.
 
 ## Candidate-independent content contract
 
-If ratified, every content namespace, plan, card, apply, and query must bind the same immutable contract:
+For the ratified explicit-only pilot, every content namespace, plan, staged artifact, write approval, and query must bind the same immutable contract:
 
 - model repository ID and immutable revision;
 - output dimensions;
@@ -93,20 +91,15 @@ If ratified, every content namespace, plan, card, apply, and query must bind the
 - no-remote-code requirement;
 - canonical contract hash/version.
 
-The plan artifact and card must expose these values directly or expose a canonical contract ID/hash whose complete immutable expansion is reviewable. Model name plus dimension is insufficient. Contract fields must contribute to card revision, plan artifact hash/ID, and stored document embedding identity. Changing model, revision, prefix, pooling, normalization, precision, dimension, or distance metric must force a new namespace under the no-migration default; it must never be treated as an incremental update to old vectors.
+The plan and staged artifact must expose these values directly or expose a canonical contract ID/hash whose complete immutable expansion is reviewable. Model name plus dimension is insufficient. Contract fields must contribute to the plan artifact hash/ID, staged-artifact/vector hashes, and stored document embedding identity. Changing model, revision, prefix, pooling, normalization, precision, dimension, or distance metric must force a new namespace under the no-migration default; it must never be treated as an incremental update to old vectors.
 
 The current `embedding_text_hash` must eventually bind the complete document-side contract, not merely text/precision, so a contract change cannot reuse stale rows.
 
-## Card/catalog architecture options
+## Ratified control-plane containment
 
-| Option | Shape | Advantages | Costs/failure implications | Status |
-| --- | --- | --- | --- | --- |
-| A. Evolve `buoy-routing-catalog-v1` in place | Add self-contained content-contract fields and reinterpret `vector_dimensions` as content-only while keeping card `vector` at `[384]f32` | One catalog authority | Current exact schema/field readers reject missing/extra fields; existing cards require coordinated backfill/migration and old clients fail. Conflicts with no-migration default. | Unratified; stop unless migration and cutover are explicitly approved |
-| B. Parallel versioned experimental catalog | Keep v1/default 384 behavior untouched; place only new dynamic experiment cards in a new versioned catalog contract with explicit content fields and fixed 384 routing vectors | Strong isolation, no existing card/content migration, reversible experiment boundary | Automatic routing needs an explicit experimental catalog/profile; cross-version routing is not automatic; a later production convergence decision remains | **Provisional safety recommendation**, not selected or active |
-| C. Explicit namespace pilot without automatic catalog registration | New content namespaces only; operator supplies one exact content contract and bypasses automatic routing | Smallest initial control-plane change; leaves v1 untouched | Cannot honestly provide card-visible contract or automatic-routing compatibility by itself; explicit multi-namespace verification and preview semantics remain unresolved | Valid deferment/pilot containment option, not full dynamic-routing architecture |
-| D. Stop/defer | Keep all production and experiments at 384; retain candidates as research only | Zero migration/resource/product risk | Code-aware candidate pilot remains blocked | Always available |
+The first pilot is explicit-namespace-only. It creates no card, uses no existing or new catalog, performs no catalog registration/reconciliation, and cannot participate in automatic or multi-namespace routing. The operator supplies one exact new namespace and Crow-Plus content contract. Existing `buoy-routing-catalog-v1`, its 384-dimensional routing projection, authority, cards, and defaults remain untouched.
 
-A future card v2 should make names unambiguous (for example, content fields prefixed `content_` and routing fields prefixed `routing_`) or provide an equally explicit nested canonical representation. Exact serialization remains a ratification question; this record does not create that schema.
+The previous in-place-v1 and parallel-v2 options are rejected for this pilot. A future card/catalog architecture would require new shaping and ratification; this work does not draft it.
 
 ## Namespace, plan, apply, and routing behavior matrix
 
@@ -114,16 +107,16 @@ A future card v2 should make names unambiguous (for example, content fields pref
 | --- | --- | --- |
 | New content namespace | Physical metadata vector type must equal the plan's exact `[D]f16` content schema and cosine distance contract. Namespace identity is dedicated to one contract for its lifetime. | Wrong/existing dimension, model-contract reuse, or unknown metadata: fail before embedding or write; never resize, delete, or overwrite. |
 | Existing 384 namespace | Remains under current model/schema/card/default. No re-embedding, schema mutation, card migration, or default change. | Any dynamic plan targeting it fails as incompatible. |
-| Plan/card | Both carry the same canonical content contract/hash. Card routing projection remains exact 384 BGE. | Missing/unknown/malformed contract is fatal. A valid card for another selected content contract is incompatible/excluded, not coerced. |
-| Apply preview | Reports model@revision, content dimension/schema, role transforms, pooling, normalization, listed/cache bytes, cache readiness, resource unknowns, exact new namespace, rows/writes, and zero-delete/default/catalog-v1 change. It remains credential/model/API-free. | Any unknown exact namespace/rows/cache/resource/write bound stops before approval request. |
-| Approved apply | After explicit approval, require exact local cache and offline environment, validate locked dependency/no-remote-code path, validate advertised model dimension before remote work where possible, read remote metadata/card strongly, then validate every produced vector length/finite values before its write batch. | Missing cache, attempted network, dependency mismatch, resource bound, output mismatch, remote schema/card mismatch, or namespace existence conflict stops with zero content writes at the earliest observable point. No fallback model/revision. |
-| Explicit retrieval | One query may target only namespaces with the exact same content contract. Query transform is selected from that contract. | Mixed model/revision/dimension/prefix/pooling/normalization/precision groups fail before model load/content query. No per-namespace silent re-embedding. |
-| Automatic routing | Routing query and card vectors remain 384. Before relevance, choose one explicit content-contract group; only cards with that exact group are eligible. Embed the content query once with that group's query role, then query selected namespaces. | Default v1 continues excluding dynamic cards. Multiple/unselected contract groups, zero eligible cards, malformed cards, output dimension mismatch, or selected metadata mismatch fail closed; never fan out across groups or fall back to namespace IDs/all live namespaces. |
-| Card registration/recovery | Pending/base/revision hashes bind the complete content contract. Manual semantics/enabled state may be preserved only when content and routing contracts remain exact. | Content-contract drift is a system-field conflict: no safe rebase and no content replay. |
+| Plan | Carries the complete canonical Crow-Plus content contract/hash and exact explicit new namespace. | Missing/unknown/malformed contract, namespace, rows, or write forecast is fatal. |
+| Apply preview | Reports model@revision, content dimension/schema, role transforms, pooling, normalization, listed/cache bytes, cache readiness, resource unknowns, exact new namespace, rows/writes, and zero-delete/default/card/catalog change. It remains credential/model/API-free. | Any unknown exact namespace/rows/cache/resource/write bound stops before approval request. |
+| Experimental staging | Uses an already-approved cached model to encode every approved row locally, records all vectors/resource observations/output checks in one hash-bound artifact, and creates no remote client. | Any missing/duplicate/non-finite/wrong-dimension/out-of-norm vector, resource violation, or identity drift invalidates the whole artifact with zero remote content writes. |
+| Experimental write | After a separate indexing/write approval, revalidates the complete staged artifact and exact remote target, then serially writes its ordered batches without embedding overlap. | Missing approval, artifact drift, remote schema/namespace conflict, or unexpected affected IDs stops later writes; no delete/card/catalog/default mutation. |
+| Explicit retrieval | One query targets one exact namespace with the exact Crow-Plus content contract. | Missing namespace, mixed contract, or output mismatch fails before content query; no card/catalog lookup or fallback. |
+| Cards/catalog/automatic routing | Excluded from the pilot; active v1 behavior remains untouched. | Any attempt to register, reconcile, route, or fall back through a catalog is fatal. |
 
-### Why automatic routing must group before relevance
+### Depth-one apply conflict resolution
 
-The 384-dimensional routing projection can compare cards from different content models, but downstream retrieval cannot safely share one content query vector across 384-, 768-, and 3,584-dimensional namespaces. Buoy currently embeds the content query once. Therefore an explicit content contract must be selected before route eligibility; routing first and discovering mixed dimensions afterward is unsafe.
+The active `.10x/specs/depth-one-approved-apply-pipeline.md` remains the ordinary default and is not weakened or superseded. The pilot requires a separate governed experimental stage-then-write path: all vectors are encoded, persisted, hash-bound, and resource/output validated before credential lookup or the first remote content write. Its later approved write phase performs no embedding overlap. Selection requires the exact experimental plan/contract plus per-run write approval; ordinary plans continue on the current depth-one pipeline.
 
 ## Isolation and migration policy options
 
@@ -182,42 +175,33 @@ A future ratified implementation would at minimum touch the following contracts,
 - content schema construction and vector validation in `chunker.py`/`plan_artifacts.py`;
 - revision/local-cache/offline/role-aware model construction and encoding;
 - plan schema/version, artifact hash, and embedding identity;
-- apply preview, approved preflight ordering, remote metadata verification, vector-length checks, and pending recovery fields;
-- card serialization/hash/parser and likely a versioned remote catalog schema/authority;
-- automatic eligibility grouping and explicit multi-namespace compatibility;
-- CLI/config selection semantics and output;
-- focused wrong-dimension, mixed-contract, missing-cache, network-denial, prefix, pooling/normalization, old-client/card-version, and zero-write failure tests.
+- apply preview, experimental complete-vector staging, staged-artifact hashing, resource/output compliance, approved serial write ordering, and remote metadata verification;
+- an explicit experimental selector that cannot enter card/catalog/automatic-routing code and cannot change the ordinary depth-one default;
+- exact explicit-namespace query compatibility;
+- focused wrong-dimension, mixed-contract, missing-cache, network-denial, prefix, pooling/normalization, resource abort, complete-stage-before-write, default-pipeline isolation, and zero-write failure tests.
 
 No new dependency is currently justified: immutable metadata indicates the locked open-source SentenceTransformer/Transformers/Torch/Hub path contains both architectures and required offline controls. This is not runtime proof. Stop rather than changing dependencies if a permitted compatibility check shows either candidate needs remote code, a lock update, unsupported dtype/device plumbing, or network access; any dependency/lock change requires separate research, approval, and ticket scope.
 
 ## Stop conditions before implementation or evaluation
 
-Stop with no active spec/ticket/download/load/write if any of the following remains unresolved:
+Stop with no active pilot spec, executable implementation/evaluation ticket, download, load, inference, source/test change, or remote operation if any of the following remains unresolved:
 
-1. candidate or defer choice;
-2. v1 migration vs parallel v2 vs explicit-only control-plane option;
-3. exact self-contained card/plan serialization and public selection surface;
-4. exact immutable content contract, including prefixes/pooling/normalization/truncation/distance;
-5. exact new namespaces, rows, writes, storage, cache manifest, and resource limits;
-6. construct/load precision strategy and supported hardware;
-7. measured construction peak, steady host RAM, and peak/steady device memory are required but not approved/available;
-8. locked dependency compatibility/no-remote-code/offline-network behavior fails;
-9. any proposal changes existing namespaces/cards/defaults or requires migration without explicit supersession/approval;
-10. active v1 specs/decision have not been updated or superseded for the chosen bounded behavior;
-11. independent review of this shaping output has not passed.
+1. exact proposed resource checkpoint approval, including cache/disk/hardware/precision/load-time/host/device/batch/observation/abort/output thresholds;
+2. independent review of this repaired shaping output and draft specifications;
+3. separate bootstrap approval and exact immutable manifest evidence;
+4. separate bounded-measurement approval and passing measured resource/output evidence;
+5. later implementation authorization, active governing specs, and a bounded executable implementation ticket;
+6. exact new namespaces, rows, writes, storage, staged-artifact identity, and separate indexing/write approval;
+7. locked dependency compatibility/no-remote-code/offline-network behavior fails;
+8. any proposal changes existing namespaces/cards/catalog/defaults, invokes automatic routing, or requires migration.
 
-C4 remains blocked because its exact 384-dimensional candidate condition was not met. Dynamic behavior must receive its own focused active specifications and bounded executable tickets after ratification; this record does not widen C4.
+C4 remains blocked because its exact 384-dimensional candidate condition was not met. This selected dynamic pilot uses a separate contract and MUST NOT widen or execute C4.
 
-## User-legible confirm-or-correct checkpoint
+## Exact confirm-or-correct checkpoint
 
-No model or behavior is selected yet. Please confirm or correct these independent choices:
+The candidate, explicit-only containment, complete staging-before-write rule, and separate approval boundaries are ratified. The remaining question is only the exact resource proposal in `.10x/specs/crow-plus-resource-verification-checkpoint.md`: dedicated empty cache; immutable 611,525,163-byte tree; 611,525,163-byte transfer and 768-MiB cache ceilings; 5-GiB/4-GiB disk floors; observed M2 Pro/MPS host; float32 construction then float16 inference; batch 1; two bounded inputs; 120-second load/300-second total hard deadlines; 4-GiB RSS/2-GiB MPS-current/3-GiB MPS-driver hard ceilings; 100-ms monitoring; tighter 75%-of-bound qualification values; immediate abort; and exact 768/finite/norm `[0.999,1.001]` output checks.
 
-1. **Candidate:** (A) Crow-Plus at 768 for the smaller first experiment, (B) Nomic at 3,584 only after accepting its much larger resource/loading checkpoint, or (C) defer dynamic dimensions. Decision unlocked: exact model contract and resource/bootstrap forecast.
-2. **Isolation/control plane:** (A) parallel versioned experimental cards/catalog with v1/defaults untouched (**provisional safety recommendation**), (B) explicit-namespace-only pilot with automatic dynamic routing deferred, or (C) approve shaping a coordinated v1 card migration. Decision unlocked: focused card/routing specifications.
-3. **Namespace policy:** confirm new namespaces only, no migration or mutation of existing 384 namespaces/cards/defaults, no deletes, and exact-contract rejection rather than conversion. Decision unlocked: plan/apply safety contract.
-4. **Offline/resource gate:** confirm bootstrap and model load are separately approved phases; runtime is pinned-cache-only/network-failing/telemetry-disabled; unmeasured construction/steady host/device RAM blocks load approval until exact abort bounds and observation method are stated. Decision unlocked: bounded verification ticket, but not a download or load by this confirmation alone.
-
-After those answers, the next Outer Loop action is to draft focused **inactive until ratified** behavior contracts for the selected content model/loading surface, versioned card/routing compatibility, and isolated plan/apply lifecycle. No executable implementation/evaluation ticket should exist until those specifications are active and exact resource/write approvals are separately available.
+Confirm or correct those exact values before either draft spec is activated. No executable implementation/evaluation ticket may be created before that approval. Checkpoint approval activates records only; bootstrap and bounded measurement still require separate approvals.
 
 ## Safety and limits
 
