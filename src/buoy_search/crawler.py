@@ -21,6 +21,7 @@ from pathlib import Path
 import re
 import time
 from typing import Any, Callable, Literal, Sequence
+import unicodedata
 import zlib
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urljoin, urlparse, urlunparse
@@ -2168,6 +2169,16 @@ def markitdown_file_to_markdown(path: Path) -> str:
     return str(getattr(result, "markdown", "") or "")
 
 
+def normalize_markitdown_markdown(markdown: str) -> str:
+    """Remove control characters while preserving ordinary Markdown whitespace."""
+
+    return "".join(
+        char
+        for char in markdown
+        if char in {"\n", "\r", "\t"} or unicodedata.category(char) != "Cc"
+    )
+
+
 def markitdown_pdf_to_markdown(path: Path) -> str:
     """Convert one local PDF to Markdown with MarkItDown's package-facing interface."""
 
@@ -2421,7 +2432,9 @@ def crawl_local_document_with_plan(
         options.progress_callback,
         f"crawl {label}: converting {source.filename} with MarkItDown",
     )
-    markdown = convert_local_document_to_markdown(source).strip()
+    markdown = normalize_markitdown_markdown(
+        convert_local_document_to_markdown(source)
+    ).strip()
     crawl_seconds = elapsed_since(conversion_started_at)
     if not markdown:
         raise RuntimeError(empty_local_document_message(source))

@@ -47,6 +47,7 @@ from buoy_search.crawler import (
     observe_monotonic,
     url_allowed_by_path_filters,
     namespace_candidate,
+    normalize_markitdown_markdown,
     page_filename,
     parse_github_repo_url,
     sitemap_locations_from_xml,
@@ -937,6 +938,103 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertNotIn("pdf_filename", page_text)
             serialized = json.dumps(summary, sort_keys=True) + page_text
             self.assertNotIn(str(csv_path), serialized)
+
+    def test_markitdown_normalization_removes_only_unicode_controls(self) -> None:
+        markdown = "# Café\x00\r\n\tcontent\x1f\x7f\u0085 😀"
+
+        self.assertEqual(
+            normalize_markitdown_markdown(markdown),
+            "# Café\r\n\tcontent 😀",
+        )
+
+    def test_crawl_local_file_normalizes_markitdown_control_characters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            text_path = root / "Control Chars.txt"
+            text_path.write_text("placeholder", encoding="utf-8")
+            source = detect_source(str(text_path))
+            assert isinstance(source, LocalFileSource)
+            options = CrawlOptions(
+                base_url=source.base_url, out_dir=root / "crawl", max_chunks=10
+            )
+
+            with patch(
+                "buoy_search.crawler.markitdown_file_to_markdown",
+                return_value="# Clean\x00 Title\n\nUseful\ttext with café.\x1f More text.",
+            ):
+                summary = crawl_local_document(source, options)
+
+            self.assertEqual(summary["chunks_generated"], 1)
+            page_text = next((root / "crawl" / "pages").glob("*.md")).read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("\x00", page_text)
+            self.assertNotIn("\x1f", page_text)
+            self.assertIn("# Clean Title", page_text)
+            self.assertIn("Useful\ttext with café. More text.", page_text)
+            plan = process_corpus(root / "crawl" / "pages")
+            self.assertEqual(plan.stats.chunks_generated, 1)
+            self.assertNotIn("\x00", plan.chunks[0].content)
+            self.assertNotIn("\x1f", plan.chunks[0].content)
+
+    def test_crawl_pdf_normalizes_markitdown_control_characters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf_path = root / "Control Chars.pdf"
+            pdf_path.write_bytes(b"%PDF-1.4 text pdf fixture")
+            source = detect_source(str(pdf_path))
+            assert isinstance(source, PdfSource)
+            options = CrawlOptions(
+                base_url=source.base_url, out_dir=root / "crawl", max_chunks=10
+            )
+
+            with patch(
+                "buoy_search.crawler.markitdown_pdf_to_markdown",
+                return_value="# PDF\x00 Title\n\nUseful PDF text.\u0085 More text.",
+            ):
+                summary = crawl_pdf(source, options)
+
+            self.assertEqual(summary["chunks_generated"], 1)
+            page_text = next((root / "crawl" / "pages").glob("*.md")).read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("\x00", page_text)
+            self.assertNotIn("\u0085", page_text)
+            self.assertIn("# PDF Title", page_text)
+            self.assertIn("Useful PDF text. More text.", page_text)
+            plan = process_corpus(root / "crawl" / "pages")
+            self.assertEqual(plan.stats.chunks_generated, 1)
+            self.assertNotIn("\x00", plan.chunks[0].content)
+            self.assertNotIn("\u0085", plan.chunks[0].content)
+
+    def test_local_document_rejects_output_emptied_by_normalization(self) -> None:
+        cases = (
+            (
+                "document.pdf",
+                b"%PDF-1.4 image-only fixture",
+                "buoy_search.crawler.markitdown_pdf_to_markdown",
+            ),
+            (
+                "document.txt",
+                b"placeholder",
+                "buoy_search.crawler.markitdown_file_to_markdown",
+            ),
+        )
+        for filename, contents, converter in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                source_path = root / filename
+                source_path.write_bytes(contents)
+                source = detect_source(str(source_path))
+                options = CrawlOptions(
+                    base_url=source.base_url, out_dir=root / "crawl"
+                )
+
+                with patch(converter, return_value="\x00\x1f\u0085"):
+                    with self.assertRaisesRegex(RuntimeError, "No text was extracted"):
+                        crawl_local_document(source, options)
+
+                self.assertFalse(options.out_dir.exists())
 
     def test_crawl_pdf_rejects_empty_markitdown_extraction(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
