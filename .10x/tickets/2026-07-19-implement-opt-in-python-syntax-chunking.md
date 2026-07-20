@@ -1,4 +1,4 @@
-Status: blocked
+Status: open
 Created: 2026-07-19
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -10,25 +10,13 @@ Depends-On: .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract
 
 Own a local-only, experiment-only Python syntax chunking implementation after an active focused specification defines exact behavior. Preserve the actual current default—fixed 80-entry repository sections followed by generic Markdown token splitting/overlap—and preserve existing `--repo-search-metadata` output/behavior.
 
-Existing records support evaluating syntax-aware chunks and lightweight Python breadcrumbs without Tree-sitter. They do not fully settle the exact LF-coordinate/AST ownership, tokenizer-owned decorator spans, ancestor breadcrumbs, long-symbol subdivision, final-chunk coverage/citation rules, fallback behavior, common header treatment, or experiment arm names. This ticket is therefore not executable yet.
+The user ratified the complete seven-item syntax contract exactly as independently reviewed at PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`. `.10x/specs/repo-python-syntax-chunking-experiment.md` is active and settles the arm identifiers/control pairing, LF coordinates, AST/tokenizer decorator spans, breadcrumbs/ownership, treatment subdivision, common header, distinct control/treatment coverage and citations, fallback, compatibility, validation matrix, and local-only safety behavior. C5 has no unresolved semantic blocker and is executable within that authority.
 
-`.10x/specs/repo-python-syntax-chunking-experiment.md` now contains one exact draft recommendation based on the current source boundary and standard-library AST capabilities. Its `draft` status does not ratify the proposed semantics.
+## Ratified syntax-contract checkpoint
 
-## Required syntax-contract checkpoint
+All seven numbered items in the active specification were confirmed unchanged on 2026-07-20. Provenance: `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`. Review: `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`.
 
-Before implementation, ask the user to confirm all seven numbered items in the draft spec or correct the affected item explicitly:
-
-1. the three arm identifiers, actual current-default generic split/overlap control, parent-required pairing, and metadata/file-card isolation;
-2. LF-only physical coordinates, AST grammar/nodes, and `tokenize` `@` ownership of full physical decorator spans;
-3. fixed-window breadcrumb and innermost-symbol/module/nesting/trivia ownership;
-4. an 80-physical-line maximum for treatment final chunks, deterministic subdivision, zero overlap, no downstream generic split, and fail-closed oversize handling;
-5. one mandatory identical non-source `Repository file`/`Language` header final chunk plus the distinct treatment/control coverage and citation contracts;
-6. whole-file isolated LF fixed/no-breadcrumb syntax-error and non-Python fallback plus fail-closed tokenizer/coordinate failures;
-7. no-arm/metadata/card compatibility, focused/full CPython 3.11/3.13 CI validation, standard-library-only locality, and zero side effects.
-
-Only explicit confirmation or corrections may activate the spec and unblock this ticket.
-
-## Acceptance criteria after ratification
+## Acceptance criteria
 
 - An active focused syntax experiment spec exists and this ticket contains no unresolved behavior.
 - Implementation is explicit opt-in, local-plan-capable, standard-library-only unless a later decision says otherwise, and unchanged by default; `current-default` exactly reproduces the pre-C5 80-entry renderer plus generic token split/overlap.
@@ -40,8 +28,8 @@ Only explicit confirmation or corrections may activate the spec and unblock this
 
 ## Stop conditions
 
-- Do not implement or create an active spec while the exact syntax behavior remains unratified.
-- Stop if exact current-default parity, LF-coordinate treatment coverage, tokenizer-owned decorator spans, mandatory common-header parity, or the distinct control/treatment citation contracts cannot be specified and tested.
+- Implement only the exact active syntax contract; stop and return to shaping if implementation exposes a semantic gap or requires changing it.
+- Stop if exact current-default parity, LF-coordinate treatment coverage, tokenizer-owned decorator spans, mandatory common-header parity, or the distinct control/treatment citation contracts cannot be implemented and tested.
 - Do not add Tree-sitter or multilingual parser dependencies without a later explicit need and decision.
 - Do not live-apply from this child.
 
@@ -51,8 +39,7 @@ Ratification provenance, active focused spec, focused/full CPython 3.11/3.13 CI 
 
 ## Blockers
 
-- The seven-item exact checkpoint in `.10x/specs/repo-python-syntax-chunking-experiment.md` is recommended but not user-ratified.
-- The focused spec remains `draft`; C5 cannot become executable until confirmed/corrected semantics are reflected in an `active` spec.
+None. The seven-item contract is user-ratified, independently reviewed, and active; C5 is open and executable with no unresolved semantics.
 
 ## Explicit exclusions
 
@@ -61,6 +48,8 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 ## References
 
 - `.10x/specs/repo-python-syntax-chunking-experiment.md`
+- `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`
+- `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
 - `.10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md`
@@ -72,3 +61,4 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 - 2026-07-20: C1 closed. C5 remains blocked only on its separately required exact syntax-contract ratification and active focused spec; C1 closure authorized no implementation.
 - 2026-07-20: Inspected the current 80-line repository renderer, regex metadata breadcrumbs, downstream token/overlap chunking, manifest citation fields, and CPython 3.11 AST spans. Drafted the exact seven-item recommended contract in `.10x/specs/repo-python-syntax-chunking-experiment.md`. No source, tests, plans, dependencies, model loads, live calls, writes, deletes, state, datasets, defaults, or parent-ticket content changed; C5 remains blocked.
 - 2026-07-20: Repaired PR #64's record-contract blockers: the paired control is now the actual current renderer plus generic split/overlap; treatment coordinates are LF-only with standard-library tokenizer-owned decorator introducers/spans; treatment final-chunk coverage is separated from control originating-section citations; the identical non-source repository header is mandatory and counted explicitly; and validation requires focused/full CPython 3.11/3.13 CI. The spec remains draft and C5 remains blocked; no implementation, tests, dependencies, plans, live operations, defaults, or product behavior changed.
+- 2026-07-20: Independent review passed PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`; the user then ratified all seven items exactly as reviewed. Activated the unchanged contract and moved C5 from blocked to open/executable with no unresolved semantics. No syntax source/tests, dependencies, local plans, model/credential access, live operations, writes/deletes, state, datasets, defaults, or product behavior changed.

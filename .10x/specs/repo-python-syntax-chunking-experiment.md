@@ -1,4 +1,4 @@
-Status: draft
+Status: active
 Created: 2026-07-20
 Updated: 2026-07-20
 
@@ -6,7 +6,7 @@ Updated: 2026-07-20
 
 ## Authority and activation gate
 
-This is an exact **proposed** contract for the C5 checkpoint in `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`. It is not active authority. The three comparison arms and every rule under “Proposed behavior” remain unratified until the user confirms or corrects the numbered checkpoint at the end of this record. C5 MUST remain blocked and no source, tests, local plans, namespaces, or live operations may derive behavior from this draft.
+This is the active exact contract for C5 in `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`. Independent review passed PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`, and the user ratified all seven numbered items exactly as reviewed on 2026-07-20. The ratification changed no arm, coordinate, AST/tokenizer, ownership, subdivision, header, coverage/citation, fallback, validation, or safety semantics.
 
 The following boundaries are already established by the task and active records:
 
@@ -15,7 +15,7 @@ The following boundaries are already established by the task and active records:
 - the existing `--repo-search-metadata` mode remains compatible outside the isolated experiment;
 - Tree-sitter, new dependencies, live retrieval, writes, deletes, catalog/default changes, and product promotion are excluded.
 
-Current source inspection establishes, but does not ratify proposed behavior, that:
+Current source inspection establishes the implementation boundary that this active behavior governs:
 
 - `src/buoy_search/github_repo.py` currently renders non-Markdown/non-prose repository files from `text.splitlines()` in consecutive 80-entry Markdown sections headed `Lines <start>-<end>`;
 - every rendered repository code page currently begins with an H1 path plus a section containing `Repository file` and `Language`;
@@ -36,7 +36,7 @@ Define one local repository-indexing comparison that separately measures:
 
 The experiment covers selected repository source files only. It does not change file selection, repository size caps, Markdown/prose handling, embedding configuration, retrieval ranking, eval judgments, namespace policy, or product defaults.
 
-## Proposed behavior (unratified)
+## Behavior
 
 ### Stable arm identifiers, actual control, and isolation
 
@@ -164,7 +164,7 @@ C5 implementation and validation, if later activated, MUST be local-only. It MUS
 
 No Tree-sitter package, parser grammar, model, or other dependency may be added. Standard-library `ast` and `tokenize` are the only proposed syntax machinery.
 
-## Proposed acceptance scenarios after ratification
+## Acceptance scenarios
 
 1. **Actual control and paired isolation:** Golden pre-C5 fixtures prove `current-default` and the ordinary no-arm path have identical rendered pages and final generic token/overlap chunks; each Python-aware treatment is paired against that control on the same source commit/corpus and rejects metadata/card combinations.
 2. **Three-arm distinction:** One parseable Python fixture produces the current generic final split in `current-default`, isolated fixed ranges plus AST chains in `fixed-80-python-breadcrumbs`, and AST ownership ranges plus the same chain vocabulary in `python-ast`.
@@ -186,9 +186,9 @@ No Tree-sitter package, parser grammar, model, or other dependency may be added.
 - A public/default chunking profile or automatic language selector beyond deterministic fallback.
 - Repairing current-default `splitlines()` coordinates or its section-level citation precision inside C5.
 
-## Exact confirm-or-correct checkpoint
+## Ratified exact checkpoint
 
-The recommended smallest contract is the complete proposal above. Before this record can become active or C5 can become executable, the user must confirm all numbered items or correct them explicitly:
+The user confirmed the complete contract above by ratifying all seven reviewed items below exactly as written:
 
 1. **Arms, actual control, and pairing:** Confirm exactly `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`; the control is the unchanged current 80-entry renderer followed by generic 300-token/up-to-two-sentence-overlap splitting; each isolated Python-aware arm is paired against it on the same commit/corpus and rejects metadata/card combinations.
 2. **Physical lines, AST, and decorators:** Confirm LF-only one-based coordinates after existing universal-newline acquisition (terminal LF adds no line; form-feed is intra-line whitespace; post-acquisition bare CR fails), Python 3.11 grammar via standard-library `ast`, only class/sync-function/async-function symbols, and standard-library `tokenize` first-token `@` coordinates owning complete physical multiline decorator spans.
@@ -198,13 +198,15 @@ The recommended smallest contract is the complete proposal above. Before this re
 6. **Fallback:** Confirm whole-file isolated LF fixed/no-breadcrumb fallback for Python `SyntaxError`/`ValueError`, the same treatment for non-Python source, sanitized fallback counts, no control parsing/fallback count, and fail-closed behavior for unexpected tokenizer/coordinate/runtime failures.
 7. **Compatibility, validation, and safety:** Confirm no-arm and existing metadata/card outputs stay unchanged; focused plus full validation is required in CI on CPython 3.11 and 3.13; and C5 remains dependency-free/local-only with no model load, credential read, live call, write, delete, state, dataset, default, or product change.
 
-A reply such as “confirm all seven items in `.10x/specs/repo-python-syntax-chunking-experiment.md`” is sufficient ratification. Any correction must identify the item and replacement behavior. Until then, this record remains `draft` and C5 remains `blocked`.
+Ratification provenance is recorded in `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`; independent review is recorded in `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`. Any future semantic correction requires this active specification to be superseded rather than edited in place.
 
 ## References
 
 - `.10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md`
 - `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`
 - `.10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md`
+- `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`
+- `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
 - `.10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md`

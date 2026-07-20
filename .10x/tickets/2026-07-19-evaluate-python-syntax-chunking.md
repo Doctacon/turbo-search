@@ -42,7 +42,8 @@ Approval provenance; required CPython 3.11/3.13 CI; paired control/treatment pla
 
 ## Blockers
 
-- C5 and its governing active spec do not exist in executable/completed form.
+- C5 is open/executable but not complete; its required focused/full CPython 3.11/3.13 CI and exact paired local plans do not yet exist.
+- C5 local plans have not yet reported the exact per-arm namespace names, commits, header/source row counts, storage multipliers, and write counts needed for the approval checkpoint.
 - No exact syntax namespace-write approval exists.
 
 ## Explicit exclusions
@@ -51,6 +52,7 @@ Source implementation; behavior shaping; Tree-sitter; baseline mutation/deletion
 
 ## References
 
+- `.10x/specs/repo-python-syntax-chunking-experiment.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`
 - `.10x/decisions/repo-ranking-promotion-policy.md`
@@ -60,3 +62,4 @@ Source implementation; behavior shaping; Tree-sitter; baseline mutation/deletion
 - 2026-07-19: Opened blocked. No namespace names/counts, write budget, live call, or promotion was ratified.
 - 2026-07-20: Clarified that the three-repo rule is an experiment escalation gate only, not active promotion policy.
 - 2026-07-20: Reconciled C6 with the parent paired-default rule: the required control is the actual unchanged current renderer plus generic split/overlap, and each isolated Python-aware arm must be paired against it on the same corpus. C6 remains blocked on C5 and exact write approval.
+- 2026-07-20: The exact seven-item C5 contract is now independently reviewed, user-ratified unchanged, and active. C6 remains blocked on C5 completion, passing exact paired local plans with namespace/row/storage/write counts, and separate exact write approval; no plan, namespace, live operation, or write was authorized.
