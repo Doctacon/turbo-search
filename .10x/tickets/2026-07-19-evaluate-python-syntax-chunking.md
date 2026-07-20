@@ -2,7 +2,7 @@ Status: blocked
 Created: 2026-07-19
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
-Depends-On: .10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md
+Depends-On: .10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md
 
 # C6: Evaluate Python Syntax Chunking
 
@@ -42,9 +42,9 @@ Approval provenance; required CPython 3.11/3.13 CI; paired control/treatment pla
 
 ## Blockers
 
-- C5 is open/executable but not complete; its required focused/full CPython 3.11/3.13 CI and exact paired local plans do not yet exist.
-- C5 local plans have not yet reported the exact per-arm namespace names, commits, header/source row counts, storage multipliers, and write counts needed for the approval checkpoint.
-- No exact syntax namespace-write approval exists.
+- **C5 dependency satisfied:** C5 is complete at independently reviewed PR #69 head `360c6b9c666ccf432c082ac44d0a1400955ce3e9`, with required focused/full CPython 3.11/3.13 validation and bounded three-file local paired-plan evidence.
+- The bounded C5 plans are not the required Buoy/pytest/Ruff pilot forecast. Exact per-arm pilot namespace names, repository commits/corpora, selected-file counts, header/source row counts, total rows, storage multipliers, and write counts remain unreported.
+- No exact approval exists for the forecast Buoy/pytest/Ruff syntax namespace writes. C6 MUST remain blocked until the reported counts fill the approval checkpoint unchanged.
 
 ## Explicit exclusions
 
@@ -54,7 +54,7 @@ Source implementation; behavior shaping; Tree-sitter; baseline mutation/deletion
 
 - `.10x/specs/repo-python-syntax-chunking-experiment.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
-- `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`
+- `.10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md`
 - `.10x/decisions/repo-ranking-promotion-policy.md`
 
 ## Progress and notes
@@ -63,3 +63,4 @@ Source implementation; behavior shaping; Tree-sitter; baseline mutation/deletion
 - 2026-07-20: Clarified that the three-repo rule is an experiment escalation gate only, not active promotion policy.
 - 2026-07-20: Reconciled C6 with the parent paired-default rule: the required control is the actual unchanged current renderer plus generic split/overlap, and each isolated Python-aware arm must be paired against it on the same corpus. C6 remains blocked on C5 and exact write approval.
 - 2026-07-20: The exact seven-item C5 contract is now independently reviewed, user-ratified unchanged, and active. C6 remains blocked on C5 completion, passing exact paired local plans with namespace/row/storage/write counts, and separate exact write approval; no plan, namespace, live operation, or write was authorized.
+- 2026-07-20: C5 closed after independent PASS at PR #69 head `360c6b9c666ccf432c082ac44d0a1400955ce3e9`; its dependency is satisfied. The existing bounded three-file Buoy plans do not fill this ticket's exact Buoy/pytest/Ruff pilot forecast. Exact pilot namespace names, commits/corpora, selected-file and header/source/total row counts, storage multipliers, and write counts remain required before the unchanged separate write-approval checkpoint. No C6 plan, live operation, namespace write, retrieval, or promotion was authorized.

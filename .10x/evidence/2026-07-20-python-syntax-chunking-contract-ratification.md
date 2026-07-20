@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/specs/repo-python-syntax-chunking-experiment.md, .10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md, .10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md, .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md, .10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md
+Relates-To: .10x/specs/repo-python-syntax-chunking-experiment.md, .10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md, .10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md, .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md, .10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md
 
 # Python Syntax Chunking Contract Ratification
 

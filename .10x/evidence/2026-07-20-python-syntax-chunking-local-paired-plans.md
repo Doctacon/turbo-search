@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md, .10x/specs/repo-python-syntax-chunking-experiment.md
+Relates-To: .10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md, .10x/specs/repo-python-syntax-chunking-experiment.md
 
 # Python Syntax Chunking Local Paired Plans
 
@@ -44,4 +44,4 @@ This supports that all three arms can be locally planned against one identical c
 
 ## Limits
 
-This is bounded C5 implementation/preflight evidence over a representative three-file local Python corpus. It is not the C6 Buoy/pytest/Ruff pilot forecast, does not authorize any proposed namespace, does not prove model storage or provider billing, and does not approve an apply. C6 remains blocked on independent review, required hosted CI, exact pilot-repository plans, and separate exact write approval. No namespace, catalog, applied state, default, dataset, or label was changed.
+This is bounded C5 implementation/preflight evidence over a representative three-file local Python corpus. It is not the C6 Buoy/pytest/Ruff pilot forecast, does not authorize any proposed namespace, does not prove model storage or provider billing, and does not approve an apply. C5 independent review and required CI are complete, but C6 remains blocked on exact pilot-repository namespace/commit/corpus/file/header/source/total-row/storage/write forecasts and separate exact write approval. No namespace, catalog, applied state, default, dataset, or label was changed.

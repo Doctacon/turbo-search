@@ -1,10 +1,14 @@
-Status: active
+Status: done
 Created: 2026-07-19
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
 Depends-On: .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract.md
 
 # C5: Implement Opt-In Python Syntax Chunking
+
+## Outcome
+
+Completed the exact ratified local-only Python syntax chunking implementation. Independent review passed PR #69 head `360c6b9c666ccf432c082ac44d0a1400955ce3e9`; the ordinary no-arm path remains unchanged, the three explicit arms are locally plan-capable, and no live operation, namespace/catalog/applied-state mutation, dataset/label/default change, or promotion occurred. C5 completion satisfies only C6's implementation dependency and grants no C6 planning, write, apply, retrieval, or promotion authority.
 
 ## Scope
 
@@ -39,7 +43,7 @@ Ratification provenance, active focused spec, focused/full CPython 3.11/3.13 CI 
 
 ## Blockers
 
-None. The seven-item contract is user-ratified, independently reviewed, and active; C5 is open and executable with no unresolved semantics.
+None for the closed C5 outcome. The seven-item contract is user-ratified and active, the implementation passed independent review, and C5 is done. C6's separate exact pilot-forecast and write-approval blockers are not C5 blockers.
 
 ## Explicit exclusions
 
@@ -52,6 +56,7 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 - `.10x/evidence/2026-07-20-python-syntax-chunking-local-paired-plans.md`
 - `.10x/evidence/2026-07-20-python-syntax-chunking-implementation-validation.md`
 - `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`
+- `.10x/reviews/2026-07-20-python-syntax-chunking-implementation-review.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
 - `.10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md`
@@ -66,3 +71,22 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 - 2026-07-20: Independent review passed PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`; the user then ratified all seven items exactly as reviewed. Activated the unchanged contract and moved C5 from blocked to open/executable with no unresolved semantics. No syntax source/tests, dependencies, local plans, model/credential access, live operations, writes/deletes, state, datasets, defaults, or product behavior changed.
 - 2026-07-20: Implemented the three opt-in arms under the active contract with standard-library AST/tokenizer boundaries, isolated exact treatment chunks, unchanged explicit control/no-arm behavior, compatibility rejection, sanitized fallbacks, and fail-closed invariants. Added focused LF/decorator/nesting/ownership/trivia/80-line/header/citation/fallback/control/CLI/plan tests; focused/full suites and the frozen-contract validator pass locally on CPython 3.11 and 3.13, and PR #69 hosted Python 3.11/Python 3.13/distribution CI passed on the implementation commit. Recorded same-commit three-file paired local plan/count evidence in `.10x/evidence/2026-07-20-python-syntax-chunking-local-paired-plans.md` and local matrix/build evidence in `.10x/evidence/2026-07-20-python-syntax-chunking-implementation-validation.md`. C5 is active pending independent implementation review; C6 remains blocked and no model, credential, remote retrieval, namespace/catalog/state write, delete, default, dataset, or label change occurred.
 - 2026-07-20: Repaired only PR #69 review blockers in commit `b5588aa48c8d916e8ff50eb3d77a2ab4403bd0dc`: explicit `current-default` now rejects any generic `--max-chunks` result that omits a selected code file's one header or any expected source chunk; acquisition-level CRLF/no-final-LF coverage and bounded end-to-end `plan --repo-chunking-arm` artifact coverage were added without changing the no-arm artifact contract. Focused 72-test and full 465-test suites plus the frozen-contract validator pass sequentially on CPython 3.11 and 3.13; distribution build and hosted run `29771927189` passed. C5 remains active for the required independent review; nothing was closed, merged, applied, or promoted.
+- 2026-07-20: Independent review passed PR #69 head `360c6b9c666ccf432c082ac44d0a1400955ce3e9` with no blocker. Closed and moved C5 to `done`; mechanically repaired active references. This satisfies only C6's C5 dependency. The exact Buoy/pytest/Ruff pilot forecast/count checkpoint and separate namespace-write approval remain absent, so C6 remains blocked and no live plan/apply/retrieval or promotion occurred.
+
+## Closure mapping
+
+- **Active exact contract:** `.10x/specs/repo-python-syntax-chunking-experiment.md`, its ratification evidence, and contract review establish the unchanged three-arm, LF/AST/tokenizer/header/coverage/fallback/compatibility/safety authority.
+- **Explicit opt-in and current-default parity:** `src/buoy_search/cli.py`, `src/buoy_search/github_repo.py`, and `src/buoy_search/repo_syntax_chunking.py`, exercised by `tests/test_cli.py`, `tests/test_github_repo.py`, and `tests/test_repo_syntax_chunking.py`, preserve the ordinary no-arm path and implement only explicit standard-library arms. Explicit `current-default` fails closed on an incomplete selected-file header/source sequence.
+- **Treatment isolation and exact coverage:** focused tests prove metadata/card incompatibility, no downstream generic split/overlap for treatments, LF-vector adjacency/reconstruction, decorator and nested ownership, deterministic subdivision, header equality, exact treatment citations, and sanitized whole-file fallbacks.
+- **Required runtime matrix and build:** `.10x/evidence/2026-07-20-python-syntax-chunking-implementation-validation.md` records focused/full/ranking passes on CPython 3.11 and 3.13, distribution build success, and passing hosted Python 3.11/Python 3.13/distribution checks.
+- **Local paired plans:** `.10x/evidence/2026-07-20-python-syntax-chunking-local-paired-plans.md` binds all three arms to local Buoy commit `7b64aa12e473dd33bfd9c885aa0a07b54809c6cb`, the same three selected files, exact header/source/total rows and byte multipliers, zero fallbacks, and zero remote calls/writes.
+- **Safety and unchanged defaults:** the implementation/evidence diff contains no dependency, lockfile, dataset, label, default, namespace, catalog, or applied-state mutation. Local generated artifacts and distribution outputs remained outside the repository.
+- **Independent review:** `.10x/reviews/2026-07-20-python-syntax-chunking-implementation-review.md` records PASS at `360c6b9c666ccf432c082ac44d0a1400955ce3e9` and explicitly preserves C6's separate planning and write gates.
+
+## Residual risk
+
+The bounded three-file local paired plans are C5 implementation evidence, not the exact Buoy/pytest/Ruff C6 pilot forecast. Exact pilot commits/corpora, namespace names, selected-file and header/source row counts, storage multipliers, and write counts remain unreported, and no exact namespace-write approval exists. C6 owns these blockers and remains blocked. Tests, tracked artifacts, and review also cannot prove absence of every unlogged external action; the no-live-operation claim is bounded by the recorded procedure, diff, and contemporaneous attestation.
+
+## Retrospective
+
+Two closure-critical invariants required fail-closed tests rather than plausible equivalence: an explicit control must reject truncation anywhere in the complete selected-file sequence, and newline behavior must be tested through acquisition rather than only on already-normalized helper inputs. The final bounded CLI artifact test also demonstrates that unit-level chunk assertions are insufficient without one end-to-end written-plan path. These lessons are captured in the implementation tests, validation evidence, and review; no separate knowledge or skill record is warranted.

@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md, .10x/specs/repo-python-syntax-chunking-experiment.md
+Relates-To: .10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md, .10x/specs/repo-python-syntax-chunking-experiment.md
 
 # Python Syntax Chunking Implementation Validation
 
@@ -40,6 +40,22 @@ Review repair commit `b5588aa48c8d916e8ff50eb3d77a2ab4403bd0dc` makes explicit `
 
 An initial attempt to launch both `uv run --python 3.11` and `uv run --python 3.13` validation concurrently failed because both commands replace the worktree's shared `.venv`. The same commands were rerun sequentially by runtime and passed as recorded above; the failure did not expose an implementation defect or alter tracked files.
 
+## Finalization rerun after current `origin/develop`
+
+Current `origin/develop` at `3e6005c13e5e35907eee2ae80992524074740921` is an ancestor of the reviewed implementation branch and was already incorporated; `git merge --ff-only origin/develop` reported `Already up to date.` Finalization then reran the required matrix sequentially without altering the reviewed implementation:
+
+| Runtime | Command | Result |
+|---|---|---|
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python -m unittest tests.test_repo_syntax_chunking tests.test_github_repo tests.test_cli -q` | PASS, 72 tests |
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python -m unittest discover -s tests -p 'test_*.py' -q` | PASS, 465 tests |
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python scripts/validate_ranking_contract.py` | PASS, 13 datasets / 90 identities / 369 judgments / 13 folds; Buoy remains insufficient/pending baseline approval |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python -m unittest tests.test_repo_syntax_chunking tests.test_github_repo tests.test_cli -q` | PASS, 72 tests |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python -m unittest discover -s tests -p 'test_*.py' -q` | PASS, 465 tests |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python scripts/validate_ranking_contract.py` | PASS, 13 datasets / 90 identities / 369 judgments / 13 folds; Buoy remains insufficient/pending baseline approval |
+| Build | `rm -rf /tmp/buoy-pr69-final-dist && uv build --out-dir /tmp/buoy-pr69-final-dist` | PASS, wheel and source distribution built outside the project |
+
+The focused/full suites emitted only the same pre-existing temporary plan-cleanup warnings. `git diff --check` passed. Independent implementation review is recorded at `.10x/reviews/2026-07-20-python-syntax-chunking-implementation-review.md` with PASS at `360c6b9c666ccf432c082ac44d0a1400955ce3e9`.
+
 ## Coverage represented
 
 Focused tests cover:
@@ -59,4 +75,4 @@ Validation loaded no embedding model, read no service credential, contacted no r
 
 ## Limits
 
-The implementation commit has passing hosted GitHub Actions evidence; the evidence-only follow-up head must retain those checks. Independent implementation review remains outstanding, so C5 remains active pending that review gate. C6 remains blocked; this record authorizes no live apply, retrieval, namespace, catalog, state, dataset, label, default, or promotion action.
+Independent review and the final local rerun support C5 closure, but the bounded three-file local plans are not the exact C6 Buoy/pytest/Ruff pilot forecast. Exact pilot commits/corpora, namespace names, selected-file and header/source/total row counts, storage multipliers, and write counts remain unreported, and exact namespace-write approval remains ungranted. C6 remains blocked; this record authorizes no live plan/apply, retrieval, namespace, catalog, state, dataset, label, default, or promotion action.
