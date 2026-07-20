@@ -1,6 +1,6 @@
 Status: recorded
 Created: 2026-07-18
-Updated: 2026-07-18
+Updated: 2026-07-20
 Relates-To: .10x/tickets/done/2026-07-18-triage-thistle-qdrant-dead-end.md, .10x/tickets/cancelled/2026-07-18-reconcile-website-exact-chunk-deduplication.md
 
 # Thistle/Qdrant Dead-End Triage Evidence
@@ -30,7 +30,7 @@ No file in that worktree was edited, staged, cleaned, reset, run, or deleted. No
 
 - **Critical:** `src/buoy_search/crawler.py` filters candidate URLs but does not explicitly enforce the exact hostname on final page responses or each automatic redirect target. The current owner is `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md` under active `.10x/specs/website-exact-host-crawl-boundary.md`.
 - **Significant:** `src/buoy_search/crawler.py` performs unbounded robots/sitemap reads and gzip expansion. Historical active limits and user ratification plus the current source gap support `.10x/specs/sitemap-resource-limits.md` and `.10x/tickets/2026-07-18-bound-sitemap-resource-usage.md`.
-- **Significant:** current local MarkItDown ingestion strips whitespace but does not remove embedded Unicode `Cc` controls. Unique commit `b48f13c`, its done ticket/evidence/review, and current source support `.10x/tickets/2026-07-18-restore-markitdown-control-character-normalization.md`.
+- **Significant:** current local MarkItDown ingestion strips whitespace but does not remove embedded Unicode `Cc` controls. Unique commit `b48f13c`, its done ticket/evidence/review, and current source support `.10x/tickets/done/2026-07-18-restore-markitdown-control-character-normalization.md`.
 - **No action:** exact-chunk dedup, alias citations, alias-only diff state, and dedup-specific stale deletion are retired by explicit user direction. The only current owner is the cancelled historical-provenance record `.10x/tickets/cancelled/2026-07-18-reconcile-website-exact-chunk-deduplication.md`.
 - **No action:** historical compact-plan gains and namespace-deletion behavior do not prove current defects or requests. Their draft tickets were discarded; the path inventories retain their historical provenance.
 

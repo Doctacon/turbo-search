@@ -1,6 +1,6 @@
 Status: done
 Created: 2026-07-18
-Updated: 2026-07-18
+Updated: 2026-07-20
 
 # Thistle/Qdrant Dead-End Disposition
 
@@ -106,7 +106,7 @@ The old spec, implementation, tests, evidence, and review remain discoverable on
 
 Unique commit `b48f13c` removed Unicode `Cc` controls except `\n`, `\r`, and `\t` before local documents were written/chunked. Current `src/buoy_search/crawler.py:1633-1657,1892-1907` returns converter text and applies only `.strip()`. Embedded NUL/control characters can therefore enter generated pages/chunks again.
 
-Owner: `.10x/tickets/2026-07-18-restore-markitdown-control-character-normalization.md`.
+Owner: `.10x/tickets/done/2026-07-18-restore-markitdown-control-character-normalization.md`.
 
 ### Informational — compact artifacts and namespace deletion need no current owner
 
@@ -157,7 +157,7 @@ Every draft left by the timed-out worker was inspected:
 | `.10x/specs/website-exact-host-crawl-boundary.md` | Keep active; historical ratification and current source gap support it. |
 | `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md` | Keep open; bounded current-architecture repair. |
 | `.10x/specs/sitemap-resource-limits.md` and `.10x/tickets/2026-07-18-bound-sitemap-resource-usage.md` | Keep active/open; exact limits were previously user-ratified and current source is unbounded. |
-| `.10x/tickets/2026-07-18-restore-markitdown-control-character-normalization.md` | Keep open; unique commit plus its ticket/evidence/review prove user authorization and current source lacks the fix. |
+| `.10x/tickets/done/2026-07-18-restore-markitdown-control-character-normalization.md` | Keep open; unique commit plus its ticket/evidence/review prove user authorization and current source lacks the fix. Subsequently completed by PR #52. |
 | Prior draft `specs/website-exact-chunk-deduplication.md` | Discard. Candidate current semantics are unratified and the user selected retirement. |
 | Prior draft `tickets/2026-07-18-reconcile-website-exact-chunk-deduplication.md` | Replace with cancelled/no-action record under `tickets/cancelled/`. |
 | Prior draft `tickets/2026-07-18-reconcile-compact-plan-artifacts.md` | Discard. Historical gains do not prove a current requirement or defect. |
