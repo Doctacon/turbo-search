@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-19-capture-current-repo-candidates-and-baselines.md, .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract.md, .10x/tickets/done/2026-07-20-remove-buoy-internal-ranking-judgment.md, .10x/specs/experimental-buoy-baseline-executor.md, .10x/tickets/2026-07-20-implement-experimental-buoy-baseline-executor.md, .10x/evidence/2026-07-20-experimental-buoy-baseline-executor-ratification.md
+Relates-To: .10x/tickets/2026-07-19-capture-current-repo-candidates-and-baselines.md, .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract.md, .10x/tickets/done/2026-07-20-remove-buoy-internal-ranking-judgment.md, .10x/specs/experimental-buoy-baseline-executor.md, .10x/tickets/done/2026-07-20-implement-experimental-buoy-baseline-executor.md, .10x/evidence/2026-07-20-experimental-buoy-baseline-executor-ratification.md
 
 # C3 / Buoy Baseline Approval Checkpoint
 
@@ -12,7 +12,7 @@ The two live operations needed before C3 can complete are separate approval deci
 1. populate and register the missing same-source Buoy baseline; then
 2. only after that baseline is verified compatible, capture one retrieval-only raw-candidate pass over the frozen 90 composite identities.
 
-Neither operation is approved by this record. C3 remains `blocked` and non-executable. When this checkpoint was first recorded, the focused fail-closed executor contract in `.10x/specs/experimental-buoy-baseline-executor.md` was draft/unratified and had no executable source ticket. It has since received independent specification PASS and exact user ratification, and one source/test implementation owner is open at `.10x/tickets/2026-07-20-implement-experimental-buoy-baseline-executor.md`; it remains unimplemented. This checkpoint read no credential, queried no Turbopuffer resource, loaded or downloaded no model, wrote no namespace/catalog/applied state, and issued no retrieval call.
+Neither operation is approved by this record. C3 remains `blocked` and non-executable. When this checkpoint was first recorded, the focused fail-closed executor contract in `.10x/specs/experimental-buoy-baseline-executor.md` was draft/unratified and had no executable source ticket. It has since received independent specification PASS and exact user ratification, and its bounded implementation independently passed review at PR #70 head `f6cd38dba1bc7cf8fbcb542133ca264e6cb3d61c` and closed at `.10x/tickets/done/2026-07-20-implement-experimental-buoy-baseline-executor.md`. That completion grants no live authority: both source-pinned Approval A grant constants remain `None`, Approval A and Approval B remain ungranted, and C3 remains blocked. This checkpoint and implementation closure read no credential, queried no Turbopuffer resource, loaded or downloaded no model, wrote no namespace/catalog/applied state, and issued no retrieval call.
 
 The requested worktree-root `context.md` and `plan.md` were absent. The active C3 ticket, completed C1 contract/evidence, completed Buoy judgment-removal ticket/evidence, current source, retained C1 temporary plan artifacts, and local immutable model-cache metadata governed this checkpoint.
 
@@ -90,7 +90,7 @@ Current approved-apply source makes these effects part of one operation:
 
 With one namespace-list page and one card page per pass, source implies a minimum of 13 remote catalog read/write calls in addition to the 15 content upsert calls. Actual catalog reads can be higher because current remote pagination was deliberately not queried. The catalog action is `create` if the card is absent or a revision-bound `update` if present; current preflight correctly reports it as unknown until the approved remote read. Thus a claim of “903 writes with zero catalog/local-state effects” would be false for the current apply path.
 
-The current path also discards content-write responses and does not establish that the target is absent/empty before its first upsert. It therefore cannot enforce the revised approval boundary below. Active `.10x/specs/experimental-buoy-baseline-executor.md` requires a separate one-shot path with `max_retries=0`, bounded exact-ID reads, response accounting, and a 26-attempt ceiling. That path is not implemented, independently implementation-reviewed, or approved for execution.
+The ordinary apply path also discards content-write responses and does not establish that the target is absent/empty before its first upsert. It therefore cannot enforce the revised approval boundary below. The separate one-shot path required by active `.10x/specs/experimental-buoy-baseline-executor.md` is now implemented and independently reviewed with `max_retries=0`, bounded exact-ID reads, response accounting, and a 26-attempt ceiling, but it is not approved for execution and remains mechanically disabled while its source-pinned Approval A grant constants are `None`.
 
 ## Approval A — Buoy baseline write only
 
@@ -164,4 +164,4 @@ tracked diff => record-only checkpoint, focused draft executor specification, an
 - The prior RSS observation is not a hard device-memory cap and did not measure this exact approved apply lifecycle with repeated routing/content model constructions.
 - No remote namespace/card existence, row contents/count, billing, retry behavior, source/model compatibility, or account price was observed.
 - The retained `/tmp` plan is not durable project storage. Approval must bind its recorded hashes, and execution must stop if those exact bytes are absent or changed.
-- Current source does not provide the fail-closed baseline executor or C3's exact raw separate-list artifact capture. The baseline executor specification is active and has one open source/test implementation ticket, but neither implementation nor implementation review exists. This checkpoint grants neither Approval A nor Approval B and keeps C3 non-executable until implementation/review, separately granted Approval A, compatible-baseline evidence, and separately granted Approval B are satisfied.
+- Current source provides the independently reviewed fail-closed baseline executor but not C3's exact raw separate-list artifact capture. This checkpoint grants neither Approval A nor Approval B; both source-pinned Approval A grant constants remain `None`. C3 stays non-executable until separately granted Approval A, compatible-baseline evidence, and separately granted Approval B are satisfied.

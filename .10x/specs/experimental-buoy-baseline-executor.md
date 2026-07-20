@@ -6,7 +6,7 @@ Updated: 2026-07-20
 
 ## Authority boundary
 
-This is the focused, ratified specification for one future experimental baseline operation. It authorizes no credential read, model load/download, provider call, namespace/catalog/local-state mutation, or approval. `.10x/tickets/2026-07-20-implement-experimental-buoy-baseline-executor.md` authorizes only bounded source/test implementation. Implementation, independent implementation review, and a separately granted Approval A are all required before execution.
+This is the focused, ratified specification for one future experimental baseline operation. It authorizes no credential read, model load/download, provider call, namespace/catalog/local-state mutation, or approval. Bounded source/test implementation and independent review are complete at `.10x/tickets/done/2026-07-20-implement-experimental-buoy-baseline-executor.md`; they grant no execution authority. A separately granted Approval A remains required before execution.
 
 ## Purpose and exact scope
 
