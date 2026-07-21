@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-20
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -40,7 +40,9 @@ No active specification is changed by this ticket's creation. The current fail-c
 
 ## Blockers
 
-The behavioral contract is intentionally unresolved. Line-boundary subdivision, exact resulting citations, individually over-limit line failure, and all adjacent mechanics listed above are candidates pending shaping, independent review, and explicit user ratification. No implementation ticket may be opened from unratified candidate semantics.
+The draft behavioral contract at `.10x/specs/deterministic-treatment-token-budget-subdivision.md` remains inactive pending independent review and explicit user confirm-or-correct ratification. Its exhaustive farthest-feasible prefix algorithm, inherited-parent breadcrumbs, complete-plan failure scope, and all adjacent mechanics are candidates only. No implementation ticket may be opened from them.
+
+Read-only decomposition of the exact checkpoint found that 20,926 of the 21,292 incompatible treatment plan rows are source rows eligible for the draft physical-line mechanism, while 366 are unchanged prose rows (183 unique repository/row identities across 57 paths, duplicated across the two treatment plans). Prose subdivision is outside this ticket and remains semantically unresolved. The 366 rows are an independent fail-closed C6 blocker owned by the existing blocked C6 checkpoint; source-only ratification or later implementation cannot make readiness pass or authorize ignoring them.
 
 ## Explicit exclusions
 
@@ -57,8 +59,11 @@ A record-only shaping artifact with provenance classification, options/tradeoffs
 - `.10x/evidence/2026-07-20-c6-python-syntax-pilot-forecast.md`
 - `.10x/evidence/.storage/2026-07-20-c6-python-syntax-pilot-forecast.json`
 - `.10x/evidence/.storage/2026-07-20-c6-python-syntax-tokenizer-preflight.json.gz`
+- `.10x/specs/deterministic-treatment-token-budget-subdivision.md`
+- `.10x/evidence/2026-07-20-deterministic-token-budget-subdivision-shaping.md`
 - `scripts/c6_syntax_forecast.py`
 
 ## Progress and notes
 
 - 2026-07-20: Opened from the user's explicit decision to shape deterministic token-budget subdivision separately. Source-line boundaries, exact citations, and individually over-limit line fail-closed handling are candidate scope, not ratified semantics. No active specification, implementation/test, preserved forecast/token artifact, plan, model, credential, provider, namespace, retrieval, catalog/state/default, delete, evaluation, or promotion operation was authorized or changed. C6 remains blocked and non-executable.
+- 2026-07-20: Produced record-only draft `.10x/specs/deterministic-treatment-token-budget-subdivision.md` and shaping evidence with exact final-payload tokenizer accounting, exhaustive farthest-feasible prefixes within existing treatment parents, inherited breadcrumb/ownership, exact coverage/citations, deterministic identity/order, complete-plan one-line failure, downstream validation/regeneration gates, and a user-legible checkpoint. Exact report decomposition found 20,926 incompatible source plan rows plus 366 incompatible unchanged prose plan rows; the prose rows remain a separate fail-closed C6 blocker and no prose semantics were invented. A read-only pinned Buoy probe found zero individually unsplittable physical lines in either arm across 46 selected code files; pytest/Ruff remain unquantified without local pinned sources/plans. Ticket remains active pending independent review and explicit ratification; no active spec/source/test/artifact/validator/live surface changed.
