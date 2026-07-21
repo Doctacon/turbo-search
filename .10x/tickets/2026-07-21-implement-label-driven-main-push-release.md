@@ -8,11 +8,11 @@ Depends-On: .10x/tickets/2026-07-21-implement-label-driven-release-readiness.md
 
 ## Scope
 
-Implement `.10x/specs/main-push-automatic-github-release.md`: exact merged-PR/topology/label recovery, target recomputation, dynamic exact-version validation/build, frozen-changelog policy, generated notes, and existing immutable create/no-op/permanent-fail publication state machine with current/legacy repository separation.
+Implement `.10x/specs/main-push-automatic-github-release.md`: exact merged-PR/topology/immutable-trailer recovery, target recomputation, duplicate-stable-release-per-SHA rejection, dynamic exact-version validation/build, frozen-changelog policy, generated notes, and existing immutable create/no-op/permanent-fail publication state machine with current/legacy repository separation.
 
 ## Acceptance criteria
 
-- Exact merge commit maps to exactly one valid labeled release PR; every ambiguous/wrong topology or label fails before mutation.
+- Exact merge commit maps to one valid release PR and one exact trailer plan; mutable post-merge labels cannot change identity; every ambiguous/wrong topology/trailer or different stable release already on the SHA fails before mutation.
 - Readiness and main-push compute identical base/target across patch/minor/major vectors.
 - Build/install/CLI/assets use exact target override.
 - Generated notes, annotated tag, assets, canonical provenance, 422 race, final downloads, no-op, and every mismatch are executable-test covered.

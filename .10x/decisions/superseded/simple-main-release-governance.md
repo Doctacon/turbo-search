@@ -16,8 +16,8 @@ The first real release PR later proved the already-accepted v0.4 squash topology
 
 - `develop` remains the protected integration branch with strict ordinary Python 3.11, Python 3.13, and Build distributions checks.
 - `main` remains PR-only/release-only with administrator enforcement and deletion denial, but uses `strict=false` and `require_last_push_approval=false`.
-- Main requires the four checks in `.10x/specs/develop-to-main-release-readiness.md`; they validate GitHub's prospective merge commit and exact develop head rather than requiring recurring ancestry sync. The sole pinned v0.4 migration bridge is governed separately and expires after execution.
-- Every successful new-version main push follows `.10x/specs/main-push-automatic-github-release.md`: serialized validation, deterministic build once, annotated tag, provenance, and GitHub Release without manual approval.
+- Main requires the four checks in `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`; they validate GitHub's prospective merge commit and exact develop head rather than requiring recurring ancestry sync. The sole pinned v0.4 migration bridge is governed separately and expires after execution.
+- Every successful new-version main push follows `.10x/specs/superseded/main-push-automatic-github-release-static-version.md`: serialized validation, deterministic build once, annotated tag, provenance, and GitHub Release without manual approval.
 - Existing exact complete state is an idempotent no-op; every partial/mismatched state permanently fails without automated repair or destructive cleanup.
 - Stable SemVer only; each future main release requires an explicit version bump and pending changelog.
 - The unused release environment is deleted after zero references/deployments are proved.

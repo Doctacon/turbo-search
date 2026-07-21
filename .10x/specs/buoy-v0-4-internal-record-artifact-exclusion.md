@@ -31,7 +31,7 @@ After the exclusion is implemented, aggregate validation MUST:
 
 - inspect the wheel and sdist inventories and prove zero `.10x` entries;
 - complete the controlled deterministic comparison above;
-- rerun the candidate clean-wheel installation and the digest-verified released-0.3.0-to-candidate-0.4.0 same-environment upgrade procedure governed by `.10x/specs/buoy-release-validation.md`;
+- rerun the candidate clean-wheel installation and the digest-verified released-0.3.0-to-candidate-0.4.0 same-environment upgrade procedure governed by `.10x/specs/superseded/buoy-v0-4-release-validation.md`;
 - reconfirm candidate metadata, primary-launcher continuity, and removal of the package-owned `turbo-search` launcher.
 
 ## Acceptance scenarios

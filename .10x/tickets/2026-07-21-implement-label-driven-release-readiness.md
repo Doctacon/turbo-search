@@ -8,7 +8,7 @@ Depends-On: .10x/tickets/2026-07-21-implement-tag-derived-package-versioning.md
 
 ## Scope
 
-Implement `.10x/specs/develop-to-main-release-readiness.md`: exact release-label/version plan, authoritative base tag, dynamic metadata/frozen changelog policy, full unique job names, exact-version validation/build, and a no-checkout same-repository auto-merge adapter requesting method MERGE. Keep main protection contexts unchanged until hosted configuration child.
+Implement `.10x/specs/develop-to-main-release-readiness.md`: exact release-label/version plan, authoritative base tag, dynamic metadata/frozen changelog policy, full unique job names, exact-version validation/build, per-PR label-event concurrency, and a no-checkout final merge controller using exact permissions/head matching and immutable trailers. Keep main protection contexts unchanged until hosted configuration child.
 
 ## Acceptance criteria
 
@@ -16,7 +16,7 @@ Implement `.10x/specs/develop-to-main-release-readiness.md`: exact release-label
 - PR source/parents/tag authority/absence are exact.
 - Four check-run names exactly match protection.
 - Distribution uses target override and complete active release validation.
-- Auto-merge adapter never checks out PR code and can only enable MERGE for exact release PR metadata.
+- Final merge job never checks out code, runs only after all four checks, refetches exact current metadata, and can merge only the validated exact head/plan with deterministic authority trailers.
 - Dry fixtures, full suites, hosted CI, permissions/action pins, security review, and independent review pass.
 
 ## Explicit exclusions
@@ -31,7 +31,7 @@ Main-push publication; hosted label/auto-merge/protection mutation; main merge/t
 
 ## Evidence expectations
 
-Label/version vectors; workflow/job identities; no-checkout/permissions proof; exact prospective fixture; target build; tests/CI/review/integration.
+Label/version vectors; labeled/unlabeled concurrency; workflow/job identities; exact no-checkout permissions/head/merge/trailer proof; exact prospective fixture; target build; tests/CI/review/integration.
 
 ## Blockers
 

@@ -17,8 +17,8 @@ Research in `.10x/research/2026-07-21-label-driven-tag-derived-release-automatio
 - The next stable version is derived deterministically from the highest valid stable annotated released tag reachable from base main, incremented by the exact label using SemVer core rules.
 - Buoy package versions are VCS-derived with pinned open-source `hatch-vcs==0.5.0`; release validation/build uses exact `SETUPTOOLS_SCM_PRETEND_VERSION`.
 - `CHANGELOG.md` becomes frozen history through v0.4.0 and points future readers to GitHub Releases. GitHub-generated notes are future release notes.
-- A no-checkout same-repository adapter enables GitHub auto-merge with merge method `MERGE`; all required readiness checks still gate the merge.
-- Main-push publication must recover the exact merged PR/label, verify two-parent `[prior main, exact develop]` merge topology, recompute the version, and then use the existing deterministic immutable-state publication guarantees.
+- After all four checks pass, a final no-checkout least-privilege readiness job refetches exact current metadata and merge-commits with immutable release-plan trailers. It uses no mutable queued auto-merge state.
+- Main-push publication recovers the exact merged PR and immutable commit trailers, verifies two-parent `[prior main, exact develop]` topology, recomputes the version, rejects any different stable release already associated with the SHA, and then uses the deterministic immutable-state publication guarantees.
 - Ordinary work PRs into develop continue to squash. Release PRs into main use merge commits so develop remains in main ancestry.
 - No PyPI or Turbopuffer release behavior is introduced.
 
@@ -48,4 +48,4 @@ Rejected. Standard dynamic project metadata plus generated `__version__` keeps w
 
 ## Consequences
 
-A release operator opens/labels one PR and can walk away. CI and auto-merge handle promotion; main-push automation handles publication. Source checkouts expose a PEP 440 VCS development version, while release artifacts expose exact stable SemVer. The repository must enable auto-merge and create the three labels. Main publication fails before mutation if PR association, label, topology, tag authority, version, artifacts, or provenance is ambiguous.
+A release operator opens/labels one PR and can walk away. CI's final merge controller handles promotion; main-push automation handles publication. Source checkouts expose a PEP 440 VCS development version, while release artifacts expose exact stable SemVer. The repository must create the three labels; native queued auto-merge need not be enabled. Main publication fails before mutation if immutable trailers, PR association, topology, tag authority, version, duplicate-SHA release state, artifacts, or provenance are ambiguous.

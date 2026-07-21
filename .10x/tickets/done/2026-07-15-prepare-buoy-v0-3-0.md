@@ -30,7 +30,7 @@ Alias removal, state-root compatibility removal, release tag creation, main prom
 ## References
 
 - `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md`
-- `.10x/specs/buoy-package-and-cli-identity.md`
+- `.10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md`
 - `.10x/specs/buoy-local-compatibility.md`
 - `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `.10x/specs/protected-github-branches.md`

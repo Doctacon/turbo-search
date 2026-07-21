@@ -45,7 +45,7 @@ The sole exception is the exact one-time v0.4 squash-topology bridge in `.10x/de
 
 ### Release integration
 
-Given a same-repository labeled `develop -> main` pull request, GitHub MUST block merge until all four readiness checks validate the exact prospective merge result. Main strict freshness is not required. Release integration MUST use a merge commit, never squash or rebase, so develop remains in main ancestry. Repository auto-merge MUST be enabled; the exact no-checkout adapter in `.10x/specs/develop-to-main-release-readiness.md` requests method `MERGE`. The automatic main-push workflow revalidates the resulting two-parent exact main commit and merged-PR label before mutation.
+Given a same-repository labeled `develop -> main` pull request, GitHub MUST block merge until all four readiness checks validate the exact prospective merge result. Main strict freshness is not required. Release integration MUST use a merge commit, never squash or rebase, so develop remains in main ancestry. The exact no-checkout final controller in `.10x/specs/develop-to-main-release-readiness.md` performs method `MERGE` only after all required jobs pass; mutable queued auto-merge remains disabled. The automatic main-push workflow revalidates the resulting two-parent exact main commit and merged-PR label before mutation.
 
 ### Direct push
 
@@ -61,7 +61,7 @@ Given any ordinary or administrator credential, direct pushes to `develop` MUST 
 
 - Remote `origin/develop` exists at the ratified bootstrap commit before ordinary integration.
 - GitHub reports the ratified common protection plus exact branch-specific checks/freshness/force-push/last-push settings.
-- Task integration uses squash merge except for the completed exact one-time v0.4 tree-identical bridge; release integration uses merge-commit auto-merge plus prospective-merge readiness and exact-main revalidation, not recurring ancestry ceremony.
+- Task integration uses squash merge except for the completed exact one-time v0.4 tree-identical bridge; release integration uses the final merge controller plus prospective-merge readiness and exact-main revalidation, not recurring ancestry ceremony.
 - Develop strict checks and main non-strict four-check policy, pull requests, zero fixed approvals, administrator enforcement, deletion denial, develop force-push denial, retained main force-push allowance, and last-push approval disabled are observable.
 - CI source and static tests include both push branches.
 - A pull request from the implementation branch to `develop` runs all three required checks and cannot merge until they pass.

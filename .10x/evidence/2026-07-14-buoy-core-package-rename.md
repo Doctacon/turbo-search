@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-14
 Updated: 2026-07-14
-Relates-To: .10x/tickets/done/2026-07-14-buoy-core-package-rename.md, .10x/specs/buoy-package-and-cli-identity.md
+Relates-To: .10x/tickets/done/2026-07-14-buoy-core-package-rename.md, .10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md
 
 # Buoy Core Package Rename Validation
 

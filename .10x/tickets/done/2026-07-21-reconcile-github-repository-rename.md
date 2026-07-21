@@ -38,8 +38,8 @@ Distribution/package/CLI rename; mutation of historical releases/provenance; rew
 ## References
 
 - `.10x/decisions/buoy-product-and-repository-identity.md`
-- `.10x/specs/develop-to-main-release-readiness.md`
-- `.10x/specs/main-push-automatic-github-release.md`
+- `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`
+- `.10x/specs/superseded/main-push-automatic-github-release-static-version.md`
 - `.10x/specs/protected-github-branches.md`
 - `.10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-automation.md`
 - `.10x/tickets/done/2026-07-21-bridge-v0-4-squash-topology-once.md`

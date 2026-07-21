@@ -24,7 +24,7 @@ Children are strictly sequential. No child may infer completion from a later chi
 
 - Project, module, lock, wheel, and sdist metadata consistently identify 0.4.0.
 - The changelog has a pending 0.4.0 section derived from the complete v0.3.0-to-candidate range before release.
-- Candidate distributions pass `.10x/specs/buoy-release-validation.md`, including clean install, digest-verified 0.3.0 upgrade, removed launcher/environment aliases, retained compatibility, complete Python 3.11/3.13 tests, eval validation, links, inventory, and independent review.
+- Candidate distributions pass `.10x/specs/superseded/buoy-v0-4-release-validation.md`, including clean install, digest-verified 0.3.0 upgrade, removed launcher/environment aliases, retained compatibility, complete Python 3.11/3.13 tests, eval validation, links, inventory, and independent review.
 - Current `main` ancestry is incorporated into release-ready `develop` through a protected ancestry-only sync PR with content-neutral merge commit; protection is not weakened.
 - Historical PR #80 remains closed. Replacement PR #85 passed required checks and promoted the exact reviewed tree under the user's explicit squash-topology exception; exact-main CI passed and released-main ancestry is synchronized back into develop.
 - Annotated `v0.4.0` points to the exact reviewed `main` commit and authoritative remote metadata reports a tag object.
@@ -40,7 +40,7 @@ New product behavior; reopening C3/C4/C6-C9; retrying Approval A or Crow-Plus; T
 
 - `.10x/decisions/superseded/protected-development-and-github-release-governance-v2.md`
 - `.10x/specs/protected-github-branches.md`
-- `.10x/specs/buoy-release-validation.md`
+- `.10x/specs/superseded/buoy-v0-4-release-validation.md`
 - `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `docs/releasing.md`
 - `.10x/tickets/done/2026-07-19-buoy-v0-4-compatibility-removal-plan.md`

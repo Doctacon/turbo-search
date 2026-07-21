@@ -86,7 +86,7 @@ The suite emitted the existing non-fatal temporary plan-cleanup warning and comp
 - `.10x/specs/website-crawl-strategy-default.md`
 - `.10x/specs/website-docs-version-policy.md`
 - `.10x/specs/website-language-policy.md`
-- `.10x/specs/buoy-package-and-cli-identity.md`
+- `.10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md`
 - `.10x/tickets/cancelled/2026-06-28-repo-oversize-source-indexing.md`
 - `.10x/tickets/done/2026-07-03-website-crawl-strategy-default-sitemap.md` (knowledge-path reference repair only)
 - `.10x/tickets/done/2026-07-03-website-language-policy.md` (knowledge-path reference repair only)

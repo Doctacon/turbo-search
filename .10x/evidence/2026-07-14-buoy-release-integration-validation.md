@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-14
 Updated: 2026-07-14
-Relates-To: .10x/tickets/done/2026-07-14-buoy-release-integration-validation.md, .10x/specs/buoy-release-validation.md, .10x/tickets/done/2026-07-14-buoy-rebrand-plan.md
+Relates-To: .10x/tickets/done/2026-07-14-buoy-release-integration-validation.md, .10x/specs/superseded/buoy-v0-4-release-validation.md, .10x/tickets/done/2026-07-14-buoy-rebrand-plan.md
 
 # Buoy 0.2 Release Integration Validation
 

@@ -53,7 +53,7 @@ Any exclusion other than repository-root `.10x/**`; removal or relocation of rep
 
 - `.10x/tickets/done/2026-07-19-buoy-v0-4-compatibility-removal-plan.md`
 - `.10x/specs/buoy-v0-4-internal-record-artifact-exclusion.md`
-- `.10x/specs/buoy-release-validation.md`
+- `.10x/specs/superseded/buoy-v0-4-release-validation.md`
 - `.10x/evidence/2026-07-19-buoy-v0-4-compatibility-removal-candidate.md`
 - `.10x/reviews/2026-07-19-buoy-v0-4-aggregate-packaging-blocker-review.md`
 - `.10x/reviews/2026-07-19-buoy-v0-4-compatibility-removal-final-aggregate-review.md`

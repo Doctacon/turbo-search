@@ -7,7 +7,7 @@ Relates-To: .10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-a
 
 ## Observation
 
-PR #93 (`Doctacon/buoy-search:develop -> main`) is open at exact develop `8694afc94984e6993730acd205af3bdca93c5c8b`, but GitHub reports `mergeable=CONFLICTING` and `mergeStateStatus=DIRTY`. Only ordinary CI ran. The four `Release readiness / ...` checks did not start because GitHub could not construct the prospective merge ref required by `.10x/specs/develop-to-main-release-readiness.md`.
+PR #93 (`Doctacon/buoy-search:develop -> main`) is open at exact develop `8694afc94984e6993730acd205af3bdca93c5c8b`, but GitHub reports `mergeable=CONFLICTING` and `mergeStateStatus=DIRTY`. Only ordinary CI ran. The four `Release readiness / ...` checks did not start because GitHub could not construct the prospective merge ref required by `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`.
 
 Main remains `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`; no v0.4.1 tag or Release was created.
 
@@ -32,7 +32,7 @@ The smallest bounded recovery is one protected, content-neutral ancestry bridge 
 
 ## Ratification
 
-After the conflict and recovery boundary were explained, the user explicitly authorized the recommended one-time protected ancestry bridge on 2026-07-21. The exact non-repeatable contract is recorded in `.10x/decisions/one-time-v0-4-squash-topology-bridge.md` and `.10x/specs/develop-to-main-release-readiness.md`.
+After the conflict and recovery boundary were explained, the user explicitly authorized the recommended one-time protected ancestry bridge on 2026-07-21. The exact non-repeatable contract is recorded in `.10x/decisions/one-time-v0-4-squash-topology-bridge.md` and `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`.
 
 ## Limits
 

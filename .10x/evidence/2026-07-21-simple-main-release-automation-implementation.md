@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
-Relates-To: .10x/tickets/done/2026-07-21-implement-simple-main-release-automation.md, .10x/specs/develop-to-main-release-readiness.md, .10x/specs/main-push-automatic-github-release.md, .10x/tickets/done/2026-07-21-finalize-buoy-v0-4-0-changelog.md
+Relates-To: .10x/tickets/done/2026-07-21-implement-simple-main-release-automation.md, .10x/specs/superseded/develop-to-main-release-readiness-static-version.md, .10x/specs/superseded/main-push-automatic-github-release-static-version.md, .10x/tickets/done/2026-07-21-finalize-buoy-v0-4-0-changelog.md
 
 # Simple Main Release Automation Implementation
 

@@ -8,7 +8,7 @@ Depends-On: .10x/tickets/done/2026-07-14-buoy-local-compatibility.md, .10x/ticke
 
 ## Scope
 
-Execute `.10x/specs/buoy-release-validation.md` against the integrated rebrand. This ticket validates and repairs only rebrand integration defects; it does not add features.
+Execute `.10x/specs/superseded/buoy-v0-4-release-validation.md` against the integrated rebrand. This ticket validates and repairs only rebrand integration defects; it does not add features.
 
 ## Acceptance criteria
 
@@ -25,7 +25,7 @@ GitHub mutation, PyPI publication, live Turbopuffer work, float16 inference, and
 
 ## References
 
-- `.10x/specs/buoy-release-validation.md`
+- `.10x/specs/superseded/buoy-v0-4-release-validation.md`
 - `.10x/tickets/done/2026-07-14-buoy-local-compatibility.md`
 - `.10x/tickets/done/2026-07-14-buoy-brand-docs-assets-and-evals.md`
 

@@ -23,14 +23,17 @@ Can Buoy remove committed release-version/changelog preparation and make one lab
 ## Findings
 
 - `hatch-vcs` officially supports Hatch's VCS version source and generated version file. `SETUPTOOLS_SCM_PRETEND_VERSION` is the supported primary exact-version override.
+- Exact-project experiment configuration replaced static project version with `dynamic = ["version"]`, pinned build requirements `hatchling==1.31.0` plus `hatch-vcs==0.5.0`, configured `[tool.hatch.version] source = "vcs"`, configured the VCS hook version file `src/buoy_search/_version.py`, and imported `__version__` from that generated module.
+- Commands were `uv lock`, `uv sync --locked`, installed-version import, `SETUPTOOLS_SCM_PRETEND_VERSION=0.4.1 SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD) PYTHONHASHSEED=0 TZ=UTC LC_ALL=C uv build --out-dir dist`, a new local test commit, then `uv lock --check`.
 - Exact-project experiment succeeded:
-  - `uv.lock` represented root `buoy-search` as dynamic editable source with no churned root version;
-  - `uv sync --locked` installed a VCS development version (`0.4.1.dev70+g5ce5c1155...`);
-  - `SETUPTOOLS_SCM_PRETEND_VERSION=0.4.1 uv build` produced exact `buoy_search-0.4.1` wheel/sdist;
-  - `uv lock --check` remained valid after a new commit.
+  - lock diff removed only root `version = "0.4.1"`; root remained `{ editable = "." }`;
+  - `uv sync --locked` installed VCS development version `0.4.1.dev70+g5ce5c1155.d20260721`;
+  - exact build produced wheel SHA-256 `366444fbac08c2a2fa87e438efff7b3bb391d3a6129d148b8e58a64ba7ca238b` and sdist SHA-256 `5433fc2f7a1a545ca7de218db5c261b1a164154c7ffeb099d7a77f80ff2464ef` with exact 0.4.1 names;
+  - `uv lock --check` remained valid after a new commit;
+  - generated `_version.py` was untracked, confirming the required ignore/build lifecycle.
 - The generated version file is refreshed only on install/build. Clean workflows must run locked sync/build before importing from source, and the generated file must not be tracked.
 - GitHub can recover the exact merged release PR from the resulting merge commit. Main-push validation can require exactly one associated closed/merged PR with exact merge SHA, base `main`, head `develop`, same repository, and exactly one release label.
-- GitHub auto-merge is available but disabled. It can be enabled at repository level; a no-checkout `pull_request_target` adapter can enable merge-commit auto-merge only for exact same-repository `develop -> main` PRs with one release label.
+- GitHub native queued auto-merge is available but disabled. Review found mutable-label and concurrent-event authority risks in using queued auto-merge. A safer design is a final no-checkout job in the readiness workflow: after all four jobs pass, refetch exact current metadata, recompute the plan, and immediately merge with `gh pr merge --merge --match-head-commit`, embedding immutable plan trailers.
 - Branch protection matches check-run job names. Release-readiness job names must themselves be the exact unique required contexts.
 
 ## Conclusion
@@ -41,8 +44,8 @@ The contract is technically feasible with the existing stack. The smallest safe 
 - highest valid stable annotated release tag reachable from base main as version authority;
 - pinned `hatch-vcs==0.5.0` plus exact build override;
 - frozen historical changelog and GitHub-generated future notes;
-- no-checkout auto-merge adapter using merge method `MERGE`;
-- main-push recovery of exact merged PR/label and verification of two-parent merge topology before any release mutation.
+- no-checkout final merge controller using method `MERGE`, exact head matching, current metadata reinspection, and immutable plan trailers;
+- main-push recovery of exact merged PR plus immutable trailer authority and verification of two-parent merge topology before any release mutation.
 
 ## Limits
 

@@ -8,7 +8,7 @@ Depends-On: None
 
 ## Scope
 
-Implement `.10x/specs/buoy-package-and-cli-identity.md`: Apache-2.0/0.2.0 project metadata, `src/buoy_search`, `buoy` primary CLI/module identity, bounded legacy console entry point, user agents, internal imports/tests/mocks, lockfile, and bundled data paths required for a working renamed package.
+Implement `.10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md`: Apache-2.0/0.2.0 project metadata, `src/buoy_search`, `buoy` primary CLI/module identity, bounded legacy console entry point, user agents, internal imports/tests/mocks, lockfile, and bundled data paths required for a working renamed package.
 
 ## Acceptance criteria
 
@@ -25,7 +25,7 @@ State-root/env fallback implementation, README/logo/migration docs, GitHub mutat
 ## References
 
 - `.10x/decisions/superseded/buoy-product-identity-and-compatibility.md`
-- `.10x/specs/buoy-package-and-cli-identity.md`
+- `.10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md`
 - `.10x/tickets/done/2026-07-14-buoy-rebrand-plan.md`
 
 ## Evidence expectations

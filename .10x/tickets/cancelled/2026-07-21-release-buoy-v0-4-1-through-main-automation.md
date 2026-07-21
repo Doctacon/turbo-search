@@ -47,8 +47,8 @@ Product behavior changes; version other than 0.4.1; prerelease/build metadata; m
 
 ## References
 
-- `.10x/specs/develop-to-main-release-readiness.md`
-- `.10x/specs/main-push-automatic-github-release.md`
+- `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`
+- `.10x/specs/superseded/main-push-automatic-github-release-static-version.md`
 - `.10x/specs/protected-github-branches.md`
 - `.10x/decisions/superseded/simple-main-release-governance.md`
 - `.10x/evidence/2026-07-21-simple-main-release-governance-configuration.md`

@@ -8,7 +8,7 @@ Verdict: concerns
 
 ## Target
 
-PR #89 implementation of `.10x/specs/main-push-automatic-github-release.md`, limited to the four reported blockers.
+PR #89 implementation of `.10x/specs/superseded/main-push-automatic-github-release-static-version.md`, limited to the four reported blockers.
 
 ## Findings
 

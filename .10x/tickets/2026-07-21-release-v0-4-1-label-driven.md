@@ -8,13 +8,13 @@ Depends-On: .10x/tickets/2026-07-21-configure-label-driven-release-hosting.md
 
 ## Scope
 
-Use existing open PR #93 as the first end-to-end proof: after all implementation/configuration dependencies integrate to develop, add only `release:patch`; verify automatic MERGE auto-merge request, four exact passing readiness contexts and target 0.4.1; observe protected merge and automatic main-push publication; verify exact tag/Release/assets/digests/provenance/generated notes/PyPI absence; record review and closure.
+Use existing open PR #93 as the first end-to-end proof: after all implementation/configuration dependencies integrate to develop, add only `release:patch`; verify four exact passing readiness contexts, target 0.4.1, and final controller merge with immutable trailers; observe automatic main-push publication; verify exact tag/Release/assets/digests/provenance/generated notes/PyPI absence; record review and closure.
 
 ## Acceptance criteria
 
-- PR #93 exact head equals current develop, base equals current main, one patch label, and auto-merge method MERGE.
+- PR #93 exact head equals current develop, base equals current main, and has one patch label.
 - Target computes from valid v0.4.0 to v0.4.1; no static 0.4.1 preparation remains.
-- Four exact readiness checks pass and GitHub auto-merges without manual merge or bypass.
+- Four exact readiness checks pass and the final readiness controller revalidates and merge-commits exact head/plan without manual merge or bypass.
 - Main merge has exact two-parent topology and triggers one serialized release run.
 - Annotated v0.4.1, non-draft/non-prerelease Release, exact wheel/sdist/downloaded digests, canonical `Doctacon/buoy` main-ref provenance, generated notes, and no PyPI pass.
 - Any partial/mismatch stops without repair/retry/destruction.

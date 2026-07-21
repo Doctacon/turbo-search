@@ -41,7 +41,7 @@ Any content change; any main commit other than exact `c49dc05`; recurring ancest
 
 - `.10x/decisions/one-time-v0-4-squash-topology-bridge.md`
 - `.10x/decisions/superseded/simple-main-release-governance.md`
-- `.10x/specs/develop-to-main-release-readiness.md`
+- `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`
 - `.10x/specs/protected-github-branches.md`
 - `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`
 

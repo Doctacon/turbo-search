@@ -25,9 +25,9 @@ Children are sequential because they overlap release metadata/tooling and hosted
 - Dynamic Hatch VCS package versioning works with locked uv, source/editable development versions, exact release override, deterministic artifacts, clean installs, and current identity.
 - One exact release label determines target SemVer from authoritative stable tag history.
 - Four uniquely named readiness checks validate exact prospective merge and target artifacts.
-- Safe no-checkout adapter enables merge-commit auto-merge only for exact same-repository release PRs.
+- Safe no-checkout final readiness job merge-commits only exact same-repository release PRs after all four checks, embedding immutable plan trailers.
 - Main-push workflow recovers the exact merged PR/label/topology and publishes through the immutable exact-state machine.
-- Repository auto-merge and three labels are configured; protection remains exact.
+- Three release labels are configured; protection remains exact; mutable queued auto-merge remains unnecessary.
 - Current PR #93 becomes the first patch-labeled proof and publishes exact v0.4.1 automatically.
 - No committed version bump, pending changelog, manual merge/tag/workflow/environment approval, PyPI, Turbopuffer, force push, destructive repair, or product behavior change occurs.
 

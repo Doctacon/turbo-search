@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
-Relates-To: .10x/specs/develop-to-main-release-readiness.md, .10x/specs/main-push-automatic-github-release.md, .10x/tickets/done/2026-07-21-shape-simple-main-release-automation.md
+Relates-To: .10x/specs/superseded/develop-to-main-release-readiness-static-version.md, .10x/specs/superseded/main-push-automatic-github-release-static-version.md, .10x/tickets/done/2026-07-21-shape-simple-main-release-automation.md
 
 # Simple Main Release Automation Ratification
 

@@ -9,7 +9,7 @@ Depends-On: None
 ## Scope
 
 - Reconcile the complete `v0.3.0..develop` release range into an accurate pending 0.4.0 changelog section without claiming blocked experiments or failed live baselines as shipped successes.
-- Validate exact project/module/lock/distribution version 0.4.0 and all requirements in `.10x/specs/buoy-release-validation.md`.
+- Validate exact project/module/lock/distribution version 0.4.0 and all requirements in `.10x/specs/superseded/buoy-v0-4-release-validation.md`.
 - Build once in a clean temporary output, inspect wheel/sdist contents and entry points, test clean install, and test digest-verified same-environment upgrade from released 0.3.0.
 - Run primary CLI checks, retained local-state/plan compatibility checks, fixture autoresearch and repository-search eval validation, local links, distribution inventory, diff hygiene, and complete Python 3.11/3.13 suites.
 - Preserve all external-state boundaries and obtain independent review before closure.
@@ -29,7 +29,7 @@ Main/develop ancestry changes; PR #80 merge; tag/Release creation; publication; 
 
 ## References
 
-- `.10x/specs/buoy-release-validation.md`
+- `.10x/specs/superseded/buoy-v0-4-release-validation.md`
 - `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `docs/releasing.md`
 - `CHANGELOG.md`

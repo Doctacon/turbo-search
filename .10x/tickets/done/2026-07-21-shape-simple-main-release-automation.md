@@ -43,8 +43,8 @@ Workflow/source/test implementation; branch protection/environment mutation; PR 
 
 ## References
 
-- `.10x/specs/develop-to-main-release-readiness.md`
-- `.10x/specs/main-push-automatic-github-release.md`
+- `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`
+- `.10x/specs/superseded/main-push-automatic-github-release-static-version.md`
 - `.github/workflows/ci.yml`
 - `.github/workflows/release.yml`
 - `docs/releasing.md`
@@ -73,7 +73,7 @@ None. Independent review concerns were repaired through the exact reviewer check
 - Current inventory and upstream choices: `.10x/evidence/2026-07-21-simple-main-release-automation-shaping.md`.
 - Independent concerns: `.10x/reviews/2026-07-21-simple-main-release-automation-shaping-review.md`.
 - Exact ratification: `.10x/evidence/2026-07-21-simple-main-release-automation-ratification.md`.
-- Active behavior: `.10x/specs/develop-to-main-release-readiness.md`, `.10x/specs/main-push-automatic-github-release.md`, and `.10x/decisions/superseded/simple-main-release-governance.md`.
+- Historical behavior at closure: `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md`, `.10x/specs/superseded/main-push-automatic-github-release-static-version.md`, and `.10x/decisions/superseded/simple-main-release-governance.md`.
 - Execution ownership: `.10x/tickets/done/2026-07-21-simple-main-release-automation-plan.md` and its two children.
 
 ## Retrospective

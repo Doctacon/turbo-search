@@ -31,7 +31,7 @@ Exactly three implemented public aliases are explicitly scheduled for removal in
 2. environment fallback `TURBO_SEARCH_EMBEDDING_MODEL`;
 3. environment fallback `TURBO_SEARCH_EMBEDDING_PRECISION`.
 
-The governing authority is `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md`. It moves these aliases from the rejected 0.3 removal date to 0.4, rejects permanent retention, and explicitly says future removal still requires an executable ticket, verification, and release notes. Supporting active contracts are `.10x/specs/buoy-package-and-cli-identity.md`, `.10x/specs/buoy-local-compatibility.md`, and `.10x/specs/embedding-inference-precision.md`.
+The governing authority is `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md`. It moves these aliases from the rejected 0.3 removal date to 0.4, rejects permanent retention, and explicitly says future removal still requires an executable ticket, verification, and release notes. Supporting active contracts are `.10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md`, `.10x/specs/buoy-local-compatibility.md`, and `.10x/specs/embedding-inference-precision.md`.
 
 No other active record assigns a removal release to another compatibility surface. The `TURBO_SEARCH_*` wording resolves to the two implemented variables above; repository-wide inspection found no other old-branded environment variable.
 
@@ -47,8 +47,8 @@ Current implementation and promises:
 - `tests/test_release_automation.py` asserts that the warning, migration guide, config source, and changelog consistently name 0.4.
 - `docs/migrating-to-buoy.md` tells scripts and users to replace `turbo-search` with `buoy`.
 - `CHANGELOG.md` records the alias as deprecated through 0.3 and scheduled for 0.4 removal.
-- `.10x/specs/buoy-package-and-cli-identity.md` currently requires the alias for 0.3, isolated install behavior, warning behavior, and identical help.
-- `.10x/specs/buoy-release-validation.md` currently requires isolated installation verification of both commands.
+- `.10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md` currently requires the alias for 0.3, isolated install behavior, warning behavior, and identical help.
+- `.10x/specs/superseded/buoy-v0-4-release-validation.md` currently requires isolated installation verification of both commands.
 
 Breakage and migration:
 
