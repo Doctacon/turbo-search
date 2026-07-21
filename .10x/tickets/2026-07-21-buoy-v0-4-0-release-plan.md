@@ -12,7 +12,7 @@ Release reviewed `develop` as GitHub-only Buoy v0.4.0 while preserving protected
 
 ## Child sequence
 
-1. `.10x/tickets/2026-07-21-validate-buoy-v0-4-0-release-candidate.md`
+1. `.10x/tickets/done/2026-07-21-validate-buoy-v0-4-0-release-candidate.md`
 2. `.10x/tickets/2026-07-21-promote-develop-to-main-for-v0-4-0.md`
 3. `.10x/tickets/2026-07-21-create-buoy-v0-4-0-github-release.md`
 4. `.10x/tickets/2026-07-21-finalize-buoy-v0-4-0-changelog.md`

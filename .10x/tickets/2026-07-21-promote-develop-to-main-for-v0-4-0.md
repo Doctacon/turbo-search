@@ -2,7 +2,7 @@ Status: open
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: .10x/tickets/2026-07-21-buoy-v0-4-0-release-plan.md
-Depends-On: .10x/tickets/2026-07-21-validate-buoy-v0-4-0-release-candidate.md
+Depends-On: .10x/tickets/done/2026-07-21-validate-buoy-v0-4-0-release-candidate.md
 
 # Promote Develop to Main for v0.4.0
 
@@ -40,7 +40,7 @@ Exact pre/post refs, divergence, sync commit parents/tree, PR/check URLs, merge 
 
 ## Blockers
 
-Blocked on completed candidate validation and review.
+None. Candidate validation and independent review are complete; integration identity must be revalidated before ancestry work.
 
 ## Progress and notes
 

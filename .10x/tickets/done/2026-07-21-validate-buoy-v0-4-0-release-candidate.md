@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: .10x/tickets/2026-07-21-buoy-v0-4-0-release-plan.md
@@ -35,6 +35,7 @@ Main/develop ancestry changes; PR #80 merge; tag/Release creation; publication; 
 - `CHANGELOG.md`
 - `.10x/evidence/2026-07-21-buoy-v0-4-0-release-candidate.md`
 - `.10x/reviews/2026-07-21-buoy-v0-4-0-release-candidate-review.md`
+- `.10x/reviews/2026-07-21-buoy-v0-4-0-release-candidate-final-review.md`
 
 ## Evidence expectations
 
@@ -42,10 +43,22 @@ Exact source commit; changelog range method; command matrix and exits; Python 3.
 
 ## Blockers
 
-The initial independent review found that normal artifact installation could resolve Transformers 5.14.1 while the bundled tokenizer loader requires exact 5.12.1. The candidate now pins `transformers==5.12.1` in distributable project metadata, refreshes the lock/artifacts, and proves actual tokenizer loading in clean and upgraded artifact environments. Integration remains blocked pending independent re-review and exact-head hosted checks.
+None. The initial artifact-resolution blocker was repaired and independent final review passed exact head `278400909a71bd0d2aa7c454effca31db41888a0`.
 
 ## Progress and notes
 
 - 2026-07-21: Opened from the user's explicit v0.4.0 release request. Read-only preflight found version metadata already at 0.4.0 and the changelog still under Unreleased. No validation workflow, artifact build, source edit, tag, release, merge, or external product operation occurred.
 - 2026-07-21: Prepared the pending 0.4.0 changelog from the complete post-0.3.0 range and added focused release-note assertions. Separate locked CPython 3.11.5 and 3.13.0 suites passed 518 tests each; ranking/C6 validators, lock/diff checks, clean build/inventory, tag/assets dry checks, clean install, and digest-verified released-0.3.0 same-environment upgrade passed. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-0-release-candidate.md`. No tag, Release, branch ancestry, PyPI, Turbopuffer, live product, or user-state operation occurred.
-- 2026-07-21: Independent review failed initial head `ac1c51be2c251ff2f4d0ff2114094e6d1b455c72`: normal artifact installation resolved Transformers 5.14.1, so the exact bundled tokenizer could not load despite locked-source CI passing. Review: `.10x/reviews/2026-07-21-buoy-v0-4-0-release-candidate-review.md`. Repaired distributable metadata with exact `transformers==5.12.1`, refreshed `uv.lock`, added static metadata coverage, rebuilt artifacts, and reran complete 518-test suites/validators on Python 3.11/3.13. Clean and 0.3-upgraded normal artifact environments now resolve 5.12.1 and actually load/exercise the exact bundled tokenizer. Evidence was corrected with final digests. No tag, Release, ancestry, PyPI, Turbopuffer, or user-state operation occurred. Ticket remains open pending independent re-review and exact-head hosted checks.
+- 2026-07-21: Independent review failed initial head `ac1c51be2c251ff2f4d0ff2114094e6d1b455c72`: normal artifact installation resolved Transformers 5.14.1, so the exact bundled tokenizer could not load despite locked-source CI passing. Review: `.10x/reviews/2026-07-21-buoy-v0-4-0-release-candidate-review.md`. Repaired distributable metadata with exact `transformers==5.12.1`, refreshed `uv.lock`, added static metadata coverage, rebuilt artifacts, and reran complete 518-test suites/validators on Python 3.11/3.13. Clean and 0.3-upgraded normal artifact environments now resolve 5.12.1 and actually load/exercise the exact bundled tokenizer. Evidence was corrected with final digests. No tag, Release, ancestry, PyPI, Turbopuffer, or user-state operation occurred.
+- 2026-07-21: Independent final review passed exact head `278400909a71bd0d2aa7c454effca31db41888a0`; review: `.10x/reviews/2026-07-21-buoy-v0-4-0-release-candidate-final-review.md`. Exact-head hosted Python 3.11, Python 3.13, and distribution checks passed. Candidate validation is complete and eligible for separate integration; no promotion or publication authority is implied.
+
+## Closure mapping
+
+- Version/changelog: `CHANGELOG.md`, project/module/lock metadata, and release automation tests.
+- Complete source validation and candidate artifacts: `.10x/evidence/2026-07-21-buoy-v0-4-0-release-candidate.md`.
+- Initial defect and repaired final acceptance: `.10x/reviews/2026-07-21-buoy-v0-4-0-release-candidate-review.md` and `.10x/reviews/2026-07-21-buoy-v0-4-0-release-candidate-final-review.md`.
+- External boundary: no main/develop promotion, tag, Release, PyPI, Turbopuffer, or user-state mutation occurred.
+
+## Retrospective
+
+Locked-source CI does not prove distributable dependency resolution. Release validation must install the built wheel normally and exercise runtime features whose loaders enforce exact dependency versions.
