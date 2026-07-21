@@ -39,7 +39,7 @@ Implementing removals; changing source/tests/user docs/version numbers; publishi
 - `.10x/specs/buoy-v0-4-environment-alias-removal.md`
 - `.10x/tickets/done/2026-07-19-buoy-v0-4-compatibility-removal-plan.md`
 - `.10x/reviews/2026-07-19-v0-4-compatibility-removal-shaping-review-response.md`
-- `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md`
+- `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md`
 - `.10x/specs/buoy-local-compatibility.md`
 - `.10x/tickets/done/2026-07-18-direct-command-defaults-plan.md`
 

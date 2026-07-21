@@ -48,7 +48,7 @@ Environment-alias runtime/config changes; removal of any other compatibility; ar
 - `.10x/tickets/done/2026-07-19-buoy-v0-4-compatibility-removal-plan.md`
 - `.10x/specs/buoy-v0-4-console-alias-removal.md`
 - `.10x/specs/buoy-v0-4-environment-alias-removal.md`
-- `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md`
+- `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md`
 - `.10x/evidence/2026-07-16-buoy-v0-3-0-github-release.md`
 
 ## Progress and notes
