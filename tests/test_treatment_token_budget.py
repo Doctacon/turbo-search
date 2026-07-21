@@ -45,6 +45,61 @@ class TreatmentTokenBudgetTests(unittest.TestCase):
             golden_payloads,
         )
 
+    def test_added_tokens_file_cannot_preserve_identity_load_or_change_counts(self) -> None:
+        payload = "wholeword"
+        committed_count = exact_token_count(self.tokenizer, payload)
+        self.assertEqual(committed_count, 4)
+        with tempfile.TemporaryDirectory() as tmp:
+            mutated = Path(tmp) / bundled_tokenizer_snapshot().name
+            shutil.copytree(bundled_tokenizer_snapshot(), mutated)
+            (mutated / "added_tokens.json").write_text(
+                '{"wholeword": 30522}\n', encoding="utf-8"
+            )
+
+            from transformers import BertTokenizer
+
+            unguarded = BertTokenizer.from_pretrained(mutated, local_files_only=True)
+            self.assertEqual(exact_token_count(unguarded, payload), 3)
+            with self.assertRaisesRegex(TreatmentTokenBudgetError, "file-set identity mismatch"):
+                tokenizer_files_identity(mutated)
+            with patch("transformers.BertTokenizer.from_pretrained") as from_pretrained:
+                with self.assertRaisesRegex(
+                    TreatmentTokenBudgetError, "file-set identity mismatch"
+                ):
+                    load_pinned_tokenizer(mutated)
+                from_pretrained.assert_not_called()
+
+        self.assertEqual(exact_token_count(self.tokenizer, payload), committed_count)
+        self.assertEqual(
+            tokenizer_files_identity(bundled_tokenizer_snapshot()), TOKENIZER_FILES_SHA256
+        )
+
+    def test_snapshot_rejects_extra_files_subdirectories_and_symlink_entries(self) -> None:
+        for mutation in ("extra-file", "subdirectory", "expected-symlink"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                mutated = Path(tmp) / bundled_tokenizer_snapshot().name
+                shutil.copytree(bundled_tokenizer_snapshot(), mutated)
+                if mutation == "extra-file":
+                    (mutated / "unexpected.txt").write_text("extra\n", encoding="utf-8")
+                elif mutation == "subdirectory":
+                    (mutated / "nested").mkdir()
+                else:
+                    (mutated / "vocab.txt").unlink()
+                    (mutated / "vocab.txt").symlink_to(
+                        bundled_tokenizer_snapshot() / "vocab.txt"
+                    )
+
+                with self.assertRaisesRegex(
+                    TreatmentTokenBudgetError, "file-set identity mismatch"
+                ):
+                    tokenizer_files_identity(mutated)
+                with patch("transformers.BertTokenizer.from_pretrained") as from_pretrained:
+                    with self.assertRaisesRegex(
+                        TreatmentTokenBudgetError, "file-set identity mismatch"
+                    ):
+                        load_pinned_tokenizer(mutated)
+                    from_pretrained.assert_not_called()
+
     def test_exact_count_forces_special_tokens_and_disables_truncation_and_padding(self) -> None:
         class RecordingTokenizer:
             model_max_length = 512

@@ -98,12 +98,19 @@ def load_pinned_tokenizer(snapshot: Path | None = None) -> Tokenizer:
 def tokenizer_files_identity(snapshot: Path) -> str:
     files: list[dict[str, object]] = []
     try:
-        for name in TOKENIZER_FILES:
-            path = snapshot / name
+        entries = tuple(sorted(snapshot.iterdir(), key=lambda entry: entry.name))
+    except OSError as exc:
+        raise TreatmentTokenBudgetError("pinned tokenizer file set is missing") from exc
+    if tuple(entry.name for entry in entries) != TOKENIZER_FILES or any(
+        entry.is_symlink() or not entry.is_file() for entry in entries
+    ):
+        raise TreatmentTokenBudgetError("pinned tokenizer file-set identity mismatch")
+    try:
+        for path in entries:
             payload = path.read_bytes()
             files.append(
                 {
-                    "path": name,
+                    "path": path.name,
                     "sha256": hashlib.sha256(payload).hexdigest(),
                     "size_bytes": len(payload),
                 }

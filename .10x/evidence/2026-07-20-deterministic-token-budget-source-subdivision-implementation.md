@@ -30,6 +30,21 @@ A complete rendered one-line source payload above 512 raises a sanitized reposit
 
 The 3.11 and 3.13 runs execute the same exact golden boundary/count/citation/identity assertions, so their passing results establish runtime parity for the pinned fixtures.
 
+## PR #79 exact-file-set repair validation
+
+Review found that the original canonical identity hashed only the four expected paths and did not reject extra directory entries. The repaired identity path now sorts and enumerates the snapshot directory before hashing, requires its names to equal the exact four-file tuple, requires every entry to be a regular non-symlink file, and only then reads bytes or permits `BertTokenizer.from_pretrained` to run.
+
+A recognized `added_tokens.json` mutation demonstrates the blocker concretely: direct unguarded local loading changes exact tokenization of the pinned test payload from 4 tokens to 3, while both guarded identity calculation and loading reject the snapshot with a file-set identity mismatch before `from_pretrained`. Mutations also reject an unrelated regular file, a subdirectory, and an expected-name symlink. The committed snapshot still computes identity `9c7beccadaa552c323907a895ad9ab188d8b75763022403f72c5d91085334f3b`, retains all prior golden counts and subdivision semantics, and builds into a wheel with exactly the same four tokenizer entries.
+
+Post-repair validation observed:
+
+1. Focused `tests.test_treatment_token_budget tests.test_github_repo` — 33 tests passed on each of CPython 3.11 and 3.13.
+2. Full discovery — 518 tests passed on CPython 3.11 in 59.499 seconds and CPython 3.13 in 52.330 seconds.
+3. Locked sync plus `scripts/validate_ranking_contract.py` passed on both runtimes with identical dataset/inventory/source-manifest identities.
+4. `scripts/c6_syntax_forecast.py validate` passed on both runtimes with unchanged blocked readiness `false`, forecast identity `d5199276c19ae89779287eaa90824ce1e1cc684a3f060899f02f65d976016243`, and tokenizer checkpoint `c3a1560e611114760909c110a118a3ce1a60f0527de08c769a85a20b263f4e0f`.
+5. `uv build --out-dir /tmp/buoy-pr79-exact-file-set-dist` passed, and bounded wheel inspection found exactly the four committed tokenizer files.
+6. `git diff --check` passed. Preserved forecast JSON, compressed tokenizer report, and validator hashes remain `4f40e8630438e1c1c2dead10c9587711652f695cab458a1f3efff68942ecb2bd`, `7adb1d6e05b2ce9f24ab69468758b867d6d7871221ba5d014090b3088e8fb808`, and `0c3c0dd5d9cda426f4018a5a42a0ef1c759e535dcd1771552839c3a13dac45f8` respectively.
+
 ## Preserved C6 checkpoint and local regeneration boundary
 
 The existing local planning flow automatically applies the source subdivision before `MarkdownChunk`/plan finalization. Therefore a separately authorized local C6 forecast regeneration can reuse the existing pinned source acquisition and plan-generation mechanics, then run `scripts/c6_syntax_forecast.py generate-preflight` against the regenerated plan roots. No model is needed for either stage. This implementation task did not run that mutating regeneration because the active ticket explicitly excludes it and the unchanged 366 prose rows must still fail.
