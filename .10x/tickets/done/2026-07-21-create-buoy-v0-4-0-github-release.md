@@ -34,6 +34,7 @@ Source/changelog finalization; PyPI; deleting/replacing tags or releases; branch
 - `docs/releasing.md`
 - `.10x/tickets/done/2026-07-15-create-buoy-v0-3-0-github-release.md`
 - `.10x/evidence/2026-07-21-buoy-v0-4-0-github-release.md`
+- `.10x/reviews/2026-07-21-buoy-v0-4-0-release-review.md`
 
 ## Evidence expectations
 
@@ -47,6 +48,7 @@ None. Main promotion and exact-main CI completed before tag creation; the exact 
 
 - 2026-07-21: Read-only planning preflight found no local/remote `v0.4.0` tag or GitHub Release and found the `release` environment configured with required reviewer `Doctacon`, self-review allowed. No tag, workflow, deployment, release, or publication was created.
 - 2026-07-21: Exact-main preflight passed at accepted release commit `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`; main CI run `29851219914` passed, version/tag/assets checks passed, v0.4.0 conflicts were absent, and PyPI returned 404. Created/pushed annotated tag object `1a527da870a1b6d8acedee8b93dbf85d24dac8b9` peeled to exact main. Release run `29851435791` passed validation/build before waiting on release environment `18151168858`; exact deployment approval then gated successful provenance and publication job `88705440328`. Release `357504706` contains exact wheel/sdist digests and both downloaded assets pass `gh attestation verify`; PyPI remains absent. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-0-github-release.md`.
+- 2026-07-21: Independent post-release audit passed tag/workflow/deployment chronology, Release/assets/digests, SLSA provenance, no-PyPI, and ticket graph; review: `.10x/reviews/2026-07-21-buoy-v0-4-0-release-review.md`.
 
 ## Closure mapping
 

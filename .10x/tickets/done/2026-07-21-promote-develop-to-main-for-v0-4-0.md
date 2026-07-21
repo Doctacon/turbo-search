@@ -36,6 +36,7 @@ Candidate source changes after review; tag or Release creation; publication; bra
 - `.10x/evidence/2026-07-21-buoy-v0-4-0-ancestry-sync-readiness.md`
 - `.10x/reviews/2026-07-21-buoy-v0-4-0-main-promotion-readiness-review.md`
 - `.10x/evidence/2026-07-21-buoy-v0-4-0-main-promotion.md`
+- `.10x/reviews/2026-07-21-buoy-v0-4-0-release-review.md`
 
 ## Evidence expectations
 
@@ -52,6 +53,7 @@ None. PR #85 merged after retained hosted protection allowed the user's action. 
 - 2026-07-21: Hosted inspection found main protection allowed force pushes and required last-push approval, differing from the superseded governance contract. The user explicitly selected `Keep current rules` and then directed release execution. `.10x/decisions/protected-development-and-github-release-governance-v2.md` and `.10x/specs/protected-github-branches.md` retain the exact settings without changing hosted protection and continue to prohibit using force push or bypass. Hosted state also proves PR #80 is closed, conflicting, and pinned to stale head `a2142205cae8ccfce9ed5f4d3b4785413621812b`; replacement PR #85 was opened from current develop.
 - 2026-07-21: Independent readiness review passed PR #85 content, ancestry, version, exact-head CI, and merge-commit topology at develop `35cf2d6e4da48a5e84c7f97d9e81e8f13950b504`; review: `.10x/reviews/2026-07-21-buoy-v0-4-0-main-promotion-readiness-review.md`. It remained mechanically blocked on eligible last-push approval. The review also found and PR #86 repaired three non-existent PR #82 SHA citations to actual `278400909596b5644431bd03fe526e600153f152`.
 - 2026-07-21: The user merged PR #85 with squash commit `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, tree-exact to reviewed develop `e702aee115a57b5057b8d5d5917b260e6417c74d` but without develop ancestry. After the conflict with the active merge-commit contract was named, the user explicitly selected `Accept and release (Recommended)`. Exact-main CI run `29851219914` passed. Content-neutral post-release sync commit `644867f9ef8a26b137e0aabf69cb0cf4f66601a3` now has released main as second parent and the same exact tree. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-0-main-promotion.md`.
+- 2026-07-21: Independent post-release audit passed promotion topology, exact tree/CI, explicit exception, and post-release sync; review: `.10x/reviews/2026-07-21-buoy-v0-4-0-release-review.md`. Integration must use a merge commit so released-main ancestry is preserved.
 
 ## Closure mapping
 
