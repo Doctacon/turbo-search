@@ -43,10 +43,14 @@ After implementation, non-`.10x` old-identity occurrences are limited to the exp
 
 The first direct system-Python live inspection attempt failed before observation because the local framework certificate store could not verify GitHub. Retrying the same read-only script with `SSL_CERT_FILE` set to the locked environment's `certifi` bundle succeeded. No implementation change or hosted mutation was needed.
 
+## Hosted handoff
+
+Implementation and evidence were committed as `310d37ff5454453a0a4177b8629468dfb2ea0867`, pushed only to `work/reconcile-github-repository-rename`, and opened as protected PR [#95](https://github.com/Doctacon/buoy/pull/95) targeting `develop`. Exact-head hosted CI run [29873714541](https://github.com/Doctacon/buoy/actions/runs/29873714541) passed all three protected checks: Python 3.11 job `88779477470`, Python 3.13 job `88779477439`, and Build distributions job `88779832414`.
+
 ## What this supports
 
-This supports the claims that current/future release policy and provenance use canonical `Doctacon/buoy`, the sole exact legacy v0.4.0 no-op remains bound to `Doctacon/buoy-search`, cross-use fails closed, current public/package links are canonical, deterministic distributions remain valid, and local/hosted identity inspection is read-only.
+This supports the claims that current/future release policy and provenance use canonical `Doctacon/buoy`, the sole exact legacy v0.4.0 no-op remains bound to `Doctacon/buoy-search`, cross-use fails closed, current public/package links are canonical, deterministic distributions remain valid, local/hosted identity inspection is read-only, and the implementation passed protected hosted CI.
 
 ## Limits
 
-Hosted pull-request CI, independent review, commit/push/PR identity, and final integration are not yet recorded here. This evidence does not authorize or prove any `main`, tag, Release, asset, provenance, PyPI, Turbopuffer, protection, or product mutation. No such mutation occurred during the recorded procedure.
+Independent review and final integration are not yet recorded here. This evidence does not authorize or prove any `main`, tag, Release, asset, provenance, PyPI, Turbopuffer, protection, or product mutation. No such mutation occurred during the recorded procedure.
