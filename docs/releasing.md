@@ -1,6 +1,6 @@
 # Releasing Buoy
 
-Buoy releases are GitHub-only. Buoy is not published to PyPI, and release automation never contacts Turbopuffer.
+Buoy releases are GitHub-only in the canonical `Doctacon/buoy` repository. Buoy is not published to PyPI, and release automation never contacts Turbopuffer.
 
 ## Simple release flow
 
@@ -8,7 +8,7 @@ Buoy releases are GitHub-only. Buoy is not published to PyPI, and release automa
 2. Set that exact version in `pyproject.toml`, `src/buoy_search/__init__.py`, and `uv.lock`.
 3. Keep `Unreleased` empty and add exactly one `## [X.Y.Z] - pending` changelog section. Every older release section must have its ISO release date.
 4. Open the ordinary task pull request to `develop` and pass the strict CI checks.
-5. Open a pull request from the repository's exact `develop` branch to `main`. GitHub validates its prospective merge result with exactly four required checks:
+5. Open a pull request from exact `Doctacon/buoy:develop` to `main`. GitHub validates its prospective merge result with exactly four required checks:
    - `Release readiness / Policy`
    - `Release readiness / Python 3.11`
    - `Release readiness / Python 3.13`
@@ -24,7 +24,7 @@ Publication is serialized repository-wide and runs with cancellation disabled. V
 
 An absent tag and absent Release produce the only create plan. An exact complete state produces a no-op. Lightweight tags, partial state, conflicting commits, missing or changed assets, and provenance mismatches fail permanently for that version. Automation never moves, overwrites, deletes, or repairs release objects. Recovery requires a separately authorized operator decision or a new version.
 
-The already-published v0.4.0 is the sole transition exception: its exact recorded tag, commit, two asset digests, repository, workflow, subjects, and Release identity accept the historical provenance source ref `refs/tags/v0.4.0`. Any mismatch fails. Every future version requires `refs/heads/main`.
+The already-published v0.4.0 is the sole transition exception: its exact recorded tag, commit, two asset digests, historical provenance repository `Doctacon/buoy-search`, workflow, subjects, and Release identity accept the historical provenance source ref `refs/tags/v0.4.0`. Any mismatch—including canonical `Doctacon/buoy` substituted into that legacy provenance—fails. Every future version requires canonical repository `Doctacon/buoy` and `refs/heads/main`; the old repository identity fails for every other version.
 
 ## Portable local checks
 

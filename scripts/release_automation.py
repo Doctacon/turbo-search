@@ -21,9 +21,10 @@ from urllib.request import Request, urlopen
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY = "Doctacon/buoy-search"
+REPOSITORY = "Doctacon/buoy"
 WORKFLOW = "release.yml"
 SOURCE_REF = "refs/heads/main"
+LEGACY_V040_REPOSITORY = "Doctacon/buoy-search"
 LEGACY_V040_TAG = "v0.4.0"
 LEGACY_V040_SHA = "c49dc0582bf3f06a16eafdcca0707d1e64e1c58d"
 LEGACY_V040_SOURCE_REF = "refs/tags/v0.4.0"
@@ -217,13 +218,17 @@ def _asset_pairs(assets: list[dict[str, Any]]) -> list[tuple[str, str]]:
 
 
 def expected_provenance(
-    manifest: dict[str, Any], sha: str, *, source_ref: str = SOURCE_REF
+    manifest: dict[str, Any],
+    sha: str,
+    *,
+    repository: str = REPOSITORY,
+    source_ref: str = SOURCE_REF,
 ) -> list[dict[str, str]]:
     return [
         {
             "name": asset["name"],
             "sha256": asset["sha256"],
-            "repository": REPOSITORY,
+            "repository": repository,
             "workflow": WORKFLOW,
             "source_ref": source_ref,
             "source_commit": sha,
@@ -267,8 +272,11 @@ def evaluate_state(snapshot: dict[str, Any], manifest: dict[str, Any], sha: str)
     if _asset_pairs(release.get("assets", [])) != _asset_pairs(manifest["assets"]):
         raise ReleaseError("permanent failure: Release asset names or digests mismatch")
     actual_provenance = snapshot.get("provenance", [])
+    provenance_repository = LEGACY_V040_REPOSITORY if legacy_v040 else REPOSITORY
     source_ref = LEGACY_V040_SOURCE_REF if legacy_v040 else SOURCE_REF
-    wanted_provenance = expected_provenance(manifest, sha, source_ref=source_ref)
+    wanted_provenance = expected_provenance(
+        manifest, sha, repository=provenance_repository, source_ref=source_ref
+    )
     if any(item not in actual_provenance for item in wanted_provenance):
         raise ReleaseError("permanent failure: provenance mismatch")
     return "noop"
@@ -282,9 +290,9 @@ def make_plan(snapshot: dict[str, Any], manifest: dict[str, Any], sha: str) -> d
     plan = {
         "schema": 1,
         "action": action,
-        "repository": REPOSITORY,
+        "repository": LEGACY_V040_REPOSITORY if legacy_v040_noop else REPOSITORY,
         "workflow": WORKFLOW,
-        "source_ref": SOURCE_REF,
+        "source_ref": LEGACY_V040_SOURCE_REF if legacy_v040_noop else SOURCE_REF,
         "source_commit": sha,
         "version": manifest["version"],
         "tag": manifest["tag"],
@@ -295,6 +303,7 @@ def make_plan(snapshot: dict[str, Any], manifest: dict[str, Any], sha: str) -> d
         "provenance": expected_provenance(
             manifest,
             sha,
+            repository=LEGACY_V040_REPOSITORY if legacy_v040_noop else REPOSITORY,
             source_ref=LEGACY_V040_SOURCE_REF if legacy_v040_noop else SOURCE_REF,
         ),
     }
@@ -312,7 +321,7 @@ def validate_policy(
     root: Path = ROOT,
 ) -> str:
     if (head_repository, head_ref) != (REPOSITORY, "develop"):
-        raise ReleaseError("release PR head must be Doctacon/buoy-search:develop")
+        raise ReleaseError("release PR head must be Doctacon/buoy:develop")
     parents = subprocess.run(
         ["git", "rev-list", "--parents", "-n", "1", "HEAD"],
         cwd=root,

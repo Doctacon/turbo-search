@@ -1,7 +1,7 @@
 # Buoy
 
-[![CI](https://github.com/Doctacon/buoy-search/actions/workflows/ci.yml/badge.svg)](https://github.com/Doctacon/buoy-search/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/github/license/Doctacon/buoy-search)](LICENSE)
+[![CI](https://github.com/Doctacon/buoy/actions/workflows/ci.yml/badge.svg)](https://github.com/Doctacon/buoy/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/github/license/Doctacon/buoy)](LICENSE)
 
 <img src="images/buoy.svg" height="120" alt="Buoy navigation marker logo" />
 

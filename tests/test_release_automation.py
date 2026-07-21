@@ -21,6 +21,7 @@ import yaml
 
 from scripts.release_automation import (
     LEGACY_V040_ASSETS,
+    LEGACY_V040_REPOSITORY,
     LEGACY_V040_SHA,
     LEGACY_V040_SOURCE_REF,
     REPOSITORY,
@@ -112,7 +113,10 @@ def legacy_v040_snapshot() -> dict[str, object]:
             "assets": copy.deepcopy(value["assets"]),
         },
         "provenance": expected_provenance(
-            value, LEGACY_V040_SHA, source_ref=LEGACY_V040_SOURCE_REF
+            value,
+            LEGACY_V040_SHA,
+            repository=LEGACY_V040_REPOSITORY,
+            source_ref=LEGACY_V040_SOURCE_REF,
         ),
     }
 
@@ -493,6 +497,11 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertEqual(evaluate_state({"tag": None, "release": None, "provenance": []}, manifest(), SHA), "create")
         self.assertEqual(evaluate_state(exact_snapshot(), manifest(), SHA), "noop")
 
+    def test_current_and_legacy_repository_identities_are_distinct_exact_pins(self) -> None:
+        self.assertEqual(REPOSITORY, "Doctacon/buoy")
+        self.assertEqual(LEGACY_V040_REPOSITORY, "Doctacon/buoy-search")
+        self.assertNotEqual(REPOSITORY, LEGACY_V040_REPOSITORY)
+
     def test_exact_legacy_v040_noop_requires_tag_workflow_provenance_and_all_pins(self) -> None:
         value = legacy_v040_manifest()
         snapshot = legacy_v040_snapshot()
@@ -501,6 +510,11 @@ class ReleaseAutomationTests(unittest.TestCase):
             evaluate_state(snapshot, value, "2" * 40)
         plan = make_plan(snapshot, value, LEGACY_V040_SHA)["plan"]
         self.assertEqual(plan["release_name"], "Buoy v0.4.0")
+        self.assertEqual(plan["repository"], LEGACY_V040_REPOSITORY)
+        self.assertEqual(plan["source_ref"], LEGACY_V040_SOURCE_REF)
+        self.assertEqual(
+            {item["repository"] for item in plan["provenance"]}, {LEGACY_V040_REPOSITORY}
+        )
         self.assertEqual(
             {item["source_ref"] for item in plan["provenance"]}, {LEGACY_V040_SOURCE_REF}
         )
@@ -524,6 +538,7 @@ class ReleaseAutomationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ReleaseError, "permanent failure"):
                     evaluate_state(changed, value, LEGACY_V040_SHA)
         for field, replacement in (
+            ("repository", REPOSITORY),
             ("repository", "other/repo"),
             ("workflow", "other.yml"),
             ("source_ref", SOURCE_REF),
@@ -535,11 +550,18 @@ class ReleaseAutomationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ReleaseError, "permanent failure"):
                     evaluate_state(changed, value, LEGACY_V040_SHA)
 
-    def test_future_versions_require_main_source_ref(self) -> None:
+    def test_future_versions_require_current_repository_and_main_source_ref(self) -> None:
         snapshot = exact_snapshot()
-        snapshot["provenance"] = expected_provenance(manifest(), SHA, source_ref="refs/tags/v1.2.3")
-        with self.assertRaisesRegex(ReleaseError, "permanent failure: provenance mismatch"):
-            evaluate_state(snapshot, manifest(), SHA)
+        for provenance in (
+            expected_provenance(
+                manifest(), SHA, repository=LEGACY_V040_REPOSITORY
+            ),
+            expected_provenance(manifest(), SHA, source_ref="refs/tags/v1.2.3"),
+        ):
+            with self.subTest(provenance=provenance[0]):
+                snapshot["provenance"] = provenance
+                with self.assertRaisesRegex(ReleaseError, "permanent failure: provenance mismatch"):
+                    evaluate_state(snapshot, manifest(), SHA)
 
     def test_attestation_normalization_uses_repository_path_ref_and_commit(self) -> None:
         digest = "a" * 64
@@ -549,7 +571,7 @@ class ReleaseAutomationTests(unittest.TestCase):
                 "buildDefinition": {
                     "externalParameters": {
                         "workflow": {
-                            "repository": "https://github.com/Doctacon/buoy-search",
+                            "repository": "https://github.com/Doctacon/buoy",
                             "path": ".github/workflows/release.yml",
                             "ref": "refs/heads/main",
                         }
@@ -627,6 +649,8 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertEqual(first["sha256"], hashlib.sha256(encoded).hexdigest())
         self.assertEqual(first["plan"]["tagger"]["email"], "41898282+github-actions[bot]@users.noreply.github.com")
         self.assertEqual(first["plan"]["tag_message"], "Buoy 1.2.3")
+        self.assertEqual(first["plan"]["repository"], REPOSITORY)
+        self.assertEqual(first["plan"]["source_ref"], SOURCE_REF)
         with self.assertRaisesRegex(ReleaseError, "full 40-character SHA"):
             make_plan({}, manifest(), "123")
 
@@ -647,15 +671,18 @@ class ReleaseAutomationTests(unittest.TestCase):
                     ),
                     "1.2.3",
                 )
-                with self.assertRaisesRegex(ReleaseError, "head must"):
-                    validate_policy(
-                        head_repository="fork/buoy-search",
-                        head_ref="develop",
-                        base_sha="4" * 40,
-                        head_sha="5" * 40,
-                        snapshot={},
-                        root=root,
-                    )
+                for wrong_repository in (LEGACY_V040_REPOSITORY, "fork/buoy"):
+                    with self.subTest(head_repository=wrong_repository), self.assertRaisesRegex(
+                        ReleaseError, "head must be Doctacon/buoy:develop"
+                    ):
+                        validate_policy(
+                            head_repository=wrong_repository,
+                            head_ref="develop",
+                            base_sha="4" * 40,
+                            head_sha="5" * 40,
+                            snapshot={},
+                            root=root,
+                        )
                 with self.assertRaisesRegex(ReleaseError, "already has"):
                     validate_policy(
                         head_repository=REPOSITORY,
@@ -715,9 +742,9 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertIn("## [Unreleased]\n\n## [0.4.1] - pending", changelog)
         self.assertIn("four prospective-merge readiness checks and deterministic automatic GitHub publication", changelog)
         self.assertIn("## [0.4.0] - 2026-07-21", changelog)
-        self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy-search/compare/v0.4.1...HEAD", changelog)
-        self.assertIn("[0.4.1]: https://github.com/Doctacon/buoy-search/compare/v0.4.0...v0.4.1", changelog)
-        self.assertIn("[0.4.0]: https://github.com/Doctacon/buoy-search/releases/tag/v0.4.0", changelog)
+        self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy/compare/v0.4.1...HEAD", changelog)
+        self.assertIn("[0.4.1]: https://github.com/Doctacon/buoy/compare/v0.4.0...v0.4.1", changelog)
+        self.assertIn("[0.4.0]: https://github.com/Doctacon/buoy/releases/tag/v0.4.0", changelog)
 
     def test_release_docs_describe_simple_flow_and_self_hosted_mapping(self) -> None:
         text = (ROOT / "docs" / "releasing.md").read_text()
@@ -730,8 +757,9 @@ class ReleaseAutomationTests(unittest.TestCase):
             "in-toto/SLSA",
             "release_automation.py policy",
             "sole transition exception",
+            "Doctacon/buoy-search",
             "refs/tags/v0.4.0",
-            "Every future version requires `refs/heads/main`",
+            "canonical repository `Doctacon/buoy`",
             "not published to PyPI",
         ):
             self.assertIn(required, text)
@@ -746,6 +774,8 @@ class ReleaseAutomationTests(unittest.TestCase):
         for path in ("CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md", "docs/releasing.md"):
             self.assertTrue((ROOT / path).is_file(), path)
         self.assertIn("not published to PyPI", (ROOT / "docs" / "releasing.md").read_text())
+        self.assertIn("github.com/Doctacon/buoy/actions", readme)
+        self.assertNotIn("github.com/Doctacon/buoy-search", readme)
         ET.parse(ROOT / "images" / "buoy.svg")
         for source in [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]:
             for target in re.findall(r"(?<!!)\[[^]]+\]\(([^)]+)\)", source.read_text()):
@@ -762,6 +792,15 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertEqual(project["license"], "Apache-2.0")
         self.assertEqual(project["version"], "0.4.1")
         self.assertEqual(project["scripts"], {"buoy": "buoy_search.cli:main"})
+        self.assertEqual(
+            project["urls"],
+            {
+                "Repository": "https://github.com/Doctacon/buoy",
+                "Issues": "https://github.com/Doctacon/buoy/issues",
+                "Changelog": "https://github.com/Doctacon/buoy/blob/main/CHANGELOG.md",
+                "Documentation": "https://github.com/Doctacon/buoy/tree/main/docs",
+            },
+        )
         self.assertIn("transformers==5.12.1", project["dependencies"])
         self.assertIn("Development Status :: 4 - Beta", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.11", project["classifiers"])
@@ -792,7 +831,7 @@ class ReleaseAutomationTests(unittest.TestCase):
             self.assertIn(release_note, changelog)
         self.assertIn("## [0.2.1] - 2026-07-14", changelog)
         self.assertIn("`v0.2.0` tag was preserved without a GitHub Release", changelog)
-        self.assertIn("[0.2.1]: https://github.com/Doctacon/buoy-search/releases/tag/v0.2.1", changelog)
+        self.assertIn("[0.2.1]: https://github.com/Doctacon/buoy/releases/tag/v0.2.1", changelog)
 
     def test_console_alias_is_removed_for_v0_4_without_claiming_user_launcher_cleanup(self) -> None:
         self.assertNotIn("def legacy_main", (ROOT / "src" / "buoy_search" / "cli.py").read_text())

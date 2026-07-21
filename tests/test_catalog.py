@@ -344,22 +344,22 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
 
     def test_generated_repository_website_pdf_file_and_legacy_file(self) -> None:
         repo = generated_semantics(
-            base_url="https://github.com/Doctacon/buoy-search",
+            base_url="https://github.com/Doctacon/buoy",
             site_id="repo-site",
             plan_schema_version=1,
-            source_metadata=[{"source_kind": "github_repo", "repo_full_name": "Doctacon/buoy-search"}],
+            source_metadata=[{"source_kind": "github_repo", "repo_full_name": "Doctacon/buoy"}],
         )
         self.assertEqual(repo.source_kind, "github_repo")
-        self.assertEqual(repo.title, "Doctacon/buoy-search")
-        self.assertEqual(repo.aliases, ["buoy-search"])
+        self.assertEqual(repo.title, "Doctacon/buoy")
+        self.assertEqual(repo.aliases, ["buoy"])
         self.assertEqual(repo.tags, ["github", "repository"])
         legacy_repo = generated_semantics(
-            base_url="https://github.com/Doctacon/buoy-search",
+            base_url="https://github.com/Doctacon/buoy",
             site_id="repo-site",
             plan_schema_version=1,
             source_metadata=[],
         )
-        self.assertEqual(legacy_repo.title, "Doctacon/buoy-search")
+        self.assertEqual(legacy_repo.title, "Doctacon/buoy")
 
         website = generated_semantics(
             base_url="https://Docs.Example.com/path",

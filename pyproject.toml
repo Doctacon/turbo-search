@@ -33,10 +33,10 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/Doctacon/buoy-search"
-Issues = "https://github.com/Doctacon/buoy-search/issues"
-Changelog = "https://github.com/Doctacon/buoy-search/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/Doctacon/buoy-search/tree/main/docs"
+Repository = "https://github.com/Doctacon/buoy"
+Issues = "https://github.com/Doctacon/buoy/issues"
+Changelog = "https://github.com/Doctacon/buoy/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/Doctacon/buoy/tree/main/docs"
 
 [project.scripts]
 buoy = "buoy_search.cli:main"
