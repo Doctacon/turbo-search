@@ -45,7 +45,7 @@ The first direct system-Python live inspection attempt failed before observation
 
 ## Hosted handoff
 
-Implementation and evidence were committed as `310d37ff5454453a0a4177b8629468dfb2ea0867`, pushed only to `work/reconcile-github-repository-rename`, and opened as protected PR [#95](https://github.com/Doctacon/buoy/pull/95) targeting `develop`. Exact-head hosted CI run [29873714541](https://github.com/Doctacon/buoy/actions/runs/29873714541) passed all three protected checks: Python 3.11 job `88779477470`, Python 3.13 job `88779477439`, and Build distributions job `88779832414`.
+Implementation and evidence were committed as `310d37f27eeef74806356d8925dc5f9f9035ba58`, pushed only to `work/reconcile-github-repository-rename`, and opened as protected PR [#95](https://github.com/Doctacon/buoy/pull/95) targeting `develop`. Exact-head hosted CI run [29873714541](https://github.com/Doctacon/buoy/actions/runs/29873714541) passed all three protected checks: Python 3.11 job `88779477470`, Python 3.13 job `88779477439`, and Build distributions job `88779832414`.
 
 ## What this supports
 
