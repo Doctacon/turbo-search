@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-21
 Updated: 2026-07-21
-Parent: .10x/tickets/2026-07-21-simple-main-release-automation-plan.md
+Parent: .10x/tickets/done/2026-07-21-simple-main-release-automation-plan.md
 Depends-On: None
 
 # Implement Simple Main Release Automation
