@@ -7,7 +7,7 @@ Relates-To: .10x/tickets/2026-07-20-shape-prose-token-budget-compatibility.md, .
 
 ## What was observed
 
-The preserved C6 tokenizer report remains `.10x/evidence/.storage/2026-07-20-c6-python-syntax-tokenizer-preflight.json.gz`, embedded checkpoint `c3a1560e611114760909c110a118a3ce1a60f0527de08c769a85a20b263f4e0f`. Its tokenizer contract remains `BAAI/bge-small-en-v1.5@5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`, tokenizer-files identity `9c7beccadaa552c323907a895ad9ab188d8b75763022403f72c5d91085334f3b`, `transformers.models.bert.tokenization_bert.BertTokenizer` under locked `transformers==5.12.1`, maximum 512, special tokens enabled, and truncation disabled.
+The preserved C6 tokenizer report remains `.10x/evidence/.storage/2026-07-20-c6-python-syntax-tokenizer-preflight.json.gz`, embedded checkpoint `c3a1560e611114760909c110a118a3ce1a60f0527de08c769a85a20b263f4e0f`. Its tokenizer contract remains `BAAI/bge-small-en-v1.5@5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`, tokenizer-files identity `9c7beccadaa552c323907a895ad9ab188d8b75763022403f72c5d91085334f3b`, `transformers.models.bert.tokenization_bert.BertTokenizer` under locked `transformers==5.12.1`, maximum 512, special tokens enabled, and truncation disabled. The four report-pinned files are `special_tokens_map.json` (125 bytes, SHA-256 `b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3`), `tokenizer.json` (711,396 bytes, `d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66`), `tokenizer_config.json` (366 bytes, `9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3`), and `vocab.txt` (231,508 bytes, `07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3`). The shaping process set `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` before import and used only the exact local revision.
 
 Read-only inspection accounted for all **366 incompatible treatment prose plan rows** as **183 unique `(repository,row_id)` parents across exactly 57 repository paths**. Each unique parent occurs byte-for-byte and identity-for-identity in `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`; the preserved tokenizer report lists only the two treatment copies, hence `183 * 2 = 366`. The corresponding 183 unchanged `current-default` rows were not scanned by that treatment-only report but have the same complete embedding payloads and exact token counts. Any compatibility treatment that changes only the two treatment arms therefore breaks current prose parity; any treatment that changes all three arms changes the preserved current-default output.
 
@@ -148,6 +148,8 @@ Treatment-only application would add 418 rows to the preserved envelope (`151,99
 
 Tradeoff: this better preserves Markdown block structure but creates 26 more children per affected arm than farthest whitespace. “Paragraph first” is a semantic preference, not an optimization theorem or current active requirement.
 
+Post-review source reconciliation found that this B2 probe is not regeneration-grade. Production `split_sentences` first collapses whitespace with `" ".join(text.split())` and returns sentence strings rather than offsets into exact parent content; paragraph units are likewise stripped and rejoined. The probe did not establish authoritative half-open parent-content offsets or separator ownership. Its exact counts above remain preserved observations, but they cannot ratify or implement B2 until a separate shaping pass defines lossless Unicode-code-point offsets over exact `MarkdownChunk.content` and reruns the projection.
+
 ### Integrated exact generic splitter
 
 Replacing approximate accounting inside the generic splitter and retaining two-sentence child overlap could preserve generic structure more directly, but it would potentially change compatible-row boundaries too, create repeated overlap whose exact cap must be rechecked, and affect every caller of the generic pipeline unless narrowly forked. No exact projection was made because target semantics (300 retrieval target versus 512 safety maximum), overlap retry/drop behavior, and global versus experiment scope are blocked decisions.
@@ -163,13 +165,9 @@ Any splitting changes the affected parents' content hashes and row IDs, inserts 
 
 ## Individually unsplittable content and failure boundary
 
-Neither local final-row probe needed character/scalar fallback for the exact 183 parents, so the observed checkpoint contains no whitespace-atomic unsplittable parent under either probe. This does not settle future behavior. At least three contracts remain possible:
+Neither local final-row probe needed character/scalar fallback for the exact 183 parents, so the preserved checkpoint does not empirically choose a fallback. Reviewer repair makes the recommended future shared-pipeline C shaping boundary exact without selecting it: after ratified structure/whitespace tiers fail, exhaustively test every later Unicode-code-point end using production rendering and choose the farthest feasible end. Because token-count monotonicity is unproved, a failed one-code-point prefix alone is not terminal. Atomic failure occurs only when the exhaustive nonempty scalar-prefix feasible set is empty.
 
-- fail the complete repository/arm plan if no paragraph/sentence/whitespace atom fits;
-- permit Unicode-scalar subdivision and fail only if Title/Section plus one non-whitespace scalar exceeds 512; or
-- alter/drop context, truncate, or omit content (not recommended because it weakens citations or coverage).
-
-Failure diagnostics could reuse the source contract's sanitized repository/arm/path/section/tokenizer/max fields without content or token IDs, but prose has no truthful line number. Complete repository/arm failure, file-only omission, row-only omission, and fallback to truncation are product semantics and remain blocked.
+The recommended failure scope for that future shaping pass is the complete repository/arm plan: no partial artifact, file/row omission, retained oversize parent, truncation, context weakening, or approximate fallback. A sanitized diagnostic can report repository, arm, path, section, zero-based content offset, minimum observed scalar-prefix payload count, tokenizer checkpoint, and maximum, but no content, scalar, candidate end, or token IDs. Prose has no truthful physical-line citation. This is a recommendation for separate shaping only; Option A remains the current C6 recommendation and no fallback is selected or active.
 
 ## Procedure
 

@@ -26,6 +26,14 @@ The exact preserved treatment checkpoint contains 366 incompatible prose plan ro
 | Scope, exact boundary hierarchy, overlap, coverage contract, atomic fallback, failure scope, and parity policy | **Blocked pending explicit user ratification** |
 | Final row/plan/artifact/namespace/storage identities after any implementation | Blocked on ratified behavior, implementation, and complete regeneration |
 
+## Recommendation for the current C6 checkpoint
+
+**Recommend Option A: take no prose action in current C6.** It is the only option that preserves both active invariants at once: ordinary no-arm remains byte-for-byte equal to explicit `current-default`, and repository prose remains unchanged across `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`. The consequence is explicit: the 366 incompatible treatment occurrences remain fail-closed and C6 remains blocked.
+
+If exact prose compatibility is required rather than parity-preserving no action, recommend a **separate shaping pass for Option C on the shared ordinary generic pipeline**, not a C6-local all-three-arm fork. Only shared-pipeline behavior can prospectively preserve ordinary/current-default equality while applying the same rule to all three arms. That broader change needs its own project-wide affected-population inventory, regeneration-grade boundary contract, compatibility review, active specification, and executable ticket. This draft does not select or authorize it.
+
+Options B, C, and D remain comparison material only. In particular, treatment-only B would supersede unchanged-prose isolation, while C6-local C would supersede ordinary/current-default equality.
+
 ## Current behavior that a decision must preserve or explicitly supersede
 
 1. `.md/.markdown/.mdx` repository files enter the generic Markdown pipeline as source Markdown. `.txt/.rst/.adoc` files receive a synthetic `# <repo_path>` heading before generic parsing.
@@ -38,27 +46,34 @@ The exact preserved treatment checkpoint contains 366 incompatible prose plan ro
 
 ## Exact compatibility accounting common to any split option
 
-If splitting is ratified, every compatibility decision SHOULD use only the same pinned offline tokenizer contract as the active source specification:
+If a later contract ratifies splitting, every compatibility decision MUST use exactly this pinned tokenizer boundary:
 
-- model `BAAI/bge-small-en-v1.5`;
-- revision `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`;
-- tokenizer-files identity `9c7beccadaa552c323907a895ad9ab188d8b75763022403f72c5d91085334f3b`;
-- locked `transformers==5.12.1` slow `BertTokenizer` implementation;
-- exact `model_max_length=512`; and
-- special tokens enabled, truncation and padding disabled, offline with no alternate tokenizer or model construction.
+- model ID `BAAI/bge-small-en-v1.5`;
+- immutable revision `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`;
+- implementation class `transformers.models.bert.tokenization_bert.BertTokenizer` from locked `transformers==5.12.1`;
+- `special_tokens_map.json`, 125 bytes, SHA-256 `b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3`;
+- `tokenizer.json`, 711,396 bytes, SHA-256 `d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66`;
+- `tokenizer_config.json`, 366 bytes, SHA-256 `9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3`;
+- `vocab.txt`, 231,508 bytes, SHA-256 `07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3`;
+- canonical tokenizer file-set identity `9c7beccadaa552c323907a895ad9ab188d8b75763022403f72c5d91085334f3b`;
+- `model_max_length == 512`; and
+- tokenization equivalent to `tokenizer(text, add_special_tokens=True, truncation=False, padding=False, return_length=True)`.
 
-For a candidate child, accounting MUST use the production-rendered final payload:
+Before importing Transformers, the process MUST set `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`; construction MUST resolve the exact local revision path with `local_files_only=True`. Missing local files, a different path revision, file size/hash/file-set identity, implementation class, package version, model maximum, or call option MUST abort before a boundary decision. No alternate tokenizer, network fallback, model construction, or inference is permitted.
+
+For every candidate child, construct the final production `MarkdownChunk` with the unchanged parent context and count exactly that instance's `MarkdownChunk.embedding_text`. Its current production form is:
 
 ```text
 Title: <unchanged parent title>
 
-[Section: <unchanged parent heading path>\n\n]
+Section: <unchanged parent heading path>
+
 <exact candidate content>
 ```
 
-The Section block is absent only when the parent's section path is empty. Title, Section, double-LF separators, candidate content, and tokenizer special tokens are charged. URL and stored metadata remain outside embedding text and are validated unchanged, not charged. A separately reconstructed approximate counter MUST NOT authorize a boundary.
+The two lines beginning `Section:` and their following blank separator are omitted when the parent `section_path` is empty; the angle-bracket placeholders and this explanatory sentence are not literal payload. `MarkdownChunk.embedding_text` also omits an empty title under current production behavior, although the preserved 183 parents have nonempty titles. Title, optional Section, exact double-LF separators, exact candidate content, and tokenizer special tokens are charged. Canonical URL and stored metadata remain outside embedding text and MUST be compared unchanged rather than charged.
 
-The candidate MUST be rendered through the same production `MarkdownChunk.embedding_text` path used for emission. Missing/mismatched tokenizer identity or an emitted payload above 512 fails planning.
+A separately reconstructed string or approximate counter MUST NOT authorize a boundary. If its bytes differ from the production property, planning aborts. Every emitted final production payload MUST be re-rendered and re-counted; a count above 512 aborts the complete repository/arm plan before any successful artifact is emitted.
 
 The remainder of this draft is intentionally option-shaped. RFC 2119 terms become binding only for the option and exact checkpoint values the user ratifies after review.
 
@@ -77,36 +92,33 @@ This option would process only generic prose rows inside `fixed-80-python-breadc
 
 ### Common minimal behavior
 
-- A complete final parent payload at or below 512 remains byte-identical with the same semantic row ID.
-- An over-limit parent is replaced at its current position by ordered children.
-- Every child retains exact parent title, heading `section_path`, canonical URL, path, document kind, tags, source hash, and source metadata.
-- Children MUST NOT receive line citations, source breadcrumbs, code headers, or invented headings.
-- Child contents are nonempty, ordered, non-overlapping, and concatenate byte-for-byte to the already-normalized parent content. This preserves the overlap already present between generic parents but adds no overlap between compatibility children.
-- Children receive exact content hashes and semantic row IDs under the existing identity algorithm. Final chunk indexes are reassigned consecutively; unchanged compatible row IDs remain stable even when a preceding split shifts indexes.
-- A split parent and its children necessarily have different row IDs. All plan/artifact/report/count/storage/namespace identities require regeneration.
+- A complete final parent `MarkdownChunk.embedding_text` at or below 512 retains exact content, Title/Section rendering, URL/path, document kind, tags, source hash, and metadata. Its final `chunk_index` and internal index-derived `MarkdownChunk.id` may change when preceding parents split; its manifest semantic row ID remains stable under the duplicate-group condition below.
+- An over-limit parent is replaced at its current position by ordered children; no child crosses a parent boundary.
+- Every child copies the exact parent `title`, heading `section_path`, canonical URL, `path`, `doc_kind`, ordered `tags`, `source_hash`, page hash, and complete source metadata. The compatibility pass changes only `content`, per-child `id`, and final `chunk_index` as required by splitting.
+- Children MUST NOT receive physical-line citations, source breadcrumbs, code headers/fences, or invented headings. Their only embedding citation context remains the copied production Title and optional heading Section; canonical URL and stored metadata remain unchanged outside embedding text.
+- Each child content is nonempty and is an exact half-open slice of the already-normalized parent content. Ordered slices begin at offset 0, are adjacent and non-overlapping, end at `len(parent.content)`, and concatenate character-for-character to exactly `parent.content`. The pass preserves the generic overlap already duplicated between different parents but adds no overlap between compatibility children and removes no existing parent character.
+- After all replacements, chunks retain file/page and parent order, children occupy their parent's position in increasing offset order, and final `chunk_index` values are reassigned to consecutive integers beginning at 0 across the complete final indexing plan.
+- `chunk_hash` remains SHA-256 of exact content. Row identity continues to use existing `generic_site_row_id(site_id, canonical_url, section_path, chunk_hash, duplicate_ordinal)`. After final ordering is known, existing `disambiguate_duplicate_chunk_row_ids` semantics assign ordinal 0 to the first member and increasing ordinals 1, 2, … to later members of every repeated base identity group; an ordinary unique group retains ordinal 0. Identical pinned inputs therefore regenerate identical ordinals and IDs.
+- A compatible unchanged row retains its ID when its final duplicate-group membership and ordinal are unchanged, even if preceding splits shift only `chunk_index`. A split parent and its children necessarily have different content hashes and row IDs. If splitting changes duplicate-group membership or ordinal for an otherwise byte-identical row, its ID is not claimed stable; complete regeneration and an explicit identity-diff check are mandatory.
+- All plan ID, artifact hash, manifest, chunks JSONL, token report, row/request/count/storage estimates, and any contract-hash-derived namespace candidate require complete regeneration; the preserved counts and artifacts remain immutable historical evidence.
 
 ### Boundary option B1 — farthest whitespace
 
-From each character cursor, exhaustively count every later existing whitespace-run end plus end-of-content and select the farthest complete rendered candidate at or below 512. If none fits, the blocked atomic policy below applies.
+Offsets are half-open Python `str` indexes into exact already-normalized `parent.content`. A whitespace run is a maximal nonempty sequence of code points for which `str.isspace()` is true; its candidate end is the offset immediately after the run, so the preceding slice owns the complete run. From each cursor, exhaustively count `parent.content[cursor:end]` for every later whitespace-run end plus `len(parent.content)` and select the farthest complete production-rendered candidate at or below 512. Adjacent slices therefore retain every character and reconstruct the parent exactly. If none fits, the recommended but unselected scalar policy below would apply only after separate ratification.
 
 The exact C6 probe split every 183 unique parent into 2 children with no scalar fallback. Per treatment arm this would replace 183 parents with 366 children (+183: pytest +9, Ruff +174). Across both treatments, the isolated preserved-envelope delta is +366 rows and +6 estimated 64-row requests before source subdivision.
 
 Tradeoff: smallest observed row increase, but it can split Markdown constructs or code spans at whitespace.
 
-### Boundary option B2 — structure-preferred hierarchy
+### Boundary option B2 — structure-preferred hierarchy (blocked definition)
 
-At each cursor, search boundary tiers in this order:
+The exploratory probe tried paragraph, current generic sentence, whitespace-run, and Unicode-scalar tiers in that order, choosing the farthest feasible end in the first tier with a feasible candidate and never assuming token-count monotonicity. It produced 392 children: 157 parents split in 2 and 26 split in 3. It used 366 paragraph ends and 26 whitespace ends, with no sentence or scalar fallback. Per treatment arm this is +209 rows (pytest +10, Ruff +199); across both treatments, +418 isolated rows and +6 estimated 64-row requests before source subdivision.
 
-1. existing paragraph ends;
-2. existing generic sentence ends;
-3. whitespace-run ends; and
-4. Unicode-scalar ends only if scalar fallback is ratified.
+**B2 is not regeneration-grade and cannot be ratified from this draft.** Current `split_sentences` first computes `" ".join(text.split())` and returns normalized sentence strings; it does not return offsets into the already-normalized parent `MarkdownChunk.content`. Current paragraph/unit splitting also strips units and later rejoins them with double LF. The probe did not establish an authoritative mapping from those normalized values back to half-open Python `str` character offsets `[start,end)` in the exact parent content, including which child owns separator whitespace, repeated whitespace, LF runs, fenced-block newlines, or terminal whitespace. Guessing that mapping could change exact child bytes, token counts, coverage, and the reported projection.
 
-Use the first tier containing any exactly feasible candidate and exhaustively select that tier's farthest feasible end. Do not assume token-count monotonicity. End-of-content participates at every tier where it is naturally present.
+A separate B2 shaping pass would have to define: offsets over the exact final parent content using Python Unicode-code-point indexing; an exhaustive set of paragraph and sentence end offsets derived without lossy reverse matching; deterministic ownership of every separator character; candidate content exactly `parent.content[start:end]`; and proof that ordered half-open intervals are nonempty, adjacent, non-overlapping, begin at 0, end at `len(parent.content)`, and concatenate exactly to the parent. Until those definitions are ratified and the projection is rerun, the observed B2 counts remain preserved exploratory evidence only and MUST NOT be acceptance criteria or implementation inputs.
 
-The exact C6 probe produced 392 children: 157 parents split in 2 and 26 split in 3. It used 366 paragraph ends and 26 whitespace ends, with no sentence or scalar fallback. Per treatment arm this is +209 rows (pytest +10, Ruff +199); across both treatments, +418 isolated rows and +6 estimated 64-row requests before source subdivision.
-
-Tradeoff: preserves paragraph structure more strongly but adds 26 more rows per affected arm than B1. Tier priority is a retrieval semantic, not merely an implementation detail.
+Tradeoff if later defined: paragraph preference may preserve structure more strongly but the observed probe added 26 more rows per affected arm than B1. Tier priority and separator ownership are retrieval semantics, not implementation details.
 
 ### Parity consequence
 
@@ -136,17 +148,17 @@ This could preserve generic structural intent more directly but leaves several i
 
 No projection is authoritative until those semantics are ratified. This option has the widest regression surface and is not the minimal C6-local change.
 
-## Blocked atomic-content and failure semantics
+## Recommended atomic-content and fail-closed semantics for any future shared-pipeline C shaping
 
-The exact 183-parent probes needed no Unicode-scalar fallback, so the preserved checkpoint does not force a choice between these policies:
+The current recommendation remains A, so no splitting or fallback is selected. If the user instead authorizes the separate shared-pipeline Option C shaping pass, this draft recommends the following exact policy for that later checkpoint:
 
-1. **Structure hard stop:** if no paragraph/sentence/whitespace candidate fits, fail the complete repository/arm plan.
-2. **Scalar safety fallback:** allow exact Unicode-scalar prefixes and fail only if no non-whitespace scalar plus unchanged Title/Section fits.
-3. **Context/content weakening:** drop or rewrite title/section, truncate, omit, or accept oversize content.
+1. At a fixed half-open parent-content cursor, exhaustively test all ratified structural or whitespace end offsets greater than the cursor using exact production payload accounting; choose the farthest feasible end from the first ratified tier containing one.
+2. If no such end fits, scalar fallback tests every later Python `str` boundary, which is a Unicode-code-point boundary for the UTF-8-decoded parent, and chooses the farthest end whose exact `parent.content[cursor:end]` production payload is at most 512. Scalar fallback does not skip, rewrite, normalize, or trim whitespace and does not require a boundary-adjacent character to be non-whitespace; exact adjacent interval coverage owns every character.
+3. The terminal atomic failure condition is exact: after exhaustively rendering and counting every nonempty scalar-prefix candidate `parent.content[cursor:end]` for all `end` from `cursor + 1` through `len(parent.content)`, the feasible set is empty. Only then abort the complete plan for that repository and arm. Testing only the one-code-point prefix is insufficient because token-count monotonicity is not established. An empty-content child is never emitted.
+4. On any tokenizer/render mismatch, terminal atomic failure, or final emitted row above 512, emit no successful plan, manifest, chunks JSONL, token report, or derived artifact for that repository/arm. Do not omit a file/row, retain an oversize parent, truncate, drop/alter Title or Section, accept a partial artifact, or invoke the old approximate path as fallback.
+5. A sanitized atomic-failure diagnostic reports only repository, arm, repo path, unchanged section path, failing zero-based parent-content code-point offset, the minimum exact production-payload token count observed across the exhaustively tested nonempty scalar prefixes, model/revision/file-set checkpoint, and `max=512`; it prints no content, scalar value, candidate end, or token IDs. Prose has no truthful physical-line citation.
 
-Option 3 is not recommended: it changes coverage/citation meaning or silently loses content. If failure occurs under option 1 or 2, a candidate complete-plan diagnostic is repository, arm, repo path, unchanged section path, exact observed token count, tokenizer checkpoint, and `max=512`, with no content or token IDs. Prose has no truthful source line number.
-
-Failure scope remains blocked: abort complete repository/arm plan (recommended for parity with the active source contract), omit only the file, omit only the row, or fall back to current/truncating behavior. No partial successful artifact should be called complete under a fail-closed option.
+Dropping context, truncating, omitting content, or accepting oversize content is not recommended and is outside every option in this draft.
 
 ## Isolation and downstream gates common to any ratified split
 
@@ -165,18 +177,25 @@ A later implementation ticket would have to prove:
 
 After separately reviewed implementation, a separately authorized complete forecast must regenerate source and prose together, validate every final row with the exact tokenizer, recompute all plan/artifact/JSONL/report/count/request/storage/namespace identities, and receive independent review. C6 stays blocked on zero incompatible rows and its still-separate exact nine-namespace write approval. No option in this draft unblocks C6 or carries prior approval forward.
 
+## Authority exclusions
+
+This draft and its checkpoint authorize no selection or activation; source, test, dependency, lockfile, CI, plan, manifest, chunks JSONL, forecast, compact authority, tokenizer report, validator, cache, corpus, or namespace mutation; tokenizer or model construction; inference; download or network access; credential/provider calls; retrieval; catalog, applied-state, routing-default, or namespace operations; deletes; evaluation; promotion; merge; or write approval. Option A confirmation would record no action only. Authorization to shape shared-pipeline C would authorize read-only shaping and draft-record work only, not implementation or regeneration.
+
 ## Exact confirm-or-correct user checkpoint
 
-> Confirm or correct the repository-prose policy before this draft can become active. Choose **A, B, C, or D** and correct every parenthesized value:
+> **Recommendation for current C6 — confirm or correct Option A.** Preserve every current repository-prose `MarkdownChunk` byte-for-byte across ordinary no-arm, explicit `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`. Do not split, truncate, omit, recite as compatible, or alter prose identity/order/counts/artifacts. Keep the exact 366 incompatible treatment occurrences—183 unique parents across 57 paths, duplicated in the two treatments—fail-closed. C6 remains blocked and receives no implementation, regeneration, readiness, approval, or write authority.
 >
-> - **A — no action:** preserve ordinary/current-default/treatment prose byte-for-byte and keep the exact 366 treatment occurrences fail-closed, so C6 remains blocked; **or**
-> - **B — treatment-only final-row cap:** process only the two treatment arms, accepting deliberate divergence from the 183 identical current-default parents; choose **B1 farthest-whitespace** (observed +183 rows/arm; +366 across treatments) or **B2 paragraph→sentence→whitespace hierarchy** (observed +209 rows/arm; +418 across treatments); **or**
-> - **C — parity-preserving prospective cap:** choose B1 or B2 and apply it to **[all three C6 arms only / the shared ordinary generic pipeline]**, acknowledging that the first breaks ordinary/current-default parity and the second widens behavior beyond C6; **or**
-> - **D — integrated generic rewrite:** separately shape the 300-target, 512-cap, overlap, compatible-row, and global-scope semantics before activation.
+> **If exact prose compatibility is required instead of Option A, do not activate B, C, or D from this draft.** Confirm only a separate shaping authorization for Option C on the shared ordinary generic pipeline. That shaping must preserve prospective ordinary/current-default and three-arm equality and must return for independent review with one exact regeneration-grade boundary contract. B2 is currently blocked because `split_sentences` and paragraph normalization do not provide lossless parent-content character offsets; its preserved +209 rows per affected arm / +418 across treatments is exploratory only.
 >
-> For B or C, confirm: count only the exact pinned complete `Title + optional Section + content + separators + special tokens` payload; retain unchanged Title/heading Section/URL/metadata with no invented `Lines` citations or code headers; preserve each already-normalized parent content exactly and its existing inter-parent overlap; add **no new child overlap**; keep compatible parents byte-identical; order children at the parent position and use existing content-based row identity; choose atomic policy **[fail at an unsplittable paragraph/sentence/whitespace atom / permit Unicode-scalar fallback]**; on failure **[abort the complete repository/arm plan]** with sanitized repository/arm/path/section/token-count/checkpoint/max only and no partial artifact, omission, truncation, or context dropping. Confirm that all reported row/request deltas are shaping projections only, that source subdivision still changes later totals, and that implementation, complete regeneration, independent review, zero-incompatible preflight, and separate exact namespace-write approval remain mandatory. No choice here itself unblocks C6.
+> The separate Option C checkpoint must preserve this exact non-negotiable boundary unless explicitly corrected before any activation: use only model `BAAI/bge-small-en-v1.5`, revision `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`, and class `transformers.models.bert.tokenization_bert.BertTokenizer` from locked `transformers==5.12.1`. Require `special_tokens_map.json` = 125 bytes / SHA-256 `b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3`; `tokenizer.json` = 711,396 bytes / `d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66`; `tokenizer_config.json` = 366 bytes / `9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3`; `vocab.txt` = 231,508 bytes / `07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3`; and canonical file-set SHA-256 `9c7beccadaa552c323907a895ad9ab188d8b75763022403f72c5d91085334f3b`. Set `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` before import; require the exact local revision path with `local_files_only=True`; require `model_max_length == 512`; and call equivalently to `tokenizer(text, add_special_tokens=True, truncation=False, padding=False, return_length=True)`. Any identity, option, local-file, or production-render mismatch aborts before a boundary decision; no alternate tokenizer, network, model construction, or inference is allowed.
+>
+> Count and revalidate only the final production `MarkdownChunk.embedding_text` for each candidate and emitted row; `<=512` is mandatory, and any reconstructed/production byte mismatch fails. Copy exact Title, heading Section, URL, path, document kind, ordered tags, source/page hashes, and metadata; keep URL/metadata outside embedding text; invent no physical-line citation, breadcrumb, code header/fence, or heading. Partition exact already-normalized parent content into nonempty adjacent half-open Unicode-code-point slices covering offsets 0 through `len(parent.content)` exactly once; preserve existing overlap between different generic parents and add no child overlap. Keep compatible content/context/metadata bytes unchanged; allow only index-derived internal `MarkdownChunk.id` and `chunk_index` to shift when preceding splits require it. Preserve plan order; place ordered children at the parent position; assign consecutive zero-based final indexes. Compute each base identity from site ID, canonical URL, exact Section, and exact content SHA-256; in final order assign duplicate ordinal 0 to the first repeated base identity and 1, 2, and so on to later members, while an ordinary unique identity remains ordinal 0. Require a compatible manifest row ID to remain stable whenever its duplicate-group membership and ordinal are unchanged.
+>
+> If no ratified structural or whitespace end fits from a cursor, exhaustively test every later Unicode-code-point end and choose the farthest exact feasible end. Abort the complete repository/arm plan only when that exhaustive nonempty scalar-prefix feasible set is empty; a failed one-code-point prefix alone is not terminal because token-count monotonicity is unproved. Emit no partial plan, manifest, chunks JSONL, token report, or derived artifact; do not omit, truncate, drop context, retain oversize content, or fall back to approximate behavior. Diagnostic fields are limited to repository, arm, repo path, section path, zero-based parent-content offset, minimum exact payload count observed across the scalar-prefix candidates, model/revision/file-set checkpoint, and `max=512`, with no content/scalar/candidate-end/token IDs.
+>
+> All B1/B2 row and 64-row-request deltas remain shaping projections; source subdivision changes later totals. Any future implementation still requires a separately reviewed active spec and executable ticket, complete source-and-prose regeneration, exact artifact/count/storage/namespace identities, independent review, zero incompatible final rows, and the still-separate exact nine-namespace write approval. This checkpoint authorizes no selection or activation; no source, test, dependency, lockfile, CI, plan, manifest, chunks JSONL, forecast, compact authority, tokenizer report, validator, cache, corpus, or namespace mutation; no tokenizer/model construction, inference, download, network, credential/provider call, retrieval, catalog/applied-state/default operation, delete, evaluation, promotion, merge, or write approval. Option A confirmation records no action only; shared-pipeline C authorization permits shaping records only. Neither path itself unblocks C6.
 
-Until the user confirms one exact branch and every bracketed value after independent draft review, this specification remains `draft`, the shaping ticket remains blocked, and no executable implementation ticket may be opened from it.
+Until independent review passes and the user explicitly confirms Option A or authorizes the separate shared-pipeline C shaping pass, this specification remains `draft`, the shaping ticket remains `blocked`, and no executable prose implementation ticket may be opened from it.
 
 ## References
 
