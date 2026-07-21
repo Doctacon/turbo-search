@@ -15,7 +15,7 @@ Record the user's exact decision to retain current hosted `main` protection duri
 - Superseded the original governance decision with `.10x/decisions/protected-development-and-github-release-governance-v2.md` while preserving the original under `.10x/decisions/superseded/`.
 - Updated `.10x/specs/protected-github-branches.md` with exact branch-specific protection behavior.
 - Repaired references to the moved superseded decision and updated active release records to the v2 authority.
-- Recorded completed PR #83 ancestry integration and the remaining mechanically required PR #80 gates.
+- Recorded completed PR #83 ancestry integration, closed/stale PR #80 history, and the remaining mechanically required replacement release-PR gates.
 
 ## Acceptance criteria
 
@@ -31,7 +31,7 @@ Record the user's exact decision to retain current hosted `main` protection duri
 
 ## Blockers
 
-None for this record-only reconciliation. GitHub may still require an eligible last-push approval before PR #80 can merge; this ticket does not bypass it.
+None for this record-only reconciliation. PR #80 is closed/stale and will not merge. GitHub may require an eligible last-push approval before the required replacement release PR can merge; this ticket does not bypass it.
 
 ## Explicit exclusions
 
