@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-15
-Updated: 2026-07-15
+Updated: 2026-07-21
 
 # Protected GitHub Branches
 
@@ -23,8 +23,9 @@ Both `main` and `develop` MUST:
 - require `Python 3.11`, `Python 3.13`, and `Build distributions` checks from GitHub Actions;
 - require the pull request branch to incorporate the latest target branch before merge;
 - apply protection to repository administrators without bypass;
-- disallow force pushes;
 - disallow branch deletion.
+
+`develop` MUST disallow force pushes and MUST NOT require last-push approval. `main` retains the user-ratified hosted exceptions: force pushes are allowed and last-push approval is required. Neither exception authorizes a release or agent workflow to use force push or bypass a pull request.
 
 Protection MUST NOT require code-owner review, signed commits, linear history, deployment success, conversation resolution, or additional checks unless separately ratified.
 
@@ -51,7 +52,7 @@ Given reviewed release-ready `develop`, when its pull request targets `main`, th
 
 ### Direct push
 
-Given any ordinary or administrator credential, when it attempts to push a new commit directly to `main` or `develop`, then GitHub MUST reject the update while protection remains active.
+Given any ordinary or administrator credential, direct pushes to `develop` MUST be rejected mechanically. Agents and release procedures MUST NOT directly push or force-push `main` even though its retained hosted configuration permits force pushes; all main changes still arrive through reviewed pull requests.
 
 ## Release compatibility
 
@@ -62,9 +63,9 @@ Given any ordinary or administrator credential, when it attempts to push a new c
 ## Acceptance criteria
 
 - Remote `origin/develop` exists at the ratified bootstrap commit before ordinary integration.
-- GitHub reports matching active protection for both `main` and `develop`.
+- GitHub reports the ratified common protection plus the exact branch-specific force-push/last-push settings.
 - Task integration uses squash merge; release integration uses a merge commit.
-- Required status checks, strict base freshness, pull-request requirement, zero approvals, administrator enforcement, force-push denial, and deletion denial are observable through GitHub's API.
+- Required status checks, strict base freshness, pull-request requirement, zero approvals, administrator enforcement, and deletion denial are observable on both branches; develop force-push denial and main force-push allowance/last-push approval are also observable.
 - CI source and static tests include both push branches.
 - A pull request from the implementation branch to `develop` runs all three required checks and cannot merge until they pass.
 - No launcher, local hook, or Pi extension is added.

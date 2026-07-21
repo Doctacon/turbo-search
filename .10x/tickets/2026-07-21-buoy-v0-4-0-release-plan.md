@@ -37,7 +37,7 @@ New product behavior; reopening C3/C4/C6-C9; retrying Approval A or Crow-Plus; T
 
 ## References
 
-- `.10x/decisions/protected-development-and-github-release-governance.md`
+- `.10x/decisions/protected-development-and-github-release-governance-v2.md`
 - `.10x/specs/protected-github-branches.md`
 - `.10x/specs/buoy-release-validation.md`
 - `.10x/specs/buoy-ci-and-github-releases.md`

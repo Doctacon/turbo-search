@@ -30,7 +30,7 @@ Candidate source changes after review; tag or Release creation; publication; bra
 ## References
 
 - `.10x/specs/protected-github-branches.md`
-- `.10x/decisions/protected-development-and-github-release-governance.md`
+- `.10x/decisions/protected-development-and-github-release-governance-v2.md`
 - PR #80: `https://github.com/Doctacon/buoy-search/pull/80`
 - `.10x/tickets/done/2026-07-15-promote-develop-to-main-for-v0-3-0.md`
 - `.10x/evidence/2026-07-21-buoy-v0-4-0-ancestry-sync-readiness.md`
@@ -41,9 +41,10 @@ Exact pre/post refs, divergence, sync commit parents/tree, PR/check URLs, merge 
 
 ## Blockers
 
-None. Candidate validation and independent review are complete; integration identity must be revalidated before ancestry work.
+None. Candidate validation and independent review are complete; main ancestry is integrated through PR #83, and the user explicitly retained current main force-push/last-push settings under the superseding governance decision. PR #80 readiness still requires current-head checks and any mechanically required approval.
 
 ## Progress and notes
 
 - 2026-07-21: Opened after PR #80 reported conflicts between `main` `820b8ab` and `develop` `ce262d4`. The established protected ancestry-only sync mechanism is record-backed from v0.3.0. No branch, PR, ancestry, tag, release, or product state changed.
-- 2026-07-21: Reviewed candidate PR #82 integrated as exact release-ready develop `47a0c33c412062f6467b1858e411179bfca60dcf`. Dedicated ancestry merge `1abd9f587d3e188fa19be11755c786d81df3d455` has exact second parent current main `820b8abba4308481eace728203d98f3365154956` and exact tree equality `4c6395c330bb14ab75012d4b82c78f8b9a739aa8` with release-ready develop. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-0-ancestry-sync-readiness.md`. No direct protected-branch mutation, tag, Release, PyPI, Turbopuffer, or user-state operation occurred. Sync remains pending protected PR checks and independent review.
+- 2026-07-21: Reviewed candidate PR #82 integrated as exact release-ready develop `47a0c33c412062f6467b1858e411179bfca60dcf`. Dedicated ancestry merge `1abd9f587d3e188fa19be11755c786d81df3d455` has exact second parent current main `820b8abba4308481eace728203d98f3365154956` and exact tree equality `4c6395c330bb14ab75012d4b82c78f8b9a739aa8` with release-ready develop. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-0-ancestry-sync-readiness.md`. Independent review passed exact PR #83 head `cf08383f4c62559a29369b33b7d87f38919ad507`; GitHub merged it with merge commit `3dd1c72f5e75785c11530dc24f34067c6983b1c6`, exact parents release-ready develop and reviewed sync head. No direct protected-branch mutation, tag, Release, PyPI, Turbopuffer, or user-state operation occurred.
+- 2026-07-21: Hosted inspection found main protection allowed force pushes and required last-push approval, differing from the superseded governance contract. The user explicitly selected `Keep current rules` and then directed release execution. `.10x/decisions/protected-development-and-github-release-governance-v2.md` and `.10x/specs/protected-github-branches.md` retain the exact settings without changing hosted protection and continue to prohibit using force push or bypass. PR #80 remains subject to strict CI and mechanically required approval.
