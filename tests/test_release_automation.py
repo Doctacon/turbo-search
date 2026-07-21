@@ -22,8 +22,8 @@ from scripts.release_checks import (
 ROOT = Path(__file__).resolve().parents[1]
 PINNED_ACTION = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
 EXPECTED_ACTION_MAJORS = {
-    "actions/checkout": "v4",
-    "astral-sh/setup-uv": "v6",
+    "actions/checkout": "v5",
+    "astral-sh/setup-uv": "v7",
     "actions/upload-artifact": "v4",
     "actions/download-artifact": "v4",
     "actions/attest-build-provenance": "v2",
@@ -95,22 +95,22 @@ class ReleaseAutomationTests(unittest.TestCase):
 
     def test_release_requires_remote_annotated_tag_metadata(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be annotated"):
-            verify_remote_annotated_tag("v0.3.0", "commit")
-        verify_remote_annotated_tag("v0.3.0", "tag")
+            verify_remote_annotated_tag("v0.4.0", "commit")
+        verify_remote_annotated_tag("v0.4.0", "tag")
 
     def test_release_checks_accept_only_current_tag_and_exact_assets(self) -> None:
-        self.assertEqual(project_version(), "0.3.0")
-        self.assertEqual(module_version(), "0.3.0")
-        verify_tag("v0.3.0")
+        self.assertEqual(project_version(), "0.4.0")
+        self.assertEqual(module_version(), "0.4.0")
+        verify_tag("v0.4.0")
         with self.assertRaisesRegex(ValueError, "release tag mismatch"):
-            verify_tag("v0.2.1")
+            verify_tag("v0.3.0")
         with tempfile.TemporaryDirectory() as directory:
             dist = Path(directory)
-            for name in ("buoy_search-0.3.0-py3-none-any.whl", "buoy_search-0.3.0.tar.gz"):
+            for name in ("buoy_search-0.4.0-py3-none-any.whl", "buoy_search-0.4.0.tar.gz"):
                 (dist / name).touch()
             self.assertEqual(
                 verify_assets(dist),
-                ["buoy_search-0.3.0-py3-none-any.whl", "buoy_search-0.3.0.tar.gz"],
+                ["buoy_search-0.4.0-py3-none-any.whl", "buoy_search-0.4.0.tar.gz"],
             )
             (dist / "unexpected.txt").touch()
             with self.assertRaisesRegex(ValueError, "release assets mismatch"):
@@ -140,23 +140,35 @@ class ReleaseAutomationTests(unittest.TestCase):
         with (ROOT / "pyproject.toml").open("rb") as handle:
             project = tomllib.load(handle)["project"]
         self.assertEqual(project["license"], "Apache-2.0")
+        self.assertEqual(project["version"], "0.4.0")
+        self.assertEqual(project["scripts"], {"buoy": "buoy_search.cli:main"})
+        self.assertIn("transformers==5.12.1", project["dependencies"])
         self.assertIn("Development Status :: 4 - Beta", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.11", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.13", project["classifiers"])
         self.assertIn("vector-search", project["keywords"])
         with (ROOT / "pyproject.toml").open("rb") as handle:
-            build_system = tomllib.load(handle)["build-system"]
-        self.assertEqual(build_system["requires"], ["hatchling==1.31.0"])
+            config = tomllib.load(handle)
+        self.assertEqual(config["build-system"]["requires"], ["hatchling==1.31.0"])
+        self.assertEqual(config["tool"]["hatch"]["build"]["exclude"], ["/.10x/**"])
 
     def test_changelog_records_pending_and_verified_releases(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
+        self.assertIn("## [0.4.0] - pending", changelog)
         self.assertIn("## [0.3.0] - 2026-07-16", changelog)
         self.assertIn(
             "[0.3.0]: https://github.com/Doctacon/buoy-search/releases/tag/v0.3.0",
             changelog,
         )
         self.assertIn("scheduled for removal in 0.4", changelog)
+        self.assertIn("Removed\n\n- The deprecated package-owned `turbo-search` console entry point", changelog)
+        self.assertIn("Replace only the executable name with `buoy`", changelog)
+        self.assertIn("does not delete user-created shell aliases", changelog)
         for release_note in (
+            "Retrieval results now return the automatic tags",
+            "`fixed-80-python-breadcrumbs` and `python-ast` experiment arms",
+            "Website crawling stays on the exact requested hostname",
+            "MarkItDown ingestion again removes C0 and C1 control characters",
             "Opt-in float16 corpus and query embedding inference",
             "Read-only `buoy namespaces` discovery",
             "Explicit repeatable `--namespace` retrieval",
@@ -169,29 +181,37 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertIn("[0.2.1]: https://github.com/Doctacon/buoy-search/releases/tag/v0.2.1", changelog)
         self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy-search/compare/v0.3.0...HEAD", changelog)
 
-    def test_legacy_alias_deprecation_consistently_targets_0_4(self) -> None:
+    def test_console_alias_is_removed_for_0_4_without_claiming_user_launcher_cleanup(self) -> None:
         cli_source = (ROOT / "src" / "buoy_search" / "cli.py").read_text()
-        self.assertIn(
-            "`turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.",
-            cli_source,
-        )
+        self.assertNotIn("def legacy_main", cli_source)
 
         migration = (ROOT / "docs" / "migrating-to-buoy.md").read_text()
+        command_section = migration.split("## Command and Python package\n", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("Buoy 0.4 removes the deprecated `turbo-search` console entry point", command_section)
+        self.assertIn("replacing only the executable name", command_section)
+        self.assertIn("arguments, parser behavior, output, and exit codes are unchanged", command_section)
+        self.assertIn("does not delete user-created shell aliases", command_section)
+
+    def test_legacy_environment_alias_deprecation_consistently_targets_0_4(self) -> None:
+        migration = (ROOT / "docs" / "migrating-to-buoy.md").read_text()
         environment_section = migration.split("## Environment variables\n", 1)[1].split("\n## ", 1)[0]
-        self.assertIn("Through 0.3, the old model and precision variables are accepted", environment_section)
-        self.assertIn("they are scheduled for removal in 0.4", environment_section)
-        self.assertNotIn("In 0.2, the old variable is accepted", environment_section)
+        for mapping in (
+            "TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL",
+            "TURBO_SEARCH_EMBEDDING_PRECISION -> BUOY_EMBEDDING_PRECISION",
+        ):
+            self.assertIn(mapping, environment_section)
+        for contract in ("exits 2", "no stdout", "never values", "Help, version", "does not migrate or delete"):
+            self.assertIn(contract, environment_section)
 
         config_source = (ROOT / "src" / "buoy_search" / "config.py").read_text()
-        load_config_doc = config_source.split("def load_config", 1)[1].split("current_model =", 1)[0]
-        normalized_doc = " ".join(load_config_doc.split())
-        self.assertIn("retains the old branded embedding variables through 0.3", normalized_doc)
-        self.assertIn("scheduled for removal in 0.4", normalized_doc)
-        self.assertEqual(config_source.count('"It will be removed in 0.4."'), 2)
+        self.assertNotIn("legacy_model", config_source)
+        self.assertNotIn("legacy_precision", config_source)
+        self.assertNotIn("deprecated; use", config_source)
+        self.assertIn("rejected by CLI entry points before dispatch", config_source)
 
         changelog = (ROOT / "CHANGELOG.md").read_text()
         self.assertIn(
-            "configuration aliases remain available through 0.3 and are scheduled for removal in 0.4",
+            "removes the `TURBO_SEARCH_EMBEDDING_MODEL` and `TURBO_SEARCH_EMBEDDING_PRECISION` fallbacks",
             changelog,
         )
 

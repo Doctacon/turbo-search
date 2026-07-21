@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace
+from dataclasses import asdict, replace
 import json
 import os
 from pathlib import Path
@@ -24,9 +24,7 @@ from buoy_search.apply import (
 from buoy_search.catalog import (
     CatalogError,
     generated_semantics,
-    load_catalog,
     load_routing_embedder,
-    resolve_catalog_path,
 )
 from buoy_search.catalog_pending import CatalogCommitPartialSuccess
 from buoy_search.catalog_cli import configure_catalog_parser
@@ -36,6 +34,7 @@ from buoy_search.config import (
     EMBEDDING_PRECISIONS,
     RuntimeConfigError,
     load_config,
+    removed_embedding_environment_error,
 )
 from buoy_search.crawler import (
     CRAWL_STRATEGIES,
@@ -67,6 +66,7 @@ from buoy_search.crawler import (
     detect_source,
 )
 from buoy_search.github_repo import GitHubRepoError, crawl_github_repo, crawl_github_repo_with_plan
+from buoy_search.repo_syntax_chunking import REPO_CHUNKING_ARMS
 from buoy_search.evals import (
     build_dry_run_eval_report,
     load_eval_cases,
@@ -85,6 +85,14 @@ from buoy_search.plan_artifacts import (
 from buoy_search.plan_cleanup import cleanup_applied_plan_directory, cleanup_superseded_plan_directories
 from buoy_search.plan_diff import IncrementalPlanDiff, PlanDiffError, diff_manifest_against_state
 from buoy_search.namespaces import list_namespace_ids
+from buoy_search.remote_catalog import (
+    REMOTE_CATALOG_NAMESPACE,
+    CompatibilityContract,
+    RemoteCatalogError,
+    create_client,
+    read_remote_catalog,
+    require_eligible,
+)
 from buoy_search.retriever import (
     DEFAULT_CANDIDATES,
     DEFAULT_TOP_K,
@@ -105,10 +113,11 @@ from buoy_search.routing import (
     AutomaticRoutingError,
     RoutedRetrievalPlan,
     RoutedRetrievalResult,
-    eligible_catalog_cards,
     hybrid_route,
-    require_eligible_cards,
 )
+
+
+REMOTE_CATALOG_CLIENT_FACTORY = create_client
 
 
 class OneLineProgress:
@@ -231,6 +240,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=positive_int,
         default=DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
         help="GitHub repo only: maximum bytes per text file to include before chunking.",
+    )
+    crawl_parser.add_argument(
+        "--repo-chunking-arm",
+        choices=REPO_CHUNKING_ARMS,
+        default=None,
+        help="GitHub repo only: opt into one local Python syntax chunking experiment arm.",
     )
     crawl_parser.add_argument(
         "--repo-search-metadata",
@@ -414,6 +429,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="GitHub repo only: maximum bytes per text file to include before chunking.",
     )
     plan_parser.add_argument(
+        "--repo-chunking-arm",
+        choices=REPO_CHUNKING_ARMS,
+        default=None,
+        help="GitHub repo only: opt into one local Python syntax chunking experiment arm.",
+    )
+    plan_parser.add_argument(
         "--repo-search-metadata",
         action="store_true",
         help="GitHub repo only: include searchable path and Python symbol metadata in generated code pages.",
@@ -527,11 +548,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     apply_parser = subparsers.add_parser(
         "apply",
-        help="verify and optionally apply a saved generic site RAG plan",
+        help="preflight and interactively apply a saved generic site RAG plan",
         description=(
-            "Verify a saved plan artifact and recompute its local state diff. Default mode is "
-            "a safe preflight: no credentials, embeddings, or turbopuffer API calls are used. "
-            "Pass --approve to embed and upsert only new/changed rows."
+            "Verify a saved plan artifact and recompute its local state diff. Plain interactive "
+            "apply displays the complete local preflight, then prompts before any live work. "
+            "Use --dry-run for prompt-free preflight or --approve for prompt-free automation."
         ),
     )
     apply_parser.add_argument(
@@ -557,11 +578,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override TURBOPUFFER_REGION for apply and the registered retrieval contract.",
     )
     apply_parser.add_argument(
-        "--catalog",
-        default=None,
-        help="Override BUOY_CATALOG_PATH and the catalog under the resolved state root.",
-    )
-    apply_parser.add_argument(
         "--batch-size",
         type=positive_int,
         default=64,
@@ -574,14 +590,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Local Sentence Transformers computation batch size for approved apply mode.",
     )
     apply_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Perform prompt-free local preflight without credentials, embeddings, or API calls.",
+    )
+    apply_parser.add_argument(
         "--approve",
         action="store_true",
-        help="Explicitly embed and upsert rows selected by the recomputed diff.",
+        help="Bypass the prompt and run the confirmed apply path for automation.",
     )
     apply_parser.add_argument(
         "--delete-stale",
         action="store_true",
-        help="With --approve, delete exact stale row IDs from the recomputed diff instead of retaining them.",
+        help="Plan stale deletion; execution still requires interactive confirmation or --approve.",
     )
     apply_parser.add_argument(
         "--json",
@@ -625,12 +646,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     retrieve_parser = subparsers.add_parser(
         "retrieve",
-        help="retrieve relevant chunks; dry-run plan by default unless --live is passed",
+        help="retrieve relevant chunks through live automatic or explicit namespace routing",
         description=(
-            "Plan or execute hybrid retrieval against explicitly selected namespaces, or opt into "
-            "local catalog routing with --auto-route. Default mode is safe: explicit previews do not "
-            "load embeddings, while routed previews use only the pinned local routing model; neither "
-            "reads credentials nor contacts turbopuffer. Pass --live to query selected namespaces."
+            "Execute hybrid retrieval by default. Without --namespace, Buoy discovers live namespaces "
+            "and routes through the authenticated remote catalog. Explicit repeatable --namespace "
+            "bypasses automatic routing. Use --dry-run/--plan for preview."
         ),
     )
     retrieve_parser.add_argument(
@@ -640,31 +660,26 @@ def build_parser() -> argparse.ArgumentParser:
     retrieve_parser.add_argument(
         "--live",
         action="store_true",
-        help="Execute live retrieval. Reads TURBOPUFFER_API_KEY from the environment and calls turbopuffer.",
+        help="Compatibility no-op; retrieval is live by default. Conflicts with --dry-run/--plan.",
     )
     retrieve_parser.add_argument(
         "--dry-run",
         "--plan",
         dest="dry_run",
         action="store_true",
-        help="Print the local retrieval plan without credentials or turbopuffer API calls (default).",
+        help="Preview retrieval; automatic preview reads remote routing state, while explicit --namespace remains local and credential-free.",
     )
     retrieve_parser.add_argument(
         "--auto-route",
         action="store_true",
-        help="Select enabled compatible namespaces from the canonical local catalog.",
+        help="Compatibility no-op; automatic remote routing is already the default without --namespace.",
     )
     retrieve_parser.add_argument(
         "--route-top-k",
         type=bounded_route_top_k,
         default=None,
         metavar="N",
-        help=f"Maximum routed namespaces (default {DEFAULT_ROUTE_TOP_K}, maximum {MAX_ROUTE_TOP_K}); requires --auto-route.",
-    )
-    retrieve_parser.add_argument(
-        "--catalog",
-        default=None,
-        help="Override BUOY_CATALOG_PATH and the resolved state-root catalog; requires --auto-route.",
+        help=f"Maximum automatically routed namespaces (default {DEFAULT_ROUTE_TOP_K}, maximum {MAX_ROUTE_TOP_K}).",
     )
     retrieve_parser.add_argument(
         "--top-k",
@@ -807,8 +822,8 @@ def add_runtime_config_arguments(
         action="append" if repeatable_namespace else "store",
         default=None,
         help=(
-            "Select a namespace; repeat to retrieve across multiple namespaces. CLI selections replace "
-            "TURBOPUFFER_NAMESPACE."
+            "Select a namespace; repeat to retrieve across multiple namespaces. This is the sole "
+            "routing bypass; TURBOPUFFER_NAMESPACE is ignored."
             if repeatable_namespace
             else "Override TURBOPUFFER_NAMESPACE for this command without changing the environment."
         ),
@@ -826,10 +841,14 @@ def add_runtime_config_arguments(
     )
 
 
-def config_from_args(args: argparse.Namespace):
+def config_from_args(
+    args: argparse.Namespace,
+    *,
+    ignore_environment_namespace: bool = False,
+):
     """Load non-secret runtime config, applying CLI overrides when supplied."""
 
-    config = load_config()
+    config = load_config(ignore_environment_namespace=ignore_environment_namespace)
     namespace_override = args.namespace
     if isinstance(namespace_override, list):
         namespace_override = namespace_override[0] if namespace_override else None
@@ -843,27 +862,19 @@ def config_from_args(args: argparse.Namespace):
 
 
 def resolve_retrieval_namespaces(args: argparse.Namespace) -> list[str]:
-    """Resolve explicit CLI namespaces or one environment namespace without demo fallback."""
+    """Validate explicit CLI namespaces; environment namespace is never retrieval authority."""
 
     cli_namespaces = args.namespace if isinstance(args.namespace, list) else []
-    if cli_namespaces:
-        namespaces = [namespace.strip() for namespace in cli_namespaces]
-        if any(not namespace for namespace in namespaces):
-            raise ValueError("--namespace must contain a non-empty namespace ID.")
-        duplicate = next(
-            (namespace for index, namespace in enumerate(namespaces) if namespace in namespaces[:index]),
-            None,
-        )
-        if duplicate is not None:
-            raise ValueError(f"--namespace must not repeat namespace ID {duplicate!r}.")
-        return namespaces
-    environment_namespace = os.environ.get("TURBOPUFFER_NAMESPACE", "").strip()
-    if environment_namespace:
-        return [environment_namespace]
-    raise ValueError(
-        "Retrieval requires --namespace or TURBOPUFFER_NAMESPACE; "
-        "run `buoy namespaces [search]` to discover available namespace IDs."
+    namespaces = [namespace.strip() for namespace in cli_namespaces]
+    if any(not namespace for namespace in namespaces):
+        raise ValueError("--namespace must contain a non-empty namespace ID.")
+    duplicate = next(
+        (namespace for index, namespace in enumerate(namespaces) if namespace in namespaces[:index]),
+        None,
     )
+    if duplicate is not None:
+        raise ValueError(f"--namespace must not repeat namespace ID {duplicate!r}.")
+    return namespaces
 
 
 def resolve_cli_state_root(args: argparse.Namespace) -> bool:
@@ -998,6 +1009,9 @@ def _run_crawl(args: argparse.Namespace) -> int:
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    if args.repo_chunking_arm and not isinstance(source, GitHubRepoSource):
+        print("--repo-chunking-arm is supported only for GitHub repositories.", file=sys.stderr)
+        return 2
 
     _apply_source_cap_defaults(args, source)
     out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url)
@@ -1009,6 +1023,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
         max_pages=args.max_pages,
         max_chunks=args.max_chunks,
         repo_max_file_bytes=args.repo_max_file_bytes,
+        repo_chunking_arm=args.repo_chunking_arm,
         repo_search_metadata=args.repo_search_metadata,
         repo_file_cards=args.repo_file_cards,
         repo_oversize_file_cards=args.repo_oversize_file_cards,
@@ -1044,14 +1059,6 @@ def _run_crawl(args: argparse.Namespace) -> int:
 def _run_plan(args: argparse.Namespace) -> int:
     if not resolve_cli_state_root(args):
         return 2
-    try:
-        plan_catalog_path, catalog_warning = resolve_catalog_path(None, state_root=args.state_root)
-        plan_catalog = load_catalog(plan_catalog_path)
-    except CatalogError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    if catalog_warning:
-        print(catalog_warning, file=sys.stderr)
     if args.url and args.base_url and args.url != args.base_url:
         print("Provide either positional URL or --base-url, not conflicting values.", file=sys.stderr)
         return 2
@@ -1064,6 +1071,9 @@ def _run_plan(args: argparse.Namespace) -> int:
         base_url = source.base_url
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
+        return 2
+    if args.repo_chunking_arm and not isinstance(source, GitHubRepoSource):
+        print("--repo-chunking-arm is supported only for GitHub repositories.", file=sys.stderr)
         return 2
 
     _apply_source_cap_defaults(args, source)
@@ -1078,6 +1088,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         max_pages=args.max_pages,
         max_chunks=args.max_chunks,
         repo_max_file_bytes=args.repo_max_file_bytes,
+        repo_chunking_arm=args.repo_chunking_arm,
         repo_search_metadata=args.repo_search_metadata,
         repo_file_cards=args.repo_file_cards,
         repo_oversize_file_cards=args.repo_oversize_file_cards,
@@ -1132,8 +1143,6 @@ def _run_plan(args: argparse.Namespace) -> int:
         )
         catalog_preview = plan_catalog_registration_preview(
             artifacts,
-            catalog=plan_catalog,
-            catalog_path=plan_catalog_path,
             region=os.environ.get("TURBOPUFFER_REGION", DEFAULT_REGION),
         )
         progress.update("plan: writing review artifacts", force=True)
@@ -1181,7 +1190,7 @@ def _run_plan(args: argparse.Namespace) -> int:
 
 
 def plan_crawl_options(args: argparse.Namespace, crawl_summary: dict[str, object] | None = None) -> dict[str, object]:
-    return {
+    options = {
         "max_pages": args.max_pages,
         "max_chunks": args.max_chunks,
         "repo_max_file_bytes": args.repo_max_file_bytes,
@@ -1199,6 +1208,9 @@ def plan_crawl_options(args: argparse.Namespace, crawl_summary: dict[str, object
         "strip_trailing_slash": args.strip_trailing_slash,
         "css_selector": args.css_selector,
     }
+    if args.repo_chunking_arm is not None:
+        options["repo_chunking_arm"] = args.repo_chunking_arm
+    return options
 
 
 def plan_chunk_options(args: argparse.Namespace) -> dict[str, object]:
@@ -1252,12 +1264,9 @@ def plan_summary(
 def plan_catalog_registration_preview(
     artifacts: PlanArtifacts,
     *,
-    catalog,
-    catalog_path: Path,
     region: str,
 ) -> dict[str, object]:
     manifest = artifacts.manifest
-    existing = next((card for card in catalog.cards if card.namespace == manifest.namespace), None)
     metadata = [
         dict(record.source_metadata)
         for record in [*manifest.pages, *manifest.chunks]
@@ -1271,14 +1280,11 @@ def plan_catalog_registration_preview(
     )
     ranking = ranking_defaults_for_namespace(manifest.namespace)
     return {
-        "catalog_path": str(catalog_path),
+        "catalog_namespace": REMOTE_CATALOG_NAMESPACE,
         "namespace": manifest.namespace,
-        "action": (
-            "new" if existing is None else
-            "manual-preserving-update" if existing.semantic_origin == "manual" else
-            "generated-update"
-        ),
-        "semantic_origin": "manual" if existing and existing.semantic_origin == "manual" else "generated",
+        "action": "unknown_until_approved",
+        "remote_catalog_state": "unknown_until_approved",
+        "manual_semantics_preservation": "unknown_until_approved",
         "source_kind": semantics.source_kind,
         "region": region,
         "vector_dimensions": 384,
@@ -1286,7 +1292,34 @@ def plan_catalog_registration_preview(
     }
 
 
+def _stdin_is_interactive() -> bool:
+    try:
+        return bool(sys.stdin.isatty())
+    except Exception:
+        return False
+
+
+def _confirm_apply() -> bool:
+    try:
+        sys.stderr.write("Apply this plan? [y/N] ")
+        sys.stderr.flush()
+        response = sys.stdin.readline()
+    except Exception:
+        return False
+    return response.strip().lower() in {"y", "yes"}
+
+
 def _run_apply(args: argparse.Namespace) -> int:
+    if args.dry_run and args.approve:
+        print("Choose either --dry-run or --approve, not both.", file=sys.stderr)
+        return 2
+    interactive = not args.dry_run and not args.approve
+    if interactive and not _stdin_is_interactive():
+        print(
+            "Plain apply requires an interactive stdin; use --dry-run for preflight or --approve for confirmed execution.",
+            file=sys.stderr,
+        )
+        return 2
     if not resolve_cli_state_root(args):
         return 2
     progress = OneLineProgress(enabled=should_show_progress(args))
@@ -1305,22 +1338,11 @@ def _run_apply(args: argparse.Namespace) -> int:
 
     namespace = args.namespace or verified.manifest.namespace
     region = args.region or os.environ.get("TURBOPUFFER_REGION", DEFAULT_REGION)
-    try:
-        catalog_path, catalog_warning = resolve_catalog_path(
-            args.catalog, state_root=args.state_root
-        )
-    except CatalogError as exc:
-        progress.finish()
-        print(str(exc), file=sys.stderr)
-        return 2
-    if catalog_warning:
-        print(catalog_warning, file=sys.stderr)
     if not args.approve:
         try:
             summary = apply_preflight_summary(
                 verified,
                 namespace=namespace,
-                catalog_path=catalog_path,
                 region=region,
                 approved=False,
                 delete_stale=args.delete_stale,
@@ -1330,11 +1352,39 @@ def _run_apply(args: argparse.Namespace) -> int:
             print(str(exc), file=sys.stderr)
             return 2
         progress.finish()
-        if args.json:
-            _print_json(summary)
-        else:
-            print_apply_text(summary)
-        return 0
+        if args.dry_run:
+            if args.json:
+                _print_json(summary)
+            else:
+                print_apply_text(summary)
+            return 0
+
+        prompt_available = True
+        try:
+            if args.json:
+                print_apply_text({**summary, "confirmation_pending": True}, stream=sys.stderr)
+            else:
+                print_apply_text({**summary, "confirmation_pending": True})
+        except OSError:
+            prompt_available = False
+        confirmed = prompt_available and _confirm_apply()
+        if not confirmed:
+            cancelled = {
+                **summary,
+                "approved": False,
+                "dry_run": False,
+                "cancelled": True,
+                "confirmation": "declined_or_unavailable",
+                "turbopuffer_api_calls": False,
+                "api_calls_occurred": False,
+                "state_updated": False,
+                "catalog_updated": False,
+            }
+            if args.json:
+                _print_json(cancelled)
+            else:
+                print("Apply cancelled; nothing was written.")
+            return 0
 
     config = replace(
         load_config(),
@@ -1348,7 +1398,6 @@ def _run_apply(args: argparse.Namespace) -> int:
             verified,
             config=config,
             namespace=namespace,
-            catalog_path=catalog_path,
             batch_size=args.batch_size,
             embedding_batch_size=args.embedding_batch_size,
             delete_stale=args.delete_stale,
@@ -1420,16 +1469,9 @@ def _run_retrieve(args: argparse.Namespace) -> int:
     if args.auto_route and cli_namespaces:
         print("--auto-route and --namespace are mutually exclusive.", file=sys.stderr)
         return 2
-    if not args.auto_route and (args.route_top_k is not None or args.catalog is not None):
-        print("--route-top-k and --catalog are valid only with --auto-route.", file=sys.stderr)
+    if cli_namespaces and args.route_top_k is not None:
+        print("--route-top-k is valid only for automatic retrieval without --namespace.", file=sys.stderr)
         return 2
-    if args.auto_route:
-        query = args.query.strip()
-        if not query:
-            print("A non-empty query is required for retrieval.", file=sys.stderr)
-            return 2
-        return _run_auto_routed_retrieve(args, query=query)
-
     try:
         namespaces = resolve_retrieval_namespaces(args)
     except ValueError as exc:
@@ -1439,14 +1481,16 @@ def _run_retrieve(args: argparse.Namespace) -> int:
     if not query:
         print("A non-empty query is required for retrieval.", file=sys.stderr)
         return 2
+    if not namespaces:
+        return _run_auto_routed_retrieve(args, query=query)
 
-    base_config = config_from_args(args)
+    base_config = config_from_args(args, ignore_environment_namespace=True)
     configs = [replace(base_config, namespace=namespace) for namespace in namespaces]
     options = [
         retrieval_options_from_args(args, config=config, doc_kind=args.doc_kind)
         for config in configs
     ]
-    if not args.live:
+    if args.dry_run:
         plan: RetrievalPlan | MultiNamespaceRetrievalPlan
         if len(configs) == 1:
             plan = retrieval_plan(query, config=configs[0], options=options[0])
@@ -1480,46 +1524,52 @@ def _run_retrieve(args: argparse.Namespace) -> int:
 
 
 def _run_auto_routed_retrieve(args: argparse.Namespace, *, query: str) -> int:
-    environment_namespace = os.environ.get("TURBOPUFFER_NAMESPACE", "").strip()
-    if environment_namespace:
-        print(
-            "Warning: --auto-route replaces TURBOPUFFER_NAMESPACE for this retrieval.",
-            file=sys.stderr,
+    base_config = config_from_args(args, ignore_environment_namespace=True)
+    api_key = os.environ.get("TURBOPUFFER_API_KEY")
+    if not api_key:
+        print("TURBOPUFFER_API_KEY must be set for automatic remote routing.", file=sys.stderr)
+        return 2
+    compatibility = CompatibilityContract(
+        region=base_config.region,
+        embedding_model=base_config.embedding_model,
+        embedding_precision=base_config.embedding_precision,
+    )
+    try:
+        client = REMOTE_CATALOG_CLIENT_FACTORY(api_key=api_key, region=base_config.region)
+        snapshot = require_eligible(
+            read_remote_catalog(client, region=base_config.region, compatibility=compatibility)
         )
-    base_config = config_from_args(args)
-    try:
-        catalog_path, catalog_warning = resolve_catalog_path(args.catalog)
-    except CatalogError as exc:
-        print(f"Catalog path resolution failed: {exc}", file=sys.stderr)
-        return 2
-    if catalog_warning:
-        print(catalog_warning, file=sys.stderr)
-    try:
-        catalog = load_catalog(catalog_path)
-    except CatalogError as exc:
-        print(f"Catalog load failed: {exc}", file=sys.stderr)
-        return 2
-
-    eligibility = eligible_catalog_cards(catalog, config=base_config)
-    try:
-        eligible_cards = require_eligible_cards(eligibility, catalog_path=catalog_path)
-    except CatalogError as exc:
-        print(f"Catalog eligibility failed: {exc}", file=sys.stderr)
+    except (RemoteCatalogError, CatalogError, RuntimeError) as exc:
+        print(f"Remote catalog read failed: {exc}", file=sys.stderr)
         return 2
     try:
         route_embedder = load_routing_embedder()
     except (CatalogError, RuntimeError) as exc:
         print(f"Route model load failed: {exc}", file=sys.stderr)
         return 2
+    exclusions = {
+        "missing_card": snapshot.counts.missing_card_count,
+        "stale_target": snapshot.counts.stale_target_count,
+        "disabled": snapshot.counts.disabled_count,
+        "incompatible": snapshot.counts.incompatible_count,
+    }
     try:
         routing = hybrid_route(
             query,
-            eligible_cards,
+            snapshot.eligible_cards,
             embedder=route_embedder,
             route_top_k=args.route_top_k or DEFAULT_ROUTE_TOP_K,
-            catalog_path=catalog_path,
-            catalog_revision=catalog.catalog_revision,
-            exclusion_counts=eligibility.exclusion_counts,
+            catalog_namespace=REMOTE_CATALOG_NAMESPACE,
+            region=base_config.region,
+            snapshot_revision=snapshot.snapshot_revision,
+            exclusion_counts={key: value for key, value in exclusions.items() if value},
+            remote_counts=asdict(snapshot.counts),
+            read_metrics={
+                "namespace_list_pages": snapshot.metrics.namespace_list_pages,
+                "metadata_requests": snapshot.metrics.metadata_requests,
+                "card_query_pages": snapshot.metrics.card_query_pages,
+                "billing": list(snapshot.metrics.billing),
+            },
         )
     except (AutomaticRoutingError, CatalogError, RuntimeError) as exc:
         print(f"Route scoring failed: {exc}", file=sys.stderr)
@@ -1544,7 +1594,7 @@ def _run_auto_routed_retrieve(args: argparse.Namespace, *, query: str) -> int:
         print(f"Selected namespace preparation failed: {exc}", file=sys.stderr)
         return 2
 
-    if not args.live:
+    if args.dry_run:
         plan = RoutedRetrievalPlan(
             plan=multi_namespace_retrieval_plan(
                 query,
@@ -1637,6 +1687,7 @@ def print_crawl_text(payload: dict[str, object]) -> None:
         print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
     print_limit_summary(payload)
     print_filter_summary(payload)
+    print_crawl_boundary_summary(payload)
     print_docs_version_summary(payload)
     print_language_summary(payload)
     print(f"  out_dir: {payload['out_dir']}")
@@ -1674,6 +1725,7 @@ def print_plan_text(payload: dict[str, object]) -> None:
         print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
     print_limit_summary(payload)
     print_filter_summary(payload)
+    print_crawl_boundary_summary(payload)
     print_docs_version_summary(payload)
     print_language_summary(payload)
     diff = payload.get("diff", {}) if isinstance(payload.get("diff"), dict) else {}
@@ -1704,8 +1756,8 @@ def print_plan_text(payload: dict[str, object]) -> None:
     if isinstance(registration, dict):
         print(
             "  catalog_registration: "
-            f"{registration['action']} ({registration['semantic_origin']}); "
-            f"{registration['catalog_path']}"
+            f"{registration['action']}; {registration['catalog_namespace']} "
+            f"(remote_state={registration.get('remote_catalog_state', 'resolved')})"
         )
     print("  live writes: not supported by this command; future apply must be explicit")
 
@@ -1740,6 +1792,19 @@ def print_filter_summary(payload: dict[str, object]) -> None:
             f"exclude={list(exclude_paths)}; "
             f"strip_trailing_slash={strip_trailing_slash}"
         )
+
+
+def print_crawl_boundary_summary(payload: dict[str, object]) -> None:
+    if payload.get("source_kind", "website") != "website" or (
+        "blocked_discovery_count" not in payload
+        and "blocked_redirect_count" not in payload
+    ):
+        return
+    print(
+        "  exact_host_boundary: "
+        f"blocked_discoveries={int(payload.get('blocked_discovery_count', 0) or 0)}; "
+        f"blocked_redirects={int(payload.get('blocked_redirect_count', 0) or 0)}"
+    )
 
 
 def print_docs_version_summary(payload: dict[str, object]) -> None:
@@ -1792,55 +1857,69 @@ def print_language_summary(payload: dict[str, object]) -> None:
         )
 
 
-def print_apply_text(payload: dict[str, object]) -> None:
+def print_apply_text(payload: dict[str, object], *, stream: TextIO | None = None) -> None:
+    output = stream or sys.stdout
+
+    def emit(message: str) -> None:
+        print(message, file=output)
+
     approved = bool(payload.get("approved"))
     if approved:
-        print("Website RAG apply completed (explicitly approved live upsert path):")
+        emit("Website RAG apply completed (confirmed live upsert path):")
     else:
-        print("Website RAG apply preflight (no credentials, embeddings, or turbopuffer API calls):")
-    print(f"  source: {payload['base_url']}")
-    print(f"  plan_path: {payload['plan_path']}")
-    print(f"  plan_id: {payload['plan_id']}")
-    print(f"  artifact_hash: {payload['artifact_hash']}")
-    print(f"  namespace: {payload['namespace']} ({payload['region']})")
-    print(f"  embedding_model: {payload['embedding_model']}")
-    print(f"  embedding_precision: {payload['embedding_precision']}")
-    print(f"  first_apply: {payload['state_first_apply']}")
+        emit("Website RAG apply preflight (no credentials, embeddings, or turbopuffer API calls):")
+    emit(f"  source: {payload['base_url']}")
+    emit(f"  plan_path: {payload['plan_path']}")
+    emit(f"  plan_id: {payload['plan_id']}")
+    emit(f"  artifact_hash: {payload['artifact_hash']}")
+    emit(f"  namespace: {payload['namespace']} ({payload['region']})")
+    emit(f"  embedding_model: {payload['embedding_model']}")
+    emit(f"  embedding_precision: {payload['embedding_precision']}")
+    emit(f"  first_apply: {payload['state_first_apply']}")
     diff = payload.get("diff") if isinstance(payload.get("diff"), dict) else {}
-    print(
+    emit(
         f"  rows: to_upsert={payload['rows_to_upsert']}; "
         f"upserted={payload['rows_upserted']}; "
         f"unchanged={diff.get('chunks_unchanged', 0)}"
     )
-    print(
+    emit(
         f"  embeddings: to_generate={payload['embeddings_to_generate']}; "
         f"generated={payload['embeddings_generated']}"
     )
-    print(
+    emit(
         f"  stale_rows: current={payload['stale_rows']}; "
         f"already_retained={payload['retained_stale_rows']}; "
         f"deleted={payload['rows_deleted']}"
     )
     if payload.get("delete_stale"):
-        print(f"  stale_intent: delete {payload['stale_rows_to_delete']} stale rows")
+        emit(f"  stale_intent: delete {payload['stale_rows_to_delete']} stale rows")
     else:
-        print(f"  stale_intent: retain {payload['stale_rows_retained']} stale rows")
-    print(f"  state_path: {payload['state_path']}")
+        emit(f"  stale_intent: retain {payload['stale_rows_retained']} stale rows")
+    emit(f"  state_path: {payload['state_path']}")
     registration = payload.get("catalog_registration")
     if isinstance(registration, dict):
-        print(
+        emit(
             "  catalog_registration: "
-            f"{registration['action']} ({registration['semantic_origin']}); "
-            f"{registration['catalog_path']}"
+            f"{registration['action']}; {registration['catalog_namespace']} "
+            f"(remote_state={registration.get('remote_catalog_state', 'resolved')})"
         )
-    if "catalog_updated" in payload:
-        print(f"  catalog_updated: {payload['catalog_updated']}; catalog: {payload['catalog_path']}")
+    if "catalog_updated" in payload and approved:
+        emit(
+            f"  catalog_updated: {payload['catalog_updated']}; "
+            f"catalog: {payload['catalog_namespace']}"
+        )
+        if payload.get("card_revision"):
+            emit(f"  committed_card_revision: {payload['card_revision']}")
+        if payload.get("catalog_snapshot_complete") is False:
+            emit("  catalog_snapshot: incomplete; no final stable snapshot is claimed")
+        elif payload.get("snapshot_revision"):
+            emit(f"  catalog_snapshot_revision: {payload['snapshot_revision']}")
         if payload.get("pending_cleanup") is False:
-            print(f"  pending_cleanup: False; pending_path: {payload['pending_path']}")
-            print(f"  repair: {payload['catalog_repair_command']}")
+            emit(f"  pending_cleanup: False; pending_path: {payload['pending_path']}")
+            emit(f"  repair: {payload['catalog_repair_command']}")
     timing = payload.get("timing")
     if isinstance(timing, dict):
-        print(
+        emit(
             "  timing: "
             f"elapsed={timing['elapsed_seconds']:.1f}s; "
             f"embedding={timing['embedding_seconds']:.1f}s; "
@@ -1853,10 +1932,12 @@ def print_apply_text(payload: dict[str, object]) -> None:
     commands = payload.get("retrieval_commands")
     if isinstance(commands, dict):
         label = "next retrieval step" if approved else "retrieval after successful apply"
-        print(f"  {label} (preview): {commands['preview']}")
-        print(f"  {label} (live): {commands['live']}")
-    if not approved:
-        print("  live: pass --approve to embed and upsert selected rows")
+        emit(f"  {label} (preview): {commands['preview']}")
+        emit(f"  {label} (live): {commands['live']}")
+    if payload.get("confirmation_pending"):
+        emit("  live: confirmation required at the prompt below")
+    elif not approved:
+        emit("  live: rerun without --dry-run for interactive confirmation, or pass --approve for automation")
 
 
 def print_retrieval_text(
@@ -1880,8 +1961,8 @@ def print_retrieval_text(
         )
         print("Automatic namespace route (hybrid_rrf):")
         print(
-            f"  catalog: {routing.get('catalog_path')} "
-            f"(revision {routing.get('catalog_revision')})"
+            f"  catalog: {routing.get('catalog_namespace')} "
+            f"(snapshot {routing.get('snapshot_revision')}; region {routing.get('region')})"
         )
         print(
             f"  routing_model: {routing.get('routing_model')}@"
@@ -1903,7 +1984,10 @@ def print_retrieval_text(
                     )
     if payload.get("dry_run"):
         if isinstance(routing, dict):
-            print("Retrieval plan (dry-run; local route model only; no credentials or turbopuffer API calls):")
+            print(
+                "Retrieval plan (authenticated remote preview; credentials required; "
+                "read-only namespace-list/catalog-query API calls occurred; no content retrieval):"
+            )
         else:
             print("Retrieval plan (dry-run; no credentials, embeddings, or turbopuffer API calls):")
         print(f"  query: {payload['query']}")
@@ -1932,7 +2016,7 @@ def print_retrieval_text(
                 f"aggregation={payload.get('ranking_aggregation')}"
             )
         print("  hybrid: ANN over vector + boosted BM25 over title/section_path/content + RRF")
-        print("  live: pass --live to execute; TURBOPUFFER_API_KEY is read from the environment only")
+        print("  live: omit --dry-run/--plan to execute; TURBOPUFFER_API_KEY is read from the environment only")
         return
 
     hits = payload.get("hits", [])
@@ -1963,6 +2047,9 @@ def print_retrieval_text(
             print(f"   Section: {section_path}")
         if hit.get("path"):
             print(f"   Path: {hit['path']}")
+        tags = hit.get("tags")
+        if isinstance(tags, list) and tags:
+            print(f"   Tags: {', '.join(tags)}")
         print(f"   Score: {hit.get('score_info', {})}")
         content = str(hit.get("content") or "").strip()
         if content:
@@ -2019,6 +2106,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not hasattr(args, "func"):
         parser.print_help()
         return 0
+    removed_environment_error = removed_embedding_environment_error()
+    if removed_environment_error is not None:
+        try:
+            print(removed_environment_error, file=sys.stderr)
+        except OSError:
+            pass
+        return 2
     try:
         return args.func(args)
     except RuntimeConfigError as exc:
@@ -2027,13 +2121,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         except OSError:
             pass
         return 2
-
-
-def legacy_main(argv: Sequence[str] | None = None) -> int:
-    """Run the compatibility alias retained through 0.3 with a bounded warning."""
-
-    print("Warning: `turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.", file=sys.stderr)
-    return main(argv)
 
 
 if __name__ == "__main__":

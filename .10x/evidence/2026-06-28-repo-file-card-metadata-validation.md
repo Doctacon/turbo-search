@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-repo-file-card-metadata-indexing.md, .10x/evidence/2026-06-28-repo-search-metadata-cross-repo-validation.md, .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
+Relates-To: .10x/tickets/done/2026-06-28-repo-file-card-metadata-indexing.md, .10x/evidence/2026-06-28-repo-search-metadata-cross-repo-validation.md, .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
 
 # Repo File-Card Metadata Validation
 

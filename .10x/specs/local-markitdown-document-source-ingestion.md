@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-08
-Updated: 2026-07-08
+Updated: 2026-07-18
 
 # Local MarkItDown Document Source Ingestion
 
@@ -84,7 +84,7 @@ Plan, manifest, chunks JSONL, summaries, rows, and applied state MUST preserve l
 ### Local-only and live-write guardrails
 
 - `crawl` and `plan` for local documents MUST remain local-only with respect to turbopuffer: no credentials, embeddings, namespace creation, row writes, stale deletion, or live turbopuffer calls.
-- `apply` and `apply --approve` MUST behave exactly like existing source plans: preflight by default, live embedding/upsert only with explicit `--approve`, and stale deletion only with existing explicit deletion guardrails.
+- Local-document apply MUST follow `.10x/specs/interactive-apply-confirmation.md`: `apply --dry-run` is explicit preflight, interactive plain apply prompts after preflight, `--approve` confirms non-interactively, and stale deletion retains its existing explicit deletion guardrails.
 
 ## Explicit exclusions
 

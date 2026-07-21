@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-15
 Updated: 2026-07-15
-Relates-To: .10x/tickets/2026-07-14-conditional-website-replanning.md
+Relates-To: .10x/tickets/cancelled/2026-07-14-conditional-website-replanning.md
 
 # Conditional Website Replanning Measurement Gate
 

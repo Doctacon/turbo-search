@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-cross-corpus-validation-basket.md, .10x/evidence/2026-06-28-cross-corpus-validation-local-plans.md, .10x/evidence/2026-06-28-cross-corpus-seed-eval-datasets.md
+Relates-To: .10x/tickets/done/2026-06-28-cross-corpus-validation-basket.md, .10x/evidence/2026-06-28-cross-corpus-validation-local-plans.md, .10x/evidence/2026-06-28-cross-corpus-seed-eval-datasets.md
 
 # Cross-Corpus Live Apply
 

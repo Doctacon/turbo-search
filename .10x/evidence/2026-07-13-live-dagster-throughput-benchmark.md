@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-13
 Updated: 2026-07-13
-Relates-To: .10x/tickets/2026-07-12-live-dagster-throughput-benchmark.md, .10x/specs/approved-apply-throughput-measurement.md
+Relates-To: .10x/tickets/done/2026-07-12-live-dagster-throughput-benchmark.md, .10x/specs/approved-apply-throughput-measurement.md
 
 # Live Dagster Approved-Apply Throughput Benchmark
 

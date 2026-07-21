@@ -229,7 +229,7 @@ wheels = [
 
 [[package]]
 name = "buoy-search"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
@@ -239,6 +239,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "scrapling", extra = ["fetchers"] },
     { name = "sentence-transformers" },
+    { name = "transformers" },
     { name = "turbopuffer" },
 ]
 
@@ -249,8 +250,9 @@ requires-dist = [
     { name = "markitdown", extras = ["docx", "pdf", "pptx", "xls", "xlsx"] },
     { name = "portalocker", specifier = ">=3.2.0" },
     { name = "pyyaml" },
-    { name = "scrapling", extras = ["fetchers"], specifier = ">=0.4.9" },
+    { name = "scrapling", extras = ["fetchers"], specifier = "==0.4.9" },
     { name = "sentence-transformers" },
+    { name = "transformers", specifier = "==5.12.1" },
     { name = "turbopuffer" },
 ]
 

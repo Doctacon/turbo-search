@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-08
 Updated: 2026-07-08
-Relates-To: .10x/tickets/2026-07-08-local-pdf-source-ingestion.md, .10x/specs/local-pdf-source-ingestion.md
+Relates-To: .10x/tickets/done/2026-07-08-local-pdf-source-ingestion.md, .10x/specs/local-pdf-source-ingestion.md
 
 # Local PDF Source Ingestion Evidence
 

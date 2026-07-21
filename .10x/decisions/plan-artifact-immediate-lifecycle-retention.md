@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-12
-Updated: 2026-07-12
+Updated: 2026-07-18
 
 # Immediate Plan-Artifact Lifecycle Retention
 
@@ -14,10 +14,10 @@ The operator requires artifacts to be removed immediately after they are no long
 
 Automatically delete an entire plan artifact directory in either case:
 
-1. its exact plan completes a successful `apply --approve`, after remote work and local state commit both succeed; or
+1. its exact plan completes a successful confirmed apply (interactive `y`/`yes` or `--approve`), after remote work and local state commit both succeed; or
 2. a successfully written newer plan for the same namespace supersedes it.
 
-Pending and failed plans remain intact. Apply preflight does not delete artifacts.
+Pending and failed plans remain intact. `apply --dry-run`, interactive pre-prompt work, and cancellation do not delete artifacts.
 
 This automatic lifecycle applies prospectively. Existing artifact directories are not deleted merely by upgrading; a separate explicit reconciliation/GC action is required before destructive cleanup of historical plans.
 
@@ -31,5 +31,5 @@ This automatic lifecycle applies prospectively. Existing artifact directories ar
 ## Consequences
 
 - Successful applies no longer leave a reusable local plan directory.
-- Users needing long-term source/audit copies must preserve them outside the automatic artifact location before approved apply.
+- Users needing long-term source/audit copies must preserve them outside the automatic artifact location before confirmed apply.
 - Cleanup failures must never turn a successful remote/local apply into a reported failure; they require durable local reporting and a later reconciliation path.

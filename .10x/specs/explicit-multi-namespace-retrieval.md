@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-14
-Updated: 2026-07-14
+Updated: 2026-07-19
 
 # Explicit Multi-Namespace Retrieval
 
@@ -10,18 +10,18 @@ Remove the silent demo-namespace retrieval fallback and allow an operator to sea
 
 ## Namespace selection
 
-- `buoy retrieve` MUST accept repeatable `--namespace ID` arguments.
-- When one or more CLI namespaces are supplied, they MUST replace any environment namespace.
-- When none are supplied, a non-empty `TURBOPUFFER_NAMESPACE` MAY provide exactly one namespace.
-- Live retrieval MUST fail before credential lookup, model construction, embedding, or Turbopuffer work when neither source provides a namespace. The error MUST point to `buoy namespaces [search]` and `--namespace`.
-- The hard-coded demo namespace MUST NOT be used by live retrieval.
-- Dry-run retrieval MUST expose the same resolved namespace selection and MUST fail when no CLI/environment namespace is available, so its plan is actionable rather than fictitious.
+- `buoy retrieve` MUST accept repeatable `--namespace ID` arguments as the sole manual namespace-selection override.
+- One or more CLI namespaces MUST bypass default catalog routing and retain their supplied order.
+- `TURBOPUFFER_NAMESPACE` MUST NOT supply a retrieval namespace; retrieve must not read or warn about it.
+- When no CLI namespace is supplied, selection is governed by `.10x/specs/default-remote-namespace-routing.md` rather than this explicit mode.
+- Explicit namespaces combined with automatic-only `--auto-route` or `--route-top-k` options MUST fail before credential, model, catalog, or Turbopuffer work. Retrieve `--catalog` no longer exists.
+- The hard-coded demo namespace MUST NOT be used by live or dry-run retrieval.
 
 ## Query execution
 
 - All selected namespaces MUST use the one region, embedding model, and embedding precision supplied by CLI/environment/default model settings. Buoy does not maintain or infer per-namespace model metadata in this version.
 - The query MUST be normalized and embedded once. The same query vector MUST be reused for every selected namespace.
-- Namespaces MUST be queried in explicit CLI order; an environment namespace is the sole item.
+- Namespaces MUST be queried in explicit CLI order.
 - Existing within-namespace hybrid retrieval, schema fallback, and final ranking behavior MUST remain unchanged.
 - If any namespace fails, the entire command MUST fail and identify that namespace. It MUST NOT print a partial result set.
 
@@ -40,12 +40,13 @@ Remove the silent demo-namespace retrieval fallback and allow an operator to sea
 - Existing single-namespace text and JSON fields MUST remain compatible.
 - Multi-namespace output MUST use an explicit multi-namespace result shape rather than placing a misleading first namespace in the existing singular `namespace` field.
 - Schema changes for the new multi-namespace invocation are additive to individual hit data and documented.
+- Per-hit tag JSON/text behavior and old-schema fallback are governed by `.10x/specs/retrieval-tag-output.md` and MUST remain identical between single- and multi-namespace results.
 
 ## Acceptance scenarios
 
 ### Missing selection
 
-Given no CLI/environment namespace, when dry-run or live retrieval starts, then it fails before config-dependent model/API work and never uses the demo namespace.
+Given no CLI namespace, when dry-run or live retrieval starts, then default remote catalog routing discovers/selects namespaces and never uses a demo or environment namespace.
 
 ### One namespace
 
@@ -61,4 +62,4 @@ Given the first namespace succeeds and the second fails, the command returns an 
 
 ## Explicit exclusions
 
-Automatic all-namespace fan-out, namespace patterns/groups, per-namespace embedding models, model metadata registration, concurrent namespace queries, partial-success output, namespace mutation, and multi-namespace eval execution.
+Remote all-namespace fan-out, namespace patterns/groups, concurrent namespace queries, partial-success output, namespace mutation, and multi-namespace eval execution. Default catalog routing and its per-namespace model metadata are governed separately.

@@ -19,8 +19,8 @@ This hypothesis set is based on current project evidence and records:
 - `.10x/evidence/2026-06-28-repo-role-diversification-validation.md`
 - `.10x/evidence/2026-06-28-website-ranking-evidence-hardening.md`
 - `.10x/knowledge/repo-search-ranking-defaults.md`
-- `.10x/tickets/2026-06-28-repo-oversize-source-indexing.md`
-- `.10x/tickets/2026-06-28-website-capped-aggregation-default-review.md`
+- `.10x/tickets/cancelled/2026-06-28-repo-oversize-source-indexing.md`
+- `.10x/tickets/done/2026-06-28-website-capped-aggregation-default-review.md`
 
 Current default baselines:
 

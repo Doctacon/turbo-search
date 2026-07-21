@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-repo-oversize-source-indexing.md, .10x/tickets/2026-06-28-repo-searchable-path-symbol-metadata.md, .10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md
+Relates-To: .10x/tickets/cancelled/2026-06-28-repo-oversize-source-indexing.md, .10x/tickets/done/2026-06-28-repo-searchable-path-symbol-metadata.md, .10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md
 
 # Repo Oversize + Searchable Metadata Local Validation
 

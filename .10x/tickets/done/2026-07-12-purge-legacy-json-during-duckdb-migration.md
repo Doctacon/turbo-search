@@ -1,6 +1,6 @@
 Status: done
 Created: 2026-07-12
-Updated: 2026-07-12
+Updated: 2026-07-18
 Parent: None
 Depends-On: .10x/tickets/done/2026-07-12-compact-duckdb-applied-state-plan.md
 
@@ -27,7 +27,7 @@ Supersede archive-and-reset legacy-state migration with delete-and-reset migrati
 ## References
 
 - `.10x/specs/compact-duckdb-applied-state.md`
-- `.10x/decisions/duckdb-applied-state-concurrency-and-retention.md`
+- `.10x/decisions/superseded/duckdb-applied-state-concurrency-and-retention.md`
 - `.10x/tickets/done/2026-07-12-local-artifact-retention-and-legacy-state-gc.md`
 
 ## Evidence expectations

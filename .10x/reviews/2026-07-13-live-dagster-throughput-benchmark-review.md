@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-13
 Updated: 2026-07-13
-Target: .10x/tickets/2026-07-12-live-dagster-throughput-benchmark.md
+Target: .10x/tickets/done/2026-07-12-live-dagster-throughput-benchmark.md
 Verdict: pass
 
 # Live Dagster Throughput Benchmark Review

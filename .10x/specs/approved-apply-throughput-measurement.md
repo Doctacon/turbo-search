@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-12
-Updated: 2026-07-12
+Updated: 2026-07-18
 
 # Approved Apply Throughput Measurement
 
@@ -10,7 +10,7 @@ Make an approved apply's local embedding and Turbopuffer-write costs observable,
 
 ## Behavior
 
-- `buoy apply --approve` MUST retain `--batch-size` as the Turbopuffer write-batch size, with its current default of 64.
+- Confirmed apply, whether interactive `y`/`yes` or `buoy apply --approve`, MUST retain `--batch-size` as the Turbopuffer write-batch size, with its current default of 64.
 - It MUST add a positive `--embedding-batch-size` option, defaulting to 32 to preserve the documented Sentence Transformers computation default currently used implicitly.
 - For each write batch, the embedder MUST receive the selected embedding batch size. A larger write batch MAY therefore contain multiple encoder computation batches.
 - Approved apply progress MUST report cumulative embedding time, write time, completed/total rows, and completed/total write batches after each successful write.
@@ -36,4 +36,4 @@ Given no new option, when approved apply runs, then it retains a 64-row write ba
 
 ### Preflight
 
-Given apply without `--approve`, when it runs, then no model or Turbopuffer writer is instantiated and no live timing values are emitted.
+Given `apply --dry-run` or an interactive apply cancelled at its prompt, when it runs, then no model or Turbopuffer writer is instantiated and no live timing values are emitted.

@@ -7,24 +7,17 @@ an exact cached revision with downloads disabled.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 import ipaddress
-import json
 import math
-import os
 from pathlib import Path
 import re
-import tempfile
-from typing import Any, Iterable, Iterator, Mapping, Protocol, Sequence
+from typing import Iterable, Mapping, Protocol, Sequence
 import unicodedata
 from urllib.parse import urlsplit
 
-import portalocker
-
-from buoy_search.applied_state import AppliedStateError, resolve_state_root
-from buoy_search.plan_artifacts import PLAN_SCHEMA_VERSION, stable_hash, stable_json_dumps
+from buoy_search.plan_artifacts import PLAN_SCHEMA_VERSION, stable_hash
 from buoy_search.retriever import RANKING_AGGREGATIONS, RANKING_MODES, RANKING_PROFILES
 
 CATALOG_SCHEMA_VERSION = 1
@@ -209,58 +202,6 @@ def card_to_dict(card: NamespaceCard, *, include_vector: bool = False) -> dict[s
     if not include_vector:
         payload.pop("vector")
     return payload
-
-
-def document_to_dict(document: CatalogDocument) -> dict[str, object]:
-    return {
-        "schema_version": document.schema_version,
-        "catalog_revision": document.catalog_revision,
-        "updated_at": document.updated_at,
-        "cards": [card_to_dict(card, include_vector=True) for card in document.cards],
-    }
-
-
-def empty_catalog(*, now: str | None = None) -> CatalogDocument:
-    return CatalogDocument(
-        schema_version=CATALOG_SCHEMA_VERSION,
-        catalog_revision=stable_hash([]),
-        updated_at=now or utc_now(),
-        cards=[],
-    )
-
-
-def resolve_catalog_path(
-    explicit_catalog: str | Path | None,
-    *,
-    environ: Mapping[str, str] | None = None,
-    state_root: Path | None = None,
-) -> tuple[Path, str | None]:
-    """Resolve CLI, environment, then implicit state-root catalog precedence."""
-
-    if explicit_catalog is not None:
-        value = str(explicit_catalog)
-        if not value.strip():
-            raise CatalogError("--catalog must contain a non-whitespace path")
-        return Path(value).expanduser(), None
-    environment = os.environ if environ is None else environ
-    if CATALOG_ENV in environment:
-        value = environment[CATALOG_ENV]
-        if not value.strip():
-            raise CatalogError(f"{CATALOG_ENV} must contain a non-whitespace path")
-        return Path(value).expanduser(), None
-    if state_root is not None:
-        return Path(state_root) / "catalog.json", None
-    try:
-        state_root, warning = resolve_state_root(None)
-    except AppliedStateError as exc:
-        message = str(exc)
-        if "both implicit state roots exist" in message:
-            raise CatalogError(
-                "both implicit state roots exist: .buoy and .turbo-search; "
-                "pass --catalog PATH to choose the local catalog"
-            ) from exc
-        raise CatalogError(message) from exc
-    return state_root / "catalog.json", warning
 
 
 def _require_exact_fields(payload: Mapping[str, object], expected: set[str], *, label: str) -> None:
@@ -575,77 +516,6 @@ def parse_catalog(payload: object) -> CatalogDocument:
     )
 
 
-def load_catalog(path: Path) -> CatalogDocument:
-    if not path.exists():
-        return empty_catalog()
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"), parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
-        return parse_catalog(payload)
-    except (OSError, UnicodeError, json.JSONDecodeError, ValueError, CatalogError) as exc:
-        raise CatalogError(
-            f"catalog {path}: invalid local state ({exc}); repair or restore the file before retrying"
-        ) from exc
-
-
-@contextmanager
-def catalog_lock(path: Path) -> Iterator[None]:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = path.with_name(f"{path.name}.lock")
-    try:
-        with portalocker.Lock(str(lock_path), mode="a+", timeout=0, fail_when_locked=True):
-            yield
-    except portalocker.exceptions.LockException as exc:
-        raise CatalogError(f"catalog {path}: another catalog mutation is in progress; retry after it finishes") from exc
-
-
-def _atomic_write(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent, delete=False) as handle:
-            temporary = Path(handle.name)
-            handle.write(data)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        temporary = None
-        try:
-            directory_fd = os.open(path.parent, os.O_RDONLY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
-        except OSError:
-            pass
-    finally:
-        if temporary is not None:
-            try:
-                temporary.unlink()
-            except FileNotFoundError:
-                pass
-
-
-def save_catalog(path: Path, cards: Sequence[NamespaceCard], *, now: str | None = None) -> CatalogDocument:
-    ordered = sorted(cards, key=lambda item: item.namespace)
-    namespaces = [card.namespace for card in ordered]
-    if len(namespaces) != len(set(namespaces)):
-        raise CatalogError(f"catalog {path}: cannot save duplicate namespaces")
-    for card in ordered:
-        parse_card(card_to_dict(card, include_vector=True))
-    document = CatalogDocument(
-        schema_version=CATALOG_SCHEMA_VERSION,
-        catalog_revision=catalog_revision(ordered),
-        updated_at=now or utc_now(),
-        cards=list(ordered),
-    )
-    data = (stable_json_dumps(document_to_dict(document), indent=2) + "\n").encode("utf-8")
-    try:
-        _atomic_write(path, data)
-    except OSError as exc:
-        raise CatalogError(f"catalog {path}: atomic save failed: {exc}") from exc
-    return document
-
-
 class _SentenceTransformerRoutingEmbedder:
     def __init__(self) -> None:
         try:
@@ -844,33 +714,6 @@ def merge_system_card(existing: NamespaceCard | None, incoming: NamespaceCard) -
     merged = replace(merged, card_revision="pending")
     merged = replace(merged, card_revision=card_revision(merged))
     return parse_card(card_to_dict(merged, include_vector=True))
-
-
-def commit_system_card(
-    path: Path,
-    incoming: NamespaceCard,
-) -> tuple[CatalogDocument, NamespaceCard, bool]:
-    """Lock, revalidate, merge, and atomically commit one later-apply card."""
-
-    with catalog_lock(path):
-        document = load_catalog(path)
-        existing = next((card for card in document.cards if card.namespace == incoming.namespace), None)
-        merged = merge_system_card(existing, incoming)
-        if existing is not None and existing.card_revision == merged.card_revision:
-            return document, existing, False
-        cards = [card for card in document.cards if card.namespace != merged.namespace] + [merged]
-        return save_catalog(path, cards), merged, True
-
-
-def mutate_catalog(path: Path, mutation: Any) -> tuple[CatalogDocument, Any]:
-    """Apply one callback under the catalog lock and atomically save its card list."""
-
-    with catalog_lock(path):
-        current = load_catalog(path)
-        cards, result, changed = mutation(current)
-        if not changed:
-            return current, result
-        return save_catalog(path, cards), result
 
 
 def _consistent_metadata(metadata: Sequence[Mapping[str, object]], key: str) -> str | None:

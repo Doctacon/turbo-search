@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-14
 Updated: 2026-07-14
-Parent: .10x/tickets/2026-07-14-buoy-public-ci-release-plan.md
+Parent: .10x/tickets/done/2026-07-14-buoy-public-ci-release-plan.md
 Depends-On: .10x/tickets/done/2026-07-14-add-buoy-ci-release-and-public-files.md
 
 # Validate Buoy CI and Release Automation

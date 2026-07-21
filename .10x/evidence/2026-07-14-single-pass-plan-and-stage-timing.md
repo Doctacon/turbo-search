@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-14
 Updated: 2026-07-14
-Relates-To: .10x/tickets/2026-07-14-single-pass-plan-and-stage-timing.md
+Relates-To: .10x/tickets/done/2026-07-14-single-pass-plan-and-stage-timing.md
 
 # Single-Pass Planning and Stage Timing Validation
 

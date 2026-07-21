@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-12
 Updated: 2026-07-12
-Target: .10x/tickets/2026-07-12-approved-apply-throughput-measurement.md
+Target: .10x/tickets/done/2026-07-12-approved-apply-throughput-measurement.md
 Verdict: pass
 
 # Approved Apply Throughput Measurement Review

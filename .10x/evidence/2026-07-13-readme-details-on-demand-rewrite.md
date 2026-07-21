@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-13
 Updated: 2026-07-14
-Relates-To: .10x/tickets/2026-07-13-readme-details-on-demand-rewrite.md, .10x/knowledge/documentation-details-on-demand.md
+Relates-To: .10x/tickets/done/2026-07-13-readme-details-on-demand-rewrite.md, .10x/knowledge/documentation-details-on-demand.md
 
 # README Details-on-Demand Rewrite Validation
 

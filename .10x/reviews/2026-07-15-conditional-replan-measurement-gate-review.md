@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-15
 Updated: 2026-07-15
-Target: .10x/tickets/2026-07-14-conditional-website-replanning.md
+Target: .10x/tickets/cancelled/2026-07-14-conditional-website-replanning.md
 Verdict: pass
 
 # Conditional Replan Measurement Gate Review

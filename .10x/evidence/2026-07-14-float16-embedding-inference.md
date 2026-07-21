@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-14
 Updated: 2026-07-14
-Relates-To: .10x/tickets/2026-07-13-float16-embedding-inference.md, .10x/specs/embedding-inference-precision.md
+Relates-To: .10x/tickets/done/2026-07-13-float16-embedding-inference.md, .10x/specs/embedding-inference-precision.md
 
 # Float16 Embedding Inference Validation
 

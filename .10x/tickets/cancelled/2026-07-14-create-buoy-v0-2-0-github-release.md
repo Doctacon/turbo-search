@@ -1,7 +1,7 @@
 Status: cancelled
 Created: 2026-07-14
 Updated: 2026-07-14
-Parent: .10x/tickets/2026-07-14-buoy-public-ci-release-plan.md
+Parent: .10x/tickets/done/2026-07-14-buoy-public-ci-release-plan.md
 Depends-On: .10x/tickets/done/2026-07-14-publish-buoy-rebrand-commit.md
 
 # Create the Buoy v0.2.0 GitHub Release

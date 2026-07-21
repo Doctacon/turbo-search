@@ -37,10 +37,16 @@ RETRIEVAL_ATTRIBUTES = [
     "content",
     "path",
     "repo_path",
+    "tags",
     "doc_kind",
     "chunk_index",
 ]
-SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES = [attribute for attribute in RETRIEVAL_ATTRIBUTES if attribute != "repo_path"]
+OPTIONAL_RETRIEVAL_ATTRIBUTES = ("repo_path", "tags")
+MISSING_SCHEMA_ATTRIBUTE_RE = re.compile(
+    r"\battribute\s+(?P<quote>[\"'])(?P<attribute>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?P=quote)\s+not found in schema\b",
+    re.IGNORECASE,
+)
 
 
 def namespace_uses_website_defaults(namespace: str) -> bool:
@@ -114,6 +120,7 @@ class SearchHit:
     content: str = ""
     path: str = ""
     repo_path: str = ""
+    tags: list[str] = field(default_factory=list)
     score_info: dict[str, object] = field(default_factory=dict)
     doc_kind: str = ""
     chunk_index: int | None = None
@@ -127,6 +134,7 @@ class SearchHit:
             "section_path": self.section_path,
             "path": self.path,
             "repo_path": self.repo_path,
+            "tags": list(self.tags),
             "score_info": self.score_info,
         }
         if include_content:
@@ -168,6 +176,7 @@ class RetrievalResult:
             "credentials_required": not self.dry_run,
             "turbopuffer_api_calls": self.turbopuffer_api_calls,
             "api_calls_occurred": self.turbopuffer_api_calls,
+            "content_retrieval_occurred": not self.dry_run,
             "query": self.query,
             "region": self.region,
             "namespace": self.namespace,
@@ -207,6 +216,7 @@ class MultiNamespaceRetrievalResult:
             "credentials_required": True,
             "turbopuffer_api_calls": True,
             "api_calls_occurred": True,
+            "content_retrieval_occurred": True,
             "query": self.query,
             "region": self.region,
             "namespaces": self.namespaces,
@@ -265,6 +275,7 @@ class RetrievalPlan:
             "api_calls_occurred": False,
             "query": self.query,
             "region": self.config.region,
+            "content_retrieval_occurred": False,
             "namespace": self.config.namespace,
             "embedding_model": self.config.embedding_model,
             "embedding_precision": self.config.embedding_precision,
@@ -275,7 +286,7 @@ class RetrievalPlan:
             "ranking_profile": self.options.ranking_profile,
             "ranking_pool": self.options.ranking_pool,
             "ranking_aggregation": self.options.ranking_aggregation,
-            "live_execution": "pass --live to embed the query and call turbopuffer",
+            "live_execution": "omit --dry-run/--plan to embed the query and call turbopuffer",
             "retrieval": {
                 "request": "turbopuffer multi_query",
                 "subqueries": [ann_subquery, bm25_subquery],
@@ -303,6 +314,7 @@ class MultiNamespaceRetrievalPlan:
             "api_calls_occurred": False,
             "query": self.query,
             "region": first.config.region,
+            "content_retrieval_occurred": False,
             "namespaces": [plan.config.namespace for plan in self.plans],
             "embedding_model": first.config.embedding_model,
             "embedding_precision": first.config.embedding_precision,
@@ -320,7 +332,7 @@ class MultiNamespaceRetrievalPlan:
                 }
                 for plan in self.plans
             ],
-            "live_execution": "pass --live to embed once and query each selected namespace",
+            "live_execution": "omit --dry-run/--plan to embed once and query each selected namespace",
         }
 
 
@@ -346,7 +358,7 @@ class HybridRetriever:
         if not api_key:
             raise RuntimeError(
                 "TURBOPUFFER_API_KEY must be set in the environment for live retrieval. "
-                "Use `retrieve --dry-run` or omit `--live` to inspect the plan without credentials."
+                "Use `retrieve --dry-run` or `retrieve --plan` to inspect the plan without credentials."
             )
         embedder = SentenceTransformerEmbedder(
             config.embedding_model, precision=config.embedding_precision
@@ -371,28 +383,30 @@ class HybridRetriever:
     ) -> RetrievalResult:
         """Query one namespace with an already-computed query vector."""
 
-        subqueries = build_multi_query_subqueries(
-            query=query,
-            query_vector=query_vector,
-            candidates=options.candidates,
-            doc_kind=options.doc_kind,
-        )
-        try:
-            response, fusion = run_multi_query(self._namespace, subqueries)
-        except Exception as exc:  # pragma: no cover - SDK/network/schema failure paths are integration-tested.
-            if not is_missing_attribute_error(exc, "repo_path"):
-                raise RuntimeError(user_friendly_query_error(exc)) from exc
-            portable_subqueries = build_multi_query_subqueries(
+        include_attributes = list(RETRIEVAL_ATTRIBUTES)
+        while True:
+            subqueries = build_multi_query_subqueries(
                 query=query,
                 query_vector=query_vector,
                 candidates=options.candidates,
                 doc_kind=options.doc_kind,
-                include_attributes=SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES,
+                include_attributes=include_attributes,
             )
             try:
-                response, fusion = run_multi_query(self._namespace, portable_subqueries)
-            except Exception as fallback_exc:  # pragma: no cover - requires SDK/network failure.
-                raise RuntimeError(user_friendly_query_error(fallback_exc)) from fallback_exc
+                response, fusion = run_multi_query(self._namespace, subqueries)
+                break
+            except Exception as exc:  # pragma: no cover - SDK/network/schema failure paths are integration-tested.
+                missing_attribute = missing_schema_attribute(exc)
+                if (
+                    missing_attribute not in OPTIONAL_RETRIEVAL_ATTRIBUTES
+                    or missing_attribute not in include_attributes
+                ):
+                    raise RuntimeError(user_friendly_query_error(exc)) from exc
+                include_attributes = [
+                    attribute
+                    for attribute in include_attributes
+                    if attribute != missing_attribute
+                ]
 
         result_lists = extract_result_lists(response)
         if not result_lists:
@@ -448,7 +462,7 @@ class MultiNamespaceRetriever:
         if not api_key:
             raise RuntimeError(
                 "TURBOPUFFER_API_KEY must be set in the environment for live retrieval. "
-                "Use `retrieve --dry-run` or omit `--live` to inspect the plan without credentials."
+                "Use `retrieve --dry-run` or `retrieve --plan` to inspect the plan without credentials."
             )
         embedder = SentenceTransformerEmbedder(
             first.embedding_model, precision=first.embedding_precision
@@ -624,10 +638,11 @@ def is_unsupported_rerank_type_error(exc: TypeError) -> bool:
     return "rerank_by" in message or "unexpected keyword" in message or "unexpected argument" in message
 
 
-def is_missing_attribute_error(exc: BaseException, attribute: str) -> bool:
-    message = str(exc).casefold()
-    attribute_text = attribute.casefold()
-    return attribute_text in message and "not found in schema" in message
+def missing_schema_attribute(exc: BaseException) -> str | None:
+    matches = list(MISSING_SCHEMA_ATTRIBUTE_RE.finditer(str(exc)))
+    if len(matches) != 1:
+        return None
+    return matches[0].group("attribute").casefold()
 
 
 def user_friendly_query_error(exc: BaseException) -> str:
@@ -813,6 +828,7 @@ def hit_with_ranking_info(
         content=hit.content,
         path=hit.path,
         repo_path=hit.repo_path,
+        tags=list(hit.tags),
         score_info=score_info,
         doc_kind=hit.doc_kind,
         chunk_index=hit.chunk_index,
@@ -1379,10 +1395,23 @@ def row_to_hit(row: object, *, score_info: Mapping[str, object] | None = None) -
         content=str(attrs.get("content") or ""),
         path=str(attrs.get("path") or ""),
         repo_path=str(attrs.get("repo_path") or ""),
+        tags=row_tags(attrs),
         doc_kind=str(attrs.get("doc_kind") or ""),
         chunk_index=chunk_index if isinstance(chunk_index, int) else None,
         score_info=base_score_info,
     )
+
+
+def row_tags(attrs: Mapping[str, object]) -> list[str]:
+    value = attrs.get("tags")
+    if value is None:
+        return []
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
+        raise RuntimeError("retrieval row tags must be a list of strings")
+    tags = list(value)
+    if not all(isinstance(tag, str) for tag in tags):
+        raise RuntimeError("retrieval row tags must be a list of strings")
+    return tags
 
 
 def row_attributes(row: object) -> dict[str, object]:

@@ -14,11 +14,11 @@ Current `main` source, tests, docs, workflows, active records, and retained Dags
 
 ### 1. Execute opt-in float16 embedding inference
 
-Embedding consumed 521.829 of 707.575 seconds (73.7%) in the 25,322-row Dagster apply. Existing M2 Pro microbenchmarks measured MPS float16 batch 32 at 76.8 rows/s versus float32 at 61.9 rows/s, about 24% higher throughput with minimum sampled cosine similarity 0.99976. This is already owned by `.10x/tickets/2026-07-13-float16-embedding-inference.md`; no duplicate ticket is needed.
+Embedding consumed 521.829 of 707.575 seconds (73.7%) in the 25,322-row Dagster apply. Existing M2 Pro microbenchmarks measured MPS float16 batch 32 at 76.8 rows/s versus float32 at 61.9 rows/s, about 24% higher throughput with minimum sampled cosine similarity 0.99976. This is already owned by `.10x/tickets/done/2026-07-13-float16-embedding-inference.md`; no duplicate ticket is needed.
 
 ### 2. Remove duplicate plan processing and add stage timing
 
-Each source path already runs `process_corpus`, then `_run_plan` runs it again. `_run_plan` also constructs complete plan artifacts twice, including chunk JSONL serialization. The Dagster plan took 241.34 seconds, but current timing cannot attribute crawl versus duplicated parse/chunk/artifact work. Owner: `.10x/tickets/2026-07-14-single-pass-plan-and-stage-timing.md`.
+Each source path already runs `process_corpus`, then `_run_plan` runs it again. `_run_plan` also constructs complete plan artifacts twice, including chunk JSONL serialization. The Dagster plan took 241.34 seconds, but current timing cannot attribute crawl versus duplicated parse/chunk/artifact work. Owner: `.10x/tickets/done/2026-07-14-single-pass-plan-and-stage-timing.md`.
 
 ### 3. Make plan → approval → live retrieval handoff explicit
 

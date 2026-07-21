@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-14
 Updated: 2026-07-14
-Target: .10x/tickets/2026-07-13-readme-details-on-demand-rewrite.md
+Target: .10x/tickets/done/2026-07-13-readme-details-on-demand-rewrite.md
 Verdict: pass
 
 # README Details-on-Demand Review

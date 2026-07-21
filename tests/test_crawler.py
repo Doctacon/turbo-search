@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import tempfile
+import zlib
 from pathlib import Path
 import json
 import unittest
@@ -12,10 +14,15 @@ from buoy_search.crawler import (
     DEFAULT_CRAWL_MAX_PAGES,
     DEFAULT_GITHUB_REPO_MAX_CHUNKS,
     DEFAULT_GITHUB_REPO_MAX_FILES,
+    ROBOTS_RESPONSE_MAX_BYTES,
+    SITEMAP_DECOMPRESSED_MAX_BYTES,
+    SITEMAP_TRANSFER_MAX_BYTES,
     CrawledPage,
     CrawlOptions,
+    FetchedResource,
     GitHubRepoSource,
     LocalFileSource,
+    SitemapResourceError,
     PdfSource,
     WebsiteSource,
     analyze_docs_version_urls,
@@ -33,12 +40,17 @@ from buoy_search.crawler import (
     crawled_page_from_response,
     default_out_dir,
     detect_source,
+    discover_sitemap_page_urls,
     elapsed_since,
+    fetch_url_bytes,
+    maybe_decompress_sitemap,
     observe_monotonic,
     url_allowed_by_path_filters,
     namespace_candidate,
+    normalize_markitdown_markdown,
     page_filename,
     parse_github_repo_url,
+    sitemap_locations_from_xml,
     sitemap_page_progress_label,
     sitemap_seed_urls,
     source_id_for_url,
@@ -220,6 +232,373 @@ class CrawlerHelperTests(unittest.TestCase):
                 "https://example.com/sitemap_index.xml",
             ],
         )
+
+    def test_incremental_resource_read_accepts_exact_robots_and_sitemap_boundaries(self) -> None:
+        class Response:
+            status = 200
+            headers: dict[str, str] = {}
+
+            def __init__(self, url: str, body: bytes) -> None:
+                self.url = url
+                self.body = body
+                self.offset = 0
+                self.max_read_size = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def geturl(self) -> str:
+                return self.url
+
+            def read(self, size: int) -> bytes:
+                self.max_read_size = max(self.max_read_size, size)
+                chunk = self.body[self.offset : self.offset + size]
+                self.offset += len(chunk)
+                return chunk
+
+        cases = (
+            (
+                "https://example.com/robots.txt",
+                ROBOTS_RESPONSE_MAX_BYTES,
+                "robots response body",
+            ),
+            (
+                "https://example.com/sitemap.xml.gz",
+                SITEMAP_TRANSFER_MAX_BYTES,
+                "sitemap transferred bytes",
+            ),
+        )
+        for url, ceiling, limit_type in cases:
+            with self.subTest(limit_type=limit_type):
+                response = Response(url, b"a" * ceiling)
+                with patch(
+                    "buoy_search.crawler._NO_REDIRECT_OPENER.open",
+                    return_value=response,
+                ):
+                    resource = fetch_url_bytes(
+                        url,
+                        ceiling=ceiling,
+                        limit_type=limit_type,
+                    )
+
+                self.assertIsNotNone(resource)
+                assert resource is not None
+                self.assertEqual(resource.final_url, url)
+                self.assertEqual(len(resource.body), ceiling)
+                self.assertLessEqual(response.max_read_size, 64 * 1024)
+
+    def test_resource_read_preserves_validated_final_redirect_url(self) -> None:
+        class Response:
+            def __init__(
+                self,
+                url: str,
+                *,
+                status: int,
+                body: bytes = b"",
+                headers: dict[str, str] | None = None,
+            ) -> None:
+                self.url = url
+                self.status = status
+                self.body = body
+                self.headers = headers or {}
+                self.offset = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def geturl(self) -> str:
+                return self.url
+
+            def read(self, size: int) -> bytes:
+                chunk = self.body[self.offset : self.offset + size]
+                self.offset += len(chunk)
+                return chunk
+
+        original_url = "https://example.com/sitemap.xml"
+        final_url = "https://example.com/final.xml.gz"
+        responses = (
+            Response(
+                original_url,
+                status=302,
+                headers={"location": "/final.xml.gz"},
+            ),
+            Response(final_url, status=200, body=b"body"),
+        )
+        with patch(
+            "buoy_search.crawler._NO_REDIRECT_OPENER.open",
+            side_effect=responses,
+        ):
+            resource = fetch_url_bytes(
+                original_url,
+                ceiling=SITEMAP_TRANSFER_MAX_BYTES,
+                limit_type="sitemap transferred bytes",
+                allowed_host="example.com",
+            )
+
+        self.assertIsNotNone(resource)
+        assert resource is not None
+        self.assertEqual(resource.final_url, final_url)
+
+    def test_incremental_resource_read_rejects_over_limit_robots_and_sitemap(self) -> None:
+        class Response:
+            status = 200
+            headers: dict[str, str] = {}
+
+            def __init__(self, url: str, body: bytes) -> None:
+                self.url = url
+                self.body = body
+                self.offset = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def geturl(self) -> str:
+                return self.url
+
+            def read(self, size: int) -> bytes:
+                chunk = self.body[self.offset : self.offset + size]
+                self.offset += len(chunk)
+                return chunk
+
+        cases = (
+            (
+                "https://example.com/robots.txt",
+                ROBOTS_RESPONSE_MAX_BYTES,
+                "robots response body",
+            ),
+            (
+                "https://example.com/sitemap.xml.gz",
+                SITEMAP_TRANSFER_MAX_BYTES,
+                "sitemap transferred bytes",
+            ),
+        )
+        for url, ceiling, limit_type in cases:
+            with self.subTest(limit_type=limit_type):
+                response = Response(url, b"a" * (ceiling + 1))
+                with patch(
+                    "buoy_search.crawler._NO_REDIRECT_OPENER.open",
+                    return_value=response,
+                ):
+                    with self.assertRaisesRegex(
+                        SitemapResourceError,
+                        rf"{limit_type} limit exceeded for {url}.*ceiling={ceiling} bytes",
+                    ):
+                        fetch_url_bytes(
+                            url,
+                            ceiling=ceiling,
+                            limit_type=limit_type,
+                        )
+
+    def test_gzip_sitemap_accepts_exact_decompressed_boundary_and_stops_bomb(self) -> None:
+        exact_xml = b"<urlset></urlset>" + b" " * (
+            SITEMAP_DECOMPRESSED_MAX_BYTES - 17
+        )
+        compressed_exact = gzip.compress(exact_xml)
+        self.assertEqual(
+            len(
+                maybe_decompress_sitemap(
+                    compressed_exact,
+                    "https://example.com/sitemap.xml",
+                )
+            ),
+            SITEMAP_DECOMPRESSED_MAX_BYTES,
+        )
+
+        bomb = gzip.compress(
+            b"a" * (SITEMAP_DECOMPRESSED_MAX_BYTES + 1), compresslevel=9
+        )
+        with self.assertRaisesRegex(
+            SitemapResourceError,
+            rf"sitemap decompressed bytes limit exceeded.*https://example.com/bomb.xml.gz.*ceiling={SITEMAP_DECOMPRESSED_MAX_BYTES} bytes",
+        ):
+            maybe_decompress_sitemap(bomb, "https://example.com/bomb.xml.gz")
+
+    def test_malformed_declared_or_detected_gzip_fails_closed(self) -> None:
+        cases = (
+            (b"not gzip", "https://example.com/sitemap.xml.gz", "", ""),
+            (b"\x1f\x8bbroken", "https://example.com/sitemap.xml", "", ""),
+            (
+                b"not gzip",
+                "https://example.com/sitemap.xml",
+                "application/gzip",
+                "",
+            ),
+            (
+                b"not gzip",
+                "https://example.com/sitemap.xml",
+                "",
+                "gzip",
+            ),
+        )
+        for body, url, content_type, content_encoding in cases:
+            with self.subTest(
+                url=url,
+                content_type=content_type,
+                content_encoding=content_encoding,
+            ):
+                with self.assertRaisesRegex(
+                    SitemapResourceError, rf"malformed gzip sitemap at {url}"
+                ):
+                    sitemap_locations_from_xml(
+                        body,
+                        url,
+                        content_type=content_type,
+                        content_encoding=content_encoding,
+                    )
+
+    def test_corrupt_deflate_is_wrapped_as_url_specific_malformed_gzip(self) -> None:
+        corrupt_deflate = bytes.fromhex("1f8b08000000000000ff07") + b"\x00" * 8
+        url = "https://example.com/corrupt.xml.gz"
+
+        with self.assertRaisesRegex(
+            SitemapResourceError, rf"malformed gzip sitemap at {url}"
+        ) as raised:
+            maybe_decompress_sitemap(corrupt_deflate, url)
+
+        self.assertIsInstance(raised.exception.__cause__, zlib.error)
+
+    def test_redirected_declared_gzip_fails_closed_before_link_fallback(self) -> None:
+        class Response:
+            def __init__(
+                self,
+                url: str,
+                *,
+                status: int,
+                body: bytes = b"",
+                headers: dict[str, str] | None = None,
+            ) -> None:
+                self.url = url
+                self.status = status
+                self.body = body
+                self.headers = headers or {}
+                self.offset = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def geturl(self) -> str:
+                return self.url
+
+            def read(self, size: int) -> bytes:
+                chunk = self.body[self.offset : self.offset + size]
+                self.offset += len(chunk)
+                return chunk
+
+        original_url = "https://example.com/sitemap.xml"
+        final_url = "https://example.com/redirected.xml.gz"
+        requested_urls: list[str] = []
+
+        def fake_open(request, **_kwargs):
+            requested_url = request.full_url
+            requested_urls.append(requested_url)
+            if requested_url == original_url:
+                return Response(
+                    original_url,
+                    status=302,
+                    headers={"location": "/redirected.xml.gz"},
+                )
+            if requested_url == final_url:
+                return Response(final_url, status=200, body=b"not gzip")
+            return Response(requested_url, status=404)
+
+        options = CrawlOptions(
+            base_url="https://example.com/", out_dir=Path("unused")
+        )
+        with patch(
+            "buoy_search.crawler._NO_REDIRECT_OPENER.open", side_effect=fake_open
+        ):
+            with patch("buoy_search.crawler.build_link_spider_class") as link_mock:
+                with self.assertRaisesRegex(
+                    SitemapResourceError,
+                    rf"malformed gzip sitemap at {final_url}",
+                ):
+                    crawl_pages(options)
+
+        self.assertEqual(
+            requested_urls,
+            [
+                "https://example.com/robots.txt",
+                original_url,
+                final_url,
+            ],
+        )
+        link_mock.assert_not_called()
+
+    def test_multiple_sitemap_queue_propagates_late_limit_error(self) -> None:
+        options = CrawlOptions(
+            base_url="https://example.com/", out_dir=Path("unused")
+        )
+        index_url = "https://example.com/index.xml"
+        first_url = "https://example.com/first.xml"
+        oversized_url = "https://example.com/oversized.xml"
+        resources = {
+            "https://example.com/robots.txt": FetchedResource(
+                f"Sitemap: {index_url}\n".encode(),
+                "https://example.com/robots.txt",
+            ),
+            index_url: FetchedResource(
+                (
+                    "<sitemapindex><sitemap><loc>"
+                    f"{first_url}</loc></sitemap><sitemap><loc>{oversized_url}"
+                    "</loc></sitemap></sitemapindex>"
+                ).encode(),
+                index_url,
+            ),
+            first_url: FetchedResource(
+                b"<urlset><url><loc>https://example.com/docs/first</loc></url></urlset>",
+                first_url,
+            ),
+        }
+
+        def fake_fetch(url: str, **_kwargs):
+            if url == oversized_url:
+                raise SitemapResourceError(
+                    f"sitemap transferred bytes limit exceeded for {url}: ceiling={SITEMAP_TRANSFER_MAX_BYTES} bytes"
+                )
+            return resources.get(url)
+
+        with patch(
+            "buoy_search.crawler.fetch_url_bytes", side_effect=fake_fetch
+        ):
+            with self.assertRaisesRegex(SitemapResourceError, "oversized.xml"):
+                discover_sitemap_page_urls(options)
+
+    def test_sitemap_resource_errors_never_start_link_fallback(self) -> None:
+        options = CrawlOptions(
+            base_url="https://example.com/", out_dir=Path("unused")
+        )
+        errors = (
+            SitemapResourceError(
+                f"sitemap transferred bytes limit exceeded for https://example.com/oversized.xml: ceiling={SITEMAP_TRANSFER_MAX_BYTES} bytes"
+            ),
+            SitemapResourceError(
+                "malformed gzip sitemap at https://example.com/malformed.xml.gz"
+            ),
+        )
+        for error in errors:
+            with self.subTest(error=str(error)):
+                with patch(
+                    "buoy_search.crawler.discover_sitemap_page_urls",
+                    side_effect=error,
+                ):
+                    with patch(
+                        "buoy_search.crawler.build_link_spider_class"
+                    ) as link_mock:
+                        with self.assertRaises(SitemapResourceError):
+                            crawl_pages(options)
+                link_mock.assert_not_called()
 
     def test_sitemap_page_progress_label_uses_estimate_not_cap_when_available(self) -> None:
         self.assertEqual(sitemap_page_progress_label(1, sitemap_url_count=0, cap=3000), "1; cap=3000")
@@ -483,7 +862,10 @@ class CrawlerHelperTests(unittest.TestCase):
 
             with patch(
                 "buoy_search.crawler.markitdown_pdf_to_markdown",
-                return_value="# Annual Plan\n\nUseful PDF text for retrieval.",
+                return_value=(
+                    "# Annual Plan\n\nUseful PDF [reference](file:///retained.pdf?field=value) "
+                    "text for retrieval."
+                ),
             ):
                 summary = crawl_pdf(source, options)
 
@@ -496,6 +878,12 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertEqual(summary["crawl_strategy"], "markitdown-pdf")
             self.assertEqual(summary["pages_scraped"], 1)
             self.assertEqual(summary["chunks_generated"], 1)
+            self.assertNotIn("blocked_discovery_count", summary)
+            self.assertNotIn("blocked_redirect_count", summary)
+            self.assertIn(
+                "[reference](file:///retained.pdf?field=value)",
+                str(summary["sample_chunks"][0]["content_preview"]),
+            )
             page_files = list((root / "crawl" / "pages").glob("*.md"))
             self.assertEqual(len(page_files), 1)
             page_text = page_files[0].read_text(encoding="utf-8")
@@ -516,7 +904,10 @@ class CrawlerHelperTests(unittest.TestCase):
 
             with patch(
                 "buoy_search.crawler.markitdown_file_to_markdown",
-                return_value="| metric | value |\n| --- | --- |\n| revenue | 42 |",
+                return_value=(
+                    "| metric | value |\n| --- | --- |\n| revenue | "
+                    "[42](file:///retained.csv?field=value) |"
+                ),
             ):
                 summary = crawl_local_document(source, options)
 
@@ -531,6 +922,12 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertEqual(summary["documents_converted"], 1)
             self.assertEqual(summary["pages_scraped"], 1)
             self.assertEqual(summary["chunks_generated"], 1)
+            self.assertNotIn("blocked_discovery_count", summary)
+            self.assertNotIn("blocked_redirect_count", summary)
+            self.assertIn(
+                "[42](file:///retained.csv?field=value)",
+                str(summary["sample_chunks"][0]["content_preview"]),
+            )
             page_files = list((root / "crawl" / "pages").glob("*.md"))
             self.assertEqual(len(page_files), 1)
             page_text = page_files[0].read_text(encoding="utf-8")
@@ -541,6 +938,103 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertNotIn("pdf_filename", page_text)
             serialized = json.dumps(summary, sort_keys=True) + page_text
             self.assertNotIn(str(csv_path), serialized)
+
+    def test_markitdown_normalization_removes_only_unicode_controls(self) -> None:
+        markdown = "# Café\x00\r\n\tcontent\x1f\x7f\u0085 😀"
+
+        self.assertEqual(
+            normalize_markitdown_markdown(markdown),
+            "# Café\r\n\tcontent 😀",
+        )
+
+    def test_crawl_local_file_normalizes_markitdown_control_characters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            text_path = root / "Control Chars.txt"
+            text_path.write_text("placeholder", encoding="utf-8")
+            source = detect_source(str(text_path))
+            assert isinstance(source, LocalFileSource)
+            options = CrawlOptions(
+                base_url=source.base_url, out_dir=root / "crawl", max_chunks=10
+            )
+
+            with patch(
+                "buoy_search.crawler.markitdown_file_to_markdown",
+                return_value="# Clean\x00 Title\n\nUseful\ttext with café.\x1f More text.",
+            ):
+                summary = crawl_local_document(source, options)
+
+            self.assertEqual(summary["chunks_generated"], 1)
+            page_text = next((root / "crawl" / "pages").glob("*.md")).read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("\x00", page_text)
+            self.assertNotIn("\x1f", page_text)
+            self.assertIn("# Clean Title", page_text)
+            self.assertIn("Useful\ttext with café. More text.", page_text)
+            plan = process_corpus(root / "crawl" / "pages")
+            self.assertEqual(plan.stats.chunks_generated, 1)
+            self.assertNotIn("\x00", plan.chunks[0].content)
+            self.assertNotIn("\x1f", plan.chunks[0].content)
+
+    def test_crawl_pdf_normalizes_markitdown_control_characters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pdf_path = root / "Control Chars.pdf"
+            pdf_path.write_bytes(b"%PDF-1.4 text pdf fixture")
+            source = detect_source(str(pdf_path))
+            assert isinstance(source, PdfSource)
+            options = CrawlOptions(
+                base_url=source.base_url, out_dir=root / "crawl", max_chunks=10
+            )
+
+            with patch(
+                "buoy_search.crawler.markitdown_pdf_to_markdown",
+                return_value="# PDF\x00 Title\n\nUseful PDF text.\u0085 More text.",
+            ):
+                summary = crawl_pdf(source, options)
+
+            self.assertEqual(summary["chunks_generated"], 1)
+            page_text = next((root / "crawl" / "pages").glob("*.md")).read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("\x00", page_text)
+            self.assertNotIn("\u0085", page_text)
+            self.assertIn("# PDF Title", page_text)
+            self.assertIn("Useful PDF text. More text.", page_text)
+            plan = process_corpus(root / "crawl" / "pages")
+            self.assertEqual(plan.stats.chunks_generated, 1)
+            self.assertNotIn("\x00", plan.chunks[0].content)
+            self.assertNotIn("\u0085", plan.chunks[0].content)
+
+    def test_local_document_rejects_output_emptied_by_normalization(self) -> None:
+        cases = (
+            (
+                "document.pdf",
+                b"%PDF-1.4 image-only fixture",
+                "buoy_search.crawler.markitdown_pdf_to_markdown",
+            ),
+            (
+                "document.txt",
+                b"placeholder",
+                "buoy_search.crawler.markitdown_file_to_markdown",
+            ),
+        )
+        for filename, contents, converter in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                source_path = root / filename
+                source_path.write_bytes(contents)
+                source = detect_source(str(source_path))
+                options = CrawlOptions(
+                    base_url=source.base_url, out_dir=root / "crawl"
+                )
+
+                with patch(converter, return_value="\x00\x1f\u0085"):
+                    with self.assertRaisesRegex(RuntimeError, "No text was extracted"):
+                        crawl_local_document(source, options)
+
+                self.assertFalse(options.out_dir.exists())
 
     def test_crawl_pdf_rejects_empty_markitdown_extraction(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -622,7 +1116,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider):
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, stats, strategy = crawl_pages(options)
+                    pages, stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "hybrid")
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/", "https://example.com/docs/pinning"])
@@ -655,7 +1152,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider) as link_mock:
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, stats, strategy = crawl_pages(options)
+                    pages, stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "sitemap")
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/"])
@@ -692,7 +1192,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider):
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, stats, strategy = crawl_pages(options)
+                    pages, stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "link_fallback")
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/pinning"])
@@ -756,7 +1259,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider):
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, _stats, strategy = crawl_pages(options)
+                    pages, _stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "hybrid")
         self.assertEqual(len(pages), 2)

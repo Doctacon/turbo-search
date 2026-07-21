@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-cross-repo-requests-validation.md, .10x/decisions/namespace-ranking-defaults.md
+Relates-To: .10x/tickets/done/2026-06-28-cross-repo-requests-validation.md, .10x/decisions/namespace-ranking-defaults.md
 
 # Cross-Repo Requests Validation
 

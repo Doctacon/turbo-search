@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-graded-repo-eval-metric.md
+Relates-To: .10x/tickets/done/2026-06-28-graded-repo-eval-metric.md
 
 # Graded Repo Eval Metric Validation
 
@@ -58,7 +58,7 @@ OK
 
 ## What this supports or challenges
 
-Supports acceptance criteria for `.10x/tickets/2026-06-28-graded-repo-eval-metric.md`:
+Supports acceptance criteria for `.10x/tickets/done/2026-06-28-graded-repo-eval-metric.md`:
 
 - graded judgments are loadable and validated;
 - legacy smoke eval datasets still load and score;

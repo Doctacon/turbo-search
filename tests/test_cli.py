@@ -10,11 +10,17 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from buoy_search.applied_state import AppliedStateRow, build_applied_state, save_applied_state
-from buoy_search.cli import OneLineProgress, build_parser, legacy_main, main, print_eval_text, print_retrieval_text
-from buoy_search.crawler import CrawlExecution, CrawlOptions
+from buoy_search.applied_state import AppliedStateRow, applied_state_paths, build_applied_state, save_applied_state
+from buoy_search.cli import OneLineProgress, build_parser, main, print_eval_text, print_retrieval_text
+from buoy_search.crawler import CrawlExecution, CrawlOptions, parse_github_repo_url
 from buoy_search.chunker import process_corpus
+from buoy_search.github_repo import GitHubRepoAcquisition, GitHubRepoMetadata
 from buoy_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
+
+
+def file_snapshot(path: Path) -> tuple[int, int, int, int, bytes]:
+    stat = path.stat()
+    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, path.read_bytes()
 
 
 def write_fake_crawl_page(pages_dir: Path) -> None:
@@ -111,6 +117,7 @@ def fake_github_crawl_summary(source, options: CrawlOptions) -> dict[str, object
         "max_pages": options.max_pages,
         "max_chunks": options.max_chunks,
         "repo_max_file_bytes": options.repo_max_file_bytes,
+        "repo_chunking_arm": options.repo_chunking_arm,
         "repo_search_metadata": options.repo_search_metadata,
         "repo_file_cards": options.repo_file_cards,
         "repo_oversize_file_cards": options.repo_oversize_file_cards,
@@ -201,50 +208,69 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(stdout.getvalue().count("embedding_precision: float16"), 3)
 
+    def test_retrieval_text_prints_tags_only_when_non_empty_in_stored_order(self) -> None:
+        class Output:
+            def to_dict(self) -> dict[str, object]:
+                return {
+                    "dry_run": False,
+                    "fusion": "server_rrf",
+                    "ranking_mode": "page",
+                    "ranking_profile": "none",
+                    "ranking_aggregation": "max",
+                    "embedding_precision": "float32",
+                    "hits": [
+                        {
+                            "id": "tagged",
+                            "title": "Tagged",
+                            "tags": ["library", "guide"],
+                            "score_info": {},
+                        },
+                        {
+                            "id": "empty",
+                            "title": "Empty",
+                            "tags": [],
+                            "score_info": {},
+                        },
+                    ],
+                }
+
+        stdout = StringIO()
+        with redirect_stdout(stdout):
+            print_retrieval_text(Output())  # type: ignore[arg-type]
+
+        self.assertIn("Tags: library, guide", stdout.getvalue())
+        self.assertEqual(stdout.getvalue().count("Tags:"), 1)
+
     def test_help_identifies_primary_buoy_cli(self) -> None:
         parser = build_parser()
 
         self.assertEqual(parser.prog, "buoy")
         self.assertTrue(parser.format_help().startswith("usage: buoy"))
 
-    def test_legacy_cli_warns_on_stderr_without_contaminating_json_stdout(self) -> None:
+    def test_removed_embedding_environment_returns_two_with_clean_json_stdout(self) -> None:
         stdout = StringIO()
         stderr = StringIO()
-
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            result = legacy_main(
-                ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
-            )
-
-        self.assertEqual(result, 0)
-        self.assertEqual(json.loads(stdout.getvalue())["command"], "retrieve")
-        self.assertEqual(
-            stderr.getvalue(),
-            "Warning: `turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.\n",
-        )
-
-    def test_legacy_embedding_environment_warning_keeps_json_stdout_clean(self) -> None:
-        stdout = StringIO()
-        stderr = StringIO()
-        with patch.dict(os.environ, {"TURBO_SEARCH_EMBEDDING_MODEL": "legacy/model"}, clear=True), redirect_stdout(
+        with patch.dict(os.environ, {"TURBO_SEARCH_EMBEDDING_MODEL": "removed/model"}, clear=True), redirect_stdout(
             stdout
         ), redirect_stderr(stderr):
             result = main(
                 ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
             )
 
-        self.assertEqual(result, 0)
-        self.assertEqual(json.loads(stdout.getvalue())["embedding_model"], "legacy/model")
-        self.assertIn("TURBO_SEARCH_EMBEDDING_MODEL is deprecated", stderr.getvalue())
-        self.assertIn("It will be removed in 0.4.", stderr.getvalue())
-        self.assertNotIn("Warning", stdout.getvalue())
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(
+            stderr.getvalue(),
+            "Removed environment variable is not supported in Buoy 0.4.0: "
+            "TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL\n",
+        )
 
-    def test_conflicting_embedding_environment_returns_two_with_clean_stdout(self) -> None:
+    def test_removed_embedding_environment_rejects_matching_current_value(self) -> None:
         stdout = StringIO()
         stderr = StringIO()
         with patch.dict(
             os.environ,
-            {"BUOY_EMBEDDING_MODEL": "current/model", "TURBO_SEARCH_EMBEDDING_MODEL": "legacy/model"},
+            {"BUOY_EMBEDDING_MODEL": "same/model", "TURBO_SEARCH_EMBEDDING_MODEL": "same/model"},
             clear=True,
         ), redirect_stdout(stdout), redirect_stderr(stderr):
             result = main(
@@ -253,7 +279,11 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result, 2)
         self.assertEqual(stdout.getvalue(), "")
-        self.assertIn("conflicting BUOY_EMBEDDING_MODEL", stderr.getvalue())
+        self.assertEqual(
+            stderr.getvalue(),
+            "Removed environment variable is not supported in Buoy 0.4.0: "
+            "TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL\n",
+        )
 
     def test_dual_implicit_state_roots_fail_before_plan_crawl(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -315,7 +345,10 @@ class CliTests(unittest.TestCase):
             self.assertFalse((legacy / "state").exists())
 
     def test_help_mentions_current_safe_workflow_commands(self) -> None:
-        help_text = build_parser().format_help()
+        parser = build_parser()
+        help_text = parser.format_help()
+        retrieve_help = parser._subparsers._group_actions[0].choices["retrieve"].format_help()
+        apply_help = parser._subparsers._group_actions[0].choices["apply"].format_help()
 
         self.assertIn("local-only", help_text)
         self.assertNotIn("index", help_text)
@@ -324,6 +357,16 @@ class CliTests(unittest.TestCase):
         self.assertIn("apply", help_text)
         self.assertIn("retrieve", help_text)
         self.assertIn("evals", help_text)
+        self.assertIn("live automatic or explicit namespace routing", " ".join(help_text.split()))
+        normalized_retrieve_help = " ".join(retrieve_help.split())
+        self.assertIn("Compatibility no-op; retrieval is live by default", normalized_retrieve_help)
+        self.assertIn("explicit --namespace remains local and credential-free", normalized_retrieve_help)
+        self.assertIn("TURBOPUFFER_NAMESPACE is ignored", retrieve_help)
+        self.assertNotIn("--catalog", retrieve_help)
+        normalized_apply_help = " ".join(apply_help.split())
+        self.assertIn("Plain interactive apply displays the complete local preflight", normalized_apply_help)
+        self.assertIn("--dry-run", apply_help)
+        self.assertIn("prompt-free automation", normalized_apply_help)
 
     def test_one_line_progress_reuses_current_terminal_line(self) -> None:
         stream = TtyStringIO()
@@ -534,6 +577,53 @@ class CliTests(unittest.TestCase):
         github_mock.assert_called_once()
         site_mock.assert_not_called()
 
+    def test_crawl_command_propagates_opt_in_repo_chunking_arm(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp) / "github-crawl"
+
+            def fake_github_crawl(source, options: CrawlOptions) -> dict[str, object]:  # noqa: ANN001
+                self.assertEqual(options.repo_chunking_arm, "python-ast")
+                self.assertFalse(options.repo_search_metadata)
+                self.assertFalse(options.repo_file_cards)
+                self.assertFalse(options.repo_oversize_file_cards)
+                return fake_github_crawl_summary(source, options)
+
+            stdout = StringIO()
+            with patch("buoy_search.cli.crawl_github_repo", side_effect=fake_github_crawl):
+                with redirect_stdout(stdout):
+                    result = main(
+                        [
+                            "crawl",
+                            "--base-url",
+                            "https://github.com/Doctacon/open-streaming-lab",
+                            "--out-dir",
+                            str(out_dir),
+                            "--repo-chunking-arm",
+                            "python-ast",
+                            "--json",
+                        ]
+                    )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(json.loads(stdout.getvalue())["repo_chunking_arm"], "python-ast")
+
+    def test_repo_chunking_arm_rejects_non_repository_source_before_crawl(self) -> None:
+        stderr = StringIO()
+        with patch("buoy_search.cli.crawl_site") as crawl_mock:
+            with redirect_stderr(stderr):
+                result = main(
+                    [
+                        "crawl",
+                        "--base-url",
+                        "https://example.com/docs/",
+                        "--repo-chunking-arm",
+                        "python-ast",
+                    ]
+                )
+        self.assertEqual(result, 2)
+        self.assertIn("only for GitHub repositories", stderr.getvalue())
+        crawl_mock.assert_not_called()
+
     def test_crawl_command_accepts_local_pdf_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -621,6 +711,17 @@ class CliTests(unittest.TestCase):
         root = Path(tmp.name)
         out_dir = root / "plan"
         state_root = root / "state"
+        state_paths = applied_state_paths(
+            site_id="example-com", namespace="site-example-com-v1", state_root=state_root
+        )
+        obsolete_paths = (
+            state_paths.state_dir / "last-applied.json",
+            state_paths.state_dir / "legacy-json" / "last-applied.json",
+        )
+        for index, obsolete_path in enumerate(obsolete_paths):
+            obsolete_path.parent.mkdir(parents=True, exist_ok=True)
+            obsolete_path.write_bytes(f"obsolete plan state {index}\x00".encode())
+        obsolete_before = {path: file_snapshot(path) for path in obsolete_paths}
 
         def fake_crawl(options: CrawlOptions) -> dict[str, object]:
             write_fake_crawl_page(options.out_dir / "pages")
@@ -680,6 +781,8 @@ class CliTests(unittest.TestCase):
         self.assertTrue((out_dir / "chunks.jsonl").exists())
         self.assertTrue((out_dir / "summary.json").exists())
         self.assertEqual(len(list((out_dir / "pages").glob("*.md"))), 1)
+        self.assertEqual({path: file_snapshot(path) for path in obsolete_paths}, obsolete_before)
+        self.assertFalse(state_paths.database_path.exists())
         plan = json.loads((out_dir / "plan.json").read_text(encoding="utf-8"))
         manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
         chunks = [json.loads(line) for line in (out_dir / "chunks.jsonl").read_text(encoding="utf-8").splitlines()]
@@ -840,6 +943,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(chunk["source_metadata"]["repo_path"], "README.md")
         plan = json.loads((out_dir / "plan.json").read_text(encoding="utf-8"))
         self.assertEqual(plan["crawl_options"]["repo_max_file_bytes"], 123456)
+        self.assertNotIn("repo_chunking_arm", plan["crawl_options"])
         self.assertTrue(plan["crawl_options"]["repo_search_metadata"])
         self.assertTrue(plan["crawl_options"]["repo_file_cards"])
         self.assertTrue(plan["crawl_options"]["repo_oversize_file_cards"])
@@ -847,6 +951,76 @@ class CliTests(unittest.TestCase):
         site_mock.assert_not_called()
         process_mock.assert_called_once()
         artifacts_mock.assert_called_once()
+
+    def test_plan_command_propagates_repo_chunking_arm_into_bounded_artifacts(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        checkout = root / "checkout"
+        source_path = checkout / "src/app.py"
+        source_path.parent.mkdir(parents=True)
+        source_path.write_text(
+            "MODULE = 1\nclass App:\n    def run(self):\n        return MODULE",
+            encoding="utf-8",
+        )
+        source = parse_github_repo_url("https://github.com/owner/repo")
+        assert source is not None
+        acquisition = GitHubRepoAcquisition(
+            source=source,
+            metadata=GitHubRepoMetadata(
+                owner="owner",
+                repo="repo",
+                repo_full_name="owner/repo",
+                repo_root_url=source.repo_root_url,
+                clone_url=source.clone_url,
+                default_branch="main",
+            ),
+            checkout_dir=checkout,
+            requested_ref=None,
+            resolved_ref="main",
+            repo_subdir="",
+            commit_sha="abc123",
+            clone_url=source.clone_url,
+        )
+        out_dir = root / "plan"
+
+        stdout = StringIO()
+        with patch("buoy_search.github_repo.acquire_github_repo", return_value=acquisition), patch(
+            "buoy_search.github_repo.list_tracked_files", return_value=["src/app.py"]
+        ), redirect_stdout(stdout):
+            result = main(
+                [
+                    "plan",
+                    source.repo_root_url,
+                    "--out-dir",
+                    str(out_dir),
+                    "--state-root",
+                    str(root / "state"),
+                    "--max-pages",
+                    "1",
+                    "--max-chunks",
+                    "10",
+                    "--repo-chunking-arm",
+                    "python-ast",
+                    "--no-progress",
+                    "--json",
+                ]
+            )
+
+        payload = json.loads(stdout.getvalue())
+        plan = json.loads((out_dir / "plan.json").read_text(encoding="utf-8"))
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["repo_chunking_arm"], "python-ast")
+        self.assertEqual(payload["selected_files"], ["src/app.py"])
+        self.assertEqual(payload["repo_header_chunks"], 1)
+        self.assertEqual(plan["crawl_options"]["repo_chunking_arm"], "python-ast")
+        self.assertEqual(plan["crawl_options"]["max_pages"], 1)
+        self.assertEqual(plan["crawl_options"]["max_chunks"], 10)
+        self.assertFalse(payload["api_calls_occurred"])
+        app_rows = [row for row in manifest["chunks"] if row["source_metadata"]["repo_path"] == "src/app.py"]
+        self.assertEqual(app_rows[0]["section_path"], "src/app.py")
+        self.assertTrue(all(" > Lines " in row["section_path"] for row in app_rows[1:]))
 
     def test_plan_command_writes_pdf_artifacts_without_source_path(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -1121,6 +1295,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["ranking_aggregation"], "max")
         self.assertEqual(payload["retrieval"]["rerank_by"], ["RRF"])
         include_attributes = payload["retrieval"]["subqueries"][0]["include_attributes"]
+        self.assertIn("tags", include_attributes)
+        self.assertIn("repo_path", include_attributes)
         self.assertNotIn("vector", include_attributes)
 
     def test_retrieve_command_uses_repo_defaults_for_github_namespace_in_dry_run(self) -> None:
@@ -1247,25 +1423,26 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["ranking_pool"], 20)
         self.assertEqual(payload["ranking_aggregation"], "max")
 
-    def test_retrieve_live_with_generic_overrides_is_gated_by_api_key(self) -> None:
-        stdout = StringIO()
-        stderr = StringIO()
-        with patch.dict("os.environ", {}, clear=True):
-            with redirect_stdout(stdout), redirect_stderr(stderr):
-                result = main(
-                    [
-                        "retrieve",
-                        "How does LinkExtractor filter links?",
-                        "--live",
-                        "--namespace",
-                        "site-scrapling-readthedocs-io-v1",
-                        "--json",
-                    ]
-                )
+    def test_plain_and_compatibility_live_explicit_retrieval_require_api_key(self) -> None:
+        for extra in ([], ["--live"]):
+            stdout = StringIO()
+            stderr = StringIO()
+            with self.subTest(extra=extra), patch.dict("os.environ", {}, clear=True):
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    result = main(
+                        [
+                            "retrieve",
+                            "How does LinkExtractor filter links?",
+                            "--namespace",
+                            "site-scrapling-readthedocs-io-v1",
+                            *extra,
+                            "--json",
+                        ]
+                    )
 
-        self.assertEqual(result, 2)
-        self.assertEqual(stdout.getvalue(), "")
-        self.assertIn("TURBOPUFFER_API_KEY must be set", stderr.getvalue())
+            self.assertEqual(result, 2)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("TURBOPUFFER_API_KEY must be set", stderr.getvalue())
 
     def test_evals_command_dry_run_lists_cases_without_credentials(self) -> None:
         stdout = StringIO()

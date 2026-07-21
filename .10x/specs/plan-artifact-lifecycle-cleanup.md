@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-12
-Updated: 2026-07-12
+Updated: 2026-07-18
 
 # Plan Artifact Lifecycle Cleanup
 
@@ -8,13 +8,13 @@ Updated: 2026-07-12
 
 Define prospective automatic cleanup for Buoy plan artifact directories. It covers artifacts created under the chosen `--out-dir` or default plan path.
 
-It does not delete historical artifact backlogs, active DuckDB state, legacy-state cleanup, remote Turbopuffer data, or user-managed copies outside the plan artifact directory.
+It does not delete historical artifact backlogs, active DuckDB state, obsolete JSON applied-state files, remote Turbopuffer data, or user-managed copies outside the plan artifact directory.
 
 ## Artifact lifecycle
 
 A newly completed plan directory is **pending** until one of these events:
 
-- its `apply --approve` succeeds; or
+- its confirmed apply (interactive `y`/`yes` or `--approve`) succeeds; or
 - a newer plan for the same namespace successfully writes its own review artifacts.
 
 A pending plan MUST remain available for review, apply preflight, retry after an apply failure, and diagnostics.
@@ -23,7 +23,7 @@ A pending plan MUST remain available for review, apply preflight, retry after an
 
 Given an approved apply whose remote work and local DuckDB state transaction both succeed, the command MUST remove the exact plan directory it used before reporting successful completion.
 
-Given remote failure, local-state failure, lock contention, preflight-only execution, or any other unsuccessful apply, the command MUST retain the plan directory.
+Given remote failure, local-state failure, lock contention, `--dry-run`, interactive cancellation, or any other unsuccessful apply, the command MUST retain the plan directory.
 
 ## Superseded plans
 

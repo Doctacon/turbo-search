@@ -1,6 +1,6 @@
 [project]
 name = "buoy-search"
-version = "0.3.0"
+version = "0.4.0"
 description = "Plan, index, and search public knowledge sources with anchored citations."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,8 +23,9 @@ classifiers = [
 dependencies = [
     "turbopuffer",
     "sentence-transformers",
+    "transformers==5.12.1",
     "PyYAML",
-    "scrapling[fetchers]>=0.4.9",
+    "scrapling[fetchers]==0.4.9",
     "markdownify>=1.2.0",
     "markitdown[docx,pdf,pptx,xls,xlsx]",
     "duckdb>=1.5.4",
@@ -39,11 +40,13 @@ Documentation = "https://github.com/Doctacon/buoy-search/tree/main/docs"
 
 [project.scripts]
 buoy = "buoy_search.cli:main"
-turbo-search = "buoy_search.cli:legacy_main"
 
 [build-system]
 requires = ["hatchling==1.31.0"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = ["/.10x/**"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/buoy_search"]

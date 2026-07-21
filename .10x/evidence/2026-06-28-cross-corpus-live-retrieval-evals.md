@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-cross-corpus-validation-basket.md, .10x/evidence/2026-06-28-cross-corpus-live-apply.md, .10x/evidence/2026-06-28-cross-corpus-seed-eval-datasets.md, .10x/decisions/namespace-ranking-defaults.md
+Relates-To: .10x/tickets/done/2026-06-28-cross-corpus-validation-basket.md, .10x/evidence/2026-06-28-cross-corpus-live-apply.md, .10x/evidence/2026-06-28-cross-corpus-seed-eval-datasets.md, .10x/decisions/namespace-ranking-defaults.md
 
 # Cross-Corpus Live Retrieval Evals
 
@@ -97,7 +97,7 @@ Supports:
 Challenges / limits:
 
 - Seed labels remain assistant-drafted and not human-approved.
-- The Typer repo score is lower than prior repo corpora. Part of this may be caused by the current 50 KiB repository file cap skipping central files such as `typer/main.py` and `typer/params.py`; see `.10x/tickets/2026-06-28-repo-oversize-source-indexing.md`.
+- The Typer repo score is lower than prior repo corpora. Part of this may be caused by the current 50 KiB repository file cap skipping central files such as `typer/main.py` and `typer/params.py`; see `.10x/tickets/cancelled/2026-06-28-repo-oversize-source-indexing.md`.
 - Website capped aggregation looks stronger after the new Ruff/Typer site data, but previous Pi-site evidence showed a tiny score regression for capped at pool 20 (`88.398 -> 88.204`) while P@5 was unchanged. Under the selected no-regression policy, this evidence alone does not justify changing the website default.
 
 ## Conclusion

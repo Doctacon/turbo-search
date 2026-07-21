@@ -26,7 +26,7 @@ Ship truthful public-project badges/governance, reproducible CI, and an approval
 4. `.10x/tickets/cancelled/2026-07-14-create-buoy-v0-2-0-github-release.md` — preserved failed annotated-tag attempt; cancelled without Release.
 5. `.10x/tickets/done/2026-07-14-repair-release-workflow-and-bump-v0-2-1.md` — validate remote tag metadata, bump patch version, commit/push, pass CI.
 6. `.10x/tickets/done/2026-07-14-create-buoy-v0-2-1-github-release.md` — approval-gated first GitHub Release.
-7. `.10x/tickets/2026-07-14-finalize-v0-2-1-release-docs.md` — post-release changelog and graph finalization.
+7. `.10x/tickets/done/2026-07-14-finalize-v0-2-1-release-docs.md` — post-release changelog and graph finalization.
 
 ## Aggregate acceptance criteria
 
@@ -47,4 +47,4 @@ Ship truthful public-project badges/governance, reproducible CI, and an approval
 
 ## Blockers
 
-- `.10x/tickets/2026-07-14-finalize-v0-2-1-release-docs.md` must pass review, commit/push, and CI before aggregate closure.
+- `.10x/tickets/done/2026-07-14-finalize-v0-2-1-release-docs.md` must pass review, commit/push, and CI before aggregate closure.

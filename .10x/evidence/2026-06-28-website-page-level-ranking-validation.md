@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-website-page-level-ranking.md, .10x/evidence/2026-06-28-local-reranker-repo-and-site-validation.md
+Relates-To: .10x/tickets/done/2026-06-28-website-page-level-ranking.md, .10x/evidence/2026-06-28-local-reranker-repo-and-site-validation.md
 
 # Website Page-Level Ranking Validation
 

@@ -10,18 +10,27 @@ from urllib.error import URLError
 
 from buoy_search.applied_state import AppliedStateRow, build_applied_state, load_applied_state, save_applied_state
 from buoy_search.apply import apply_preflight_summary, load_verified_apply_plan
-from buoy_search.crawler import parse_github_repo_url
+from buoy_search.crawler import CrawlOptions, parse_github_repo_url
 from buoy_search.chunker import parse_markdown_file, process_corpus
 from buoy_search.plan_artifacts import build_generic_site_row, build_plan_artifacts, write_plan_artifacts
 from buoy_search.plan_diff import diff_manifest_against_state
+from buoy_search.repo_syntax_chunking import RepoSyntaxChunkingError, chunk_source, source_payload
+from buoy_search.treatment_token_budget import (
+    TreatmentTokenBudgetError,
+    exact_token_count,
+    load_pinned_tokenizer,
+)
 from buoy_search.github_repo import (
     GitHubRepoError,
     GitHubRepoMetadata,
     acquire_github_repo,
     build_github_repo_corpus,
+    crawl_github_repo_with_plan,
     fetch_github_repo_metadata,
+    process_syntax_repo_corpus,
     resolve_github_repo_metadata,
     run_git_stdout,
+    validate_repo_chunking_options,
 )
 
 
@@ -209,6 +218,47 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
             plan = process_corpus(pages_dir)
             self.assertEqual(plan.stats.files_error, 0)
             self.assertGreaterEqual(plan.stats.chunks_generated, 2)
+
+    def test_acquired_crlf_python_is_lf_normalized_without_losing_source_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            crlf_source = (
+                b"import os\r\n"
+                b"\r\n"
+                b"\fMODULE = 1\r\n"
+                b"class Outer:\r\n"
+                b"    def inner(self):\r\n"
+                b"        return MODULE"
+            )
+            remote = create_local_git_repo(root / "remote", files={"src/crlf.py": crlf_source})
+            acquisition = acquire_from_local_remote(root, remote)
+
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            repo_file = corpus.selected_files[0]
+            expected = "import os\n\n\fMODULE = 1\nclass Outer:\n    def inner(self):\n        return MODULE"
+            self.assertIn(b"\r\n", repo_file.absolute_path.read_bytes())
+            self.assertFalse(repo_file.absolute_path.read_bytes().endswith(b"\n"))
+            self.assertEqual(repo_file.text, expected)
+            self.assertNotIn("\r", repo_file.text)
+            self.assertFalse(repo_file.text.endswith("\n"))
+            for arm in ("fixed-80-python-breadcrumbs", "python-ast"):
+                with self.subTest(arm=arm):
+                    chunking = chunk_source(repo_file.text, repo_file.repo_path, repo_file.language, arm)
+                    self.assertEqual(
+                        chunking.lines,
+                        ("import os", "", "\fMODULE = 1", "class Outer:", "    def inner(self):", "        return MODULE"),
+                    )
+                    self.assertEqual(
+                        "\n".join(source_payload(chunking, item) for item in chunking.ranges),
+                        expected,
+                    )
+                    self.assertIn("Outer > inner", {breadcrumb for item in chunking.ranges for breadcrumb in item.breadcrumbs})
+            ast_chunking = chunk_source(repo_file.text, repo_file.repo_path, repo_file.language, "python-ast")
+            self.assertEqual(
+                [(item.start, item.end, item.breadcrumbs) for item in ast_chunking.ranges],
+                [(1, 3, ()), (4, 4, ("Outer",)), (5, 6, ("Outer > inner",))],
+            )
 
     def test_build_corpus_can_include_large_file_with_search_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -466,6 +516,336 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
             self.assertEqual(summary["rows_to_upsert"], len(artifacts.manifest.chunks))
             self.assertFalse(summary["api_calls_occurred"])
             self.assertFalse(summary["state_updated"])
+
+    def test_explicit_current_default_matches_no_arm_pages_chunks_ids_and_citations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_text = "\n".join(["def long_function():"] + [f"    value_{index} = {index}" for index in range(120)])
+            remote = create_local_git_repo(root / "remote", files={"src/app.py": source_text})
+            acquisition = acquire_from_local_remote(root, remote)
+            source = acquisition.source
+            default_options = CrawlOptions(base_url=source.base_url, out_dir=root / "default")
+            control_options = CrawlOptions(
+                base_url=source.base_url,
+                out_dir=root / "control",
+                repo_chunking_arm="current-default",
+            )
+
+            with patch("buoy_search.github_repo.acquire_github_repo", return_value=acquisition):
+                default = crawl_github_repo_with_plan(source, default_options)
+                control = crawl_github_repo_with_plan(source, control_options)
+
+            self.assertEqual(default.indexing_plan.chunks, control.indexing_plan.chunks)
+            self.assertNotIn("repo_chunking_arm", default.summary)
+            self.assertEqual(control.summary["repo_chunking_arm"], "current-default")
+            self.assertEqual(control.summary["repo_header_chunks"], 1)
+            self.assertGreater(control.summary["repo_source_chunks"], 0)
+            default_page = parse_markdown_file(next((root / "default/pages").glob("*.md")), root / "default/pages")
+            control_page = parse_markdown_file(next((root / "control/pages").glob("*.md")), root / "control/pages")
+            self.assertEqual(default_page.normalized_body, control_page.normalized_body)
+            self.assertEqual(default_page.source_hash, control_page.source_hash)
+            self.assertTrue(all(chunk.section_path.startswith("src/app.py") for chunk in control.indexing_plan.chunks))
+
+    def test_explicit_current_default_fails_if_chunk_cap_omits_later_code_header(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            remote = create_local_git_repo(
+                root / "remote",
+                files={
+                    "a.py": "value = 'first'\n",
+                    "b.py": "value = 'second'\n",
+                },
+            )
+            acquisition = acquire_from_local_remote(root, remote)
+            options = CrawlOptions(
+                base_url=acquisition.source.base_url,
+                out_dir=root / "control",
+                max_chunks=2,
+                repo_chunking_arm="current-default",
+            )
+
+            with patch("buoy_search.github_repo.acquire_github_repo", return_value=acquisition):
+                with self.assertRaisesRegex(
+                    RepoSyntaxChunkingError,
+                    r"--max-chunks omitted part or all of b\.py",
+                ):
+                    crawl_github_repo_with_plan(acquisition.source, options)
+
+    def test_python_aware_arms_emit_identical_header_and_exact_isolated_source_chunks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            python_source = "\n".join(
+                ["MARKER = '```'", "class App:", "    def run(self):"]
+                + [f"        value_{index} = {index}" for index in range(79)]
+            )
+            javascript_source = "const value = 1;\n"
+            remote = create_local_git_repo(
+                root / "remote",
+                files={
+                    "README.md": "# Docs\n\nStable prose.\n",
+                    "src/app.py": python_source,
+                    "src/app.js": javascript_source,
+                },
+            )
+            acquisition = acquire_from_local_remote(root, remote)
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+            control = process_corpus(corpus.pages_dir)
+            fixed = process_syntax_repo_corpus(
+                corpus,
+                arm="fixed-80-python-breadcrumbs",
+                limit_chunks=100,
+                target_tokens=300,
+                overlap_sentences=2,
+            )
+            fixed_counts = (
+                corpus.stats.repo_header_chunks,
+                corpus.stats.repo_source_chunks,
+                corpus.stats.python_parse_fallbacks,
+                corpus.stats.non_python_fallbacks,
+            )
+            corpus.stats.repo_header_chunks = 0
+            corpus.stats.repo_source_chunks = 0
+            corpus.stats.python_parse_fallbacks = 0
+            corpus.stats.non_python_fallbacks = 0
+            syntax = process_syntax_repo_corpus(
+                corpus,
+                arm="python-ast",
+                limit_chunks=100,
+                target_tokens=300,
+                overlap_sentences=2,
+            )
+
+            blob_url = next(item.blob_url for item in corpus.selected_files if item.repo_path == "src/app.py")
+            control_header = next(
+                chunk
+                for chunk in control.chunks
+                if chunk.url == blob_url and chunk.section_path == "src/app.py"
+            )
+            for plan in (fixed, syntax):
+                app_chunks = [chunk for chunk in plan.chunks if chunk.url == blob_url]
+                self.assertEqual(app_chunks[0], control_header)
+                source_chunks = app_chunks[1:]
+                self.assertTrue(source_chunks)
+                self.assertTrue(all(chunk.url == blob_url for chunk in source_chunks))
+                ranges = [
+                    tuple(map(int, chunk.section_path.rsplit("Lines ", 1)[1].split("-")))
+                    for chunk in source_chunks
+                ]
+                self.assertEqual(ranges[0][0], 1)
+                self.assertEqual(ranges[-1][1], 82)
+                self.assertTrue(all(end - start + 1 <= 80 for start, end in ranges))
+                self.assertTrue(all(right[0] == left[1] + 1 for left, right in zip(ranges, ranges[1:])))
+                reconstructed: list[str] = []
+                for chunk, (start, end) in zip(source_chunks, ranges):
+                    fenced = chunk.content.splitlines()
+                    opening = next(index for index, line in enumerate(fenced) if line.startswith("````"))
+                    self.assertEqual(fenced[opening], "````python")
+                    reconstructed.extend(fenced[opening + 1 : -1])
+                    self.assertEqual(fenced[opening + 1 : -1], python_source.split("\n")[start - 1 : end])
+                self.assertEqual(reconstructed, python_source.split("\n"))
+
+            self.assertEqual(fixed_counts, (2, 3, 0, 1))
+            self.assertEqual(corpus.stats.repo_header_chunks, 2)
+            self.assertEqual(corpus.stats.python_parse_fallbacks, 0)
+            self.assertEqual(corpus.stats.non_python_fallbacks, 1)
+            artifacts = build_plan_artifacts(
+                indexing_plan=syntax,
+                base_url=acquisition.source.repo_root_url,
+                out_dir=root / "plan",
+                crawl_options={"repo_chunking_arm": "python-ast"},
+            )
+            app_rows = [row for row in artifacts.manifest.chunks if row.canonical_url == blob_url]
+            self.assertEqual(len(app_rows), len([chunk for chunk in syntax.chunks if chunk.url == blob_url]))
+            self.assertEqual(app_rows[0].section_path, "src/app.py")
+            self.assertTrue(all(row.canonical_url == blob_url for row in app_rows[1:]))
+            self.assertTrue(all(" > Lines " in row.section_path for row in app_rows[1:]))
+            readme_url = next(item.blob_url for item in corpus.selected_files if item.repo_path == "README.md")
+            self.assertEqual(
+                [chunk for chunk in fixed.chunks if chunk.url == readme_url],
+                [chunk for chunk in control.chunks if chunk.url == readme_url],
+            )
+
+    def test_malformed_python_fallback_is_sanitized_and_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            remote = create_local_git_repo(root / "remote", files={"broken.py": "def broken(:\n    secret = 'do not expose'\n"})
+            acquisition = acquire_from_local_remote(root, remote)
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            plan = process_syntax_repo_corpus(
+                corpus,
+                arm="python-ast",
+                limit_chunks=10,
+                target_tokens=300,
+                overlap_sentences=99,
+            )
+
+            self.assertEqual(corpus.stats.python_parse_fallbacks, 1)
+            self.assertEqual(corpus.stats.non_python_fallbacks, 0)
+            self.assertEqual(corpus.stats.repo_header_chunks, 1)
+            self.assertEqual(corpus.stats.repo_source_chunks, 1)
+            self.assertNotIn("Symbol breadcrumbs:", plan.chunks[1].content)
+            self.assertEqual(plan.chunks[1].section_path, "broken.py > Lines 1-2")
+
+    def test_token_budget_subdivision_has_golden_boundaries_counts_coverage_and_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_lines = ["def owner():"] + [
+                f"    value_{index} = \"{' '.join(['alpha'] * 20)}\""
+                for index in range(79)
+            ]
+            source_text = "\n".join(source_lines)
+            remote = create_local_git_repo(root / "remote", files={"owner.py": source_text})
+            acquisition = acquire_from_local_remote(root, remote)
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            first = process_syntax_repo_corpus(
+                corpus,
+                arm="fixed-80-python-breadcrumbs",
+                limit_chunks=100,
+                target_tokens=300,
+                overlap_sentences=2,
+            )
+            corpus.stats.repo_header_chunks = 0
+            corpus.stats.repo_source_chunks = 0
+            second = process_syntax_repo_corpus(
+                corpus,
+                arm="fixed-80-python-breadcrumbs",
+                limit_chunks=100,
+                target_tokens=300,
+                overlap_sentences=2,
+            )
+
+            self.assertEqual(first.chunks, second.chunks)
+            source_chunks = first.chunks[1:]
+            self.assertEqual(
+                [chunk.section_path for chunk in source_chunks],
+                [
+                    "owner.py > Lines 1-19",
+                    "owner.py > Lines 20-37",
+                    "owner.py > Lines 38-55",
+                    "owner.py > Lines 56-73",
+                    "owner.py > Lines 74-80",
+                ],
+            )
+            self.assertEqual([chunk.chunk_index for chunk in source_chunks], [1, 2, 3, 4, 5])
+            tokenizer = load_pinned_tokenizer()
+            self.assertEqual(
+                [exact_token_count(tokenizer, chunk.embedding_text) for chunk in source_chunks],
+                [506, 501, 501, 501, 215],
+            )
+            self.assertTrue(all(chunk.content.startswith("Symbol breadcrumbs: owner\n\n") for chunk in source_chunks))
+            reconstructed: list[str] = []
+            for chunk in source_chunks:
+                payload = chunk.content.split("```python\n", 1)[1].rsplit("\n```", 1)[0]
+                reconstructed.extend(payload.split("\n"))
+            self.assertEqual(reconstructed, source_lines)
+
+            first_rows = build_plan_artifacts(
+                indexing_plan=first,
+                base_url=acquisition.source.repo_root_url,
+                out_dir=root / "first-plan",
+                crawl_options={"repo_chunking_arm": "fixed-80-python-breadcrumbs"},
+            ).manifest.chunks
+            second_rows = build_plan_artifacts(
+                indexing_plan=second,
+                base_url=acquisition.source.repo_root_url,
+                out_dir=root / "second-plan",
+                crawl_options={"repo_chunking_arm": "fixed-80-python-breadcrumbs"},
+            ).manifest.chunks
+            self.assertEqual(
+                [(row.row_id, row.section_path, row.content) for row in first_rows],
+                [(row.row_id, row.section_path, row.content) for row in second_rows],
+            )
+
+    def test_unsplittable_513_token_line_aborts_complete_plan_with_sanitized_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secret_line = " ".join(["alpha"] * 487)
+            remote = create_local_git_repo(root / "remote", files={"huge.py": secret_line})
+            acquisition = acquire_from_local_remote(root, remote)
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            with self.assertRaises(TreatmentTokenBudgetError) as raised:
+                process_syntax_repo_corpus(
+                    corpus,
+                    arm="python-ast",
+                    limit_chunks=10,
+                    target_tokens=300,
+                    overlap_sentences=2,
+                )
+
+            message = str(raised.exception)
+            self.assertIn("repository=owner/repo", message)
+            self.assertIn("arm=python-ast", message)
+            self.assertIn("path=huge.py", message)
+            self.assertIn("line=1 tokens=513", message)
+            self.assertIn("max=512", message)
+            self.assertNotIn("alpha", message)
+            self.assertFalse((root / "plan.json").exists())
+            self.assertFalse((root / "manifest.json").exists())
+            self.assertFalse((root / "chunks.jsonl").exists())
+
+    def test_header_and_prose_overages_are_independent_fail_closed_gates(self) -> None:
+        class SelectiveTokenizer:
+            model_max_length = 512
+
+            def __init__(self, marker: str) -> None:
+                self.marker = marker
+
+            def __call__(self, text: str, **_kwargs: object) -> dict[str, object]:
+                return {"length": [513 if self.marker in text else 10]}
+
+        cases = (
+            ({"app.py": "value = 1"}, "Repository file:", "class=header"),
+            ({"README.md": "# Docs\n\nprose marker"}, "prose marker", "class=prose"),
+        )
+        for files, marker, expected_class in cases:
+            with self.subTest(row_class=expected_class), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                remote = create_local_git_repo(root / "remote", files=files)
+                acquisition = acquire_from_local_remote(root, remote)
+                corpus = build_github_repo_corpus(acquisition, root / "pages")
+                with patch(
+                    "buoy_search.github_repo.load_pinned_tokenizer",
+                    return_value=SelectiveTokenizer(marker),
+                ):
+                    with self.assertRaisesRegex(TreatmentTokenBudgetError, expected_class):
+                        process_syntax_repo_corpus(
+                            corpus,
+                            arm="python-ast",
+                            limit_chunks=10,
+                            target_tokens=300,
+                            overlap_sentences=2,
+                        )
+
+    def test_python_aware_plan_refuses_partial_max_chunk_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            remote = create_local_git_repo(root / "remote", files={"app.py": "\n".join(["value = 1"] * 81)})
+            acquisition = acquire_from_local_remote(root, remote)
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            with self.assertRaisesRegex(RepoSyntaxChunkingError, "refusing partial source coverage"):
+                process_syntax_repo_corpus(
+                    corpus,
+                    arm="python-ast",
+                    limit_chunks=2,
+                    target_tokens=300,
+                    overlap_sentences=2,
+                )
+
+    def test_repo_chunking_arm_rejects_metadata_and_cards_before_acquisition(self) -> None:
+        for field_name in ("repo_search_metadata", "repo_file_cards", "repo_oversize_file_cards"):
+            with self.subTest(field_name=field_name):
+                options = CrawlOptions(
+                    base_url="https://github.com/owner/repo",
+                    out_dir=Path("unused"),
+                    repo_chunking_arm="python-ast",
+                    **{field_name: True},
+                )
+                with self.assertRaisesRegex(GitHubRepoError, "cannot be combined"):
+                    validate_repo_chunking_options(options)
 
     def test_git_missing_error_is_user_friendly(self) -> None:
         def missing_runner(command, **kwargs):  # noqa: ANN001, ANN003 - fake subprocess runner.

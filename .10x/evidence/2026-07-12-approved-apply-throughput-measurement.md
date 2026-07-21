@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-12
 Updated: 2026-07-12
-Relates-To: .10x/tickets/2026-07-12-approved-apply-throughput-measurement.md, .10x/specs/approved-apply-throughput-measurement.md
+Relates-To: .10x/tickets/done/2026-07-12-approved-apply-throughput-measurement.md, .10x/specs/approved-apply-throughput-measurement.md
 
 # Approved Apply Throughput Measurement Validation
 

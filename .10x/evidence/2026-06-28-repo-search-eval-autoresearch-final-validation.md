@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-repo-search-eval-autoresearch-plan.md, .10x/specs/repo-search-eval-autoresearch.md
+Relates-To: .10x/tickets/done/2026-06-28-repo-search-eval-autoresearch-plan.md, .10x/specs/repo-search-eval-autoresearch.md
 
 # Repo Search Eval Autoresearch Final Validation
 
@@ -12,11 +12,11 @@ Validated the completed repo search composite eval and config-only autoresearch 
 Final ticket status check showed all child tickets and the parent plan are `done`:
 
 ```text
-.10x/tickets/2026-06-28-config-autoresearch-runner.md: Status: done
-.10x/tickets/2026-06-28-graded-repo-eval-metric.md: Status: done
-.10x/tickets/2026-06-28-repo-eval-autoresearch-docs-validation.md: Status: done
-.10x/tickets/2026-06-28-repo-search-eval-autoresearch-plan.md: Status: done
-.10x/tickets/2026-06-28-turbo-search-seed-repo-eval-dataset.md: Status: done
+.10x/tickets/done/2026-06-28-config-autoresearch-runner.md: Status: done
+.10x/tickets/done/2026-06-28-graded-repo-eval-metric.md: Status: done
+.10x/tickets/done/2026-06-28-repo-eval-autoresearch-docs-validation.md: Status: done
+.10x/tickets/done/2026-06-28-repo-search-eval-autoresearch-plan.md: Status: done
+.10x/tickets/done/2026-06-28-turbo-search-seed-repo-eval-dataset.md: Status: done
 ```
 
 Focused validation command:

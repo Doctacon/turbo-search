@@ -7,8 +7,8 @@ This is the detailed reference for turning a source into a reviewed, incremental
 Indexing has three gates:
 
 1. `plan` crawls or converts the source, chunks it, compares it with local state, and writes review artifacts. It does not read credentials, load embeddings, or contact turbopuffer.
-2. `apply` verifies the saved artifacts and recomputes the diff. Without `--approve`, it is still local-only.
-3. `apply --approve` loads the local embedding model and writes only the reviewed new or changed rows.
+2. `apply --dry-run` verifies the saved artifacts and recomputes the diff without prompting, credentials, models, or API calls.
+3. Plain interactive `apply` displays that complete preflight and prompts `Apply this plan? [y/N]`; only exact `y`/`yes` loads the local embedding model and writes reviewed rows. `apply --approve` bypasses the prompt for automation.
 
 Stale rows are retained unless `--delete-stale` is also explicit. Namespace deletion is not part of this workflow.
 
@@ -20,7 +20,7 @@ Stale rows are retained unless `--delete-stale` is also explicit. Namespace dele
 uv run buoy plan https://example.com/
 ```
 
-Website planning uses Scrapling, stays on the source host, obeys robots.txt, and derives a namespace such as `site-example-com-v1`.
+Website planning uses Scrapling, stays on the source host, obeys robots.txt, and derives a namespace such as `site-example-com-v1`. Supply website URLs only as a trusted local operator: exact-host crawl containment is enforced, but private-network SSRF blocking is not part of this local CLI.
 
 ### Public GitHub repositories
 
@@ -108,25 +108,27 @@ See `uv run buoy plan --help` for current caps and all crawl controls.
 ## Review the preflight
 
 ```bash
-uv run buoy apply
+uv run buoy apply --dry-run
 ```
 
-By default, apply selects the newest plan under `artifacts/site-crawls/`. Use `--plan <path>` when multiple plans exist.
+By default, apply selects the newest plan under `artifacts/site-crawls/`. Use `--plan <path>` when multiple plans exist. Plain apply requires an interactive stdin; scripts must choose `--dry-run` or `--approve`, and piped input cannot confirm.
 
-Preflight verifies schema, namespace, manifest/chunk agreement, embedding-text hashes, artifact integrity, compatibility with local state, and the target local catalog. Its text identifies the automatically selected plan path and source, artifact hash, namespace and region, verified embedding model and precision, first-apply state, upsert/embedding/unchanged/stale counts, an explicit `retain N` or `delete N` stale-row intent, and whether catalog registration will create, refresh, or preserve a manual card.
+Preflight verifies schema, namespace, manifest/chunk agreement, embedding-text hashes, artifact integrity, and compatibility with local state. Because it does not contact Turbopuffer, remote catalog state and the resulting registration action remain unknown until approved. Its text identifies the automatically selected plan path and source, artifact hash, namespace and region, verified embedding model and precision, first-apply state, upsert/embedding/unchanged/stale counts, and an explicit `retain N` or `delete N` stale-row intent.
 
-Use `--region REGION` to override `TURBOPUFFER_REGION` and bind that region into the registered retrieval contract. Catalog path precedence is `--catalog PATH`, `BUOY_CATALOG_PATH`, then `catalog.json` under the resolved state root.
+Use `--region REGION` to override `TURBOPUFFER_REGION` and bind that region into the registered retrieval contract. The remote catalog namespace is fixed as `buoy-routing-catalog-v1`; local catalog path options and `BUOY_CATALOG_PATH` are not supported.
 
 Preflight does not read `TURBOPUFFER_API_KEY`, load an embedding model, mutate the catalog, or contact turbopuffer. It also prints shell-safe preview and live retrieval commands labeled for use after a successful apply; the approved apply repeats them as the next step. Replace the quoted `<query>` placeholder with the question to search while preserving the recorded namespace, region, model, and precision.
 
-## Approved apply
+## Confirmed apply
 
-After reviewing the plan and preflight:
+After reviewing the plan and preflight, run the normal interactive flow:
 
 ```bash
 export TURBOPUFFER_API_KEY="..."
-uv run buoy apply --approve
+uv run buoy apply
 ```
+
+The complete preflight is displayed again before the exact `[y/N]` prompt. Enter, no, arbitrary input, EOF, or prompt failure cancels successfully without writes and retains the plan. For separately authorized non-interactive automation, use `uv run buoy apply --approve`; it never prompts.
 
 If credentials live in this repository's `.env`, load them only into the command subshell:
 
@@ -135,11 +137,11 @@ If credentials live in this repository's `.env`, load them only into the command
   set -a
   . ./.env
   set +a
-  uv run buoy apply --approve
+  uv run buoy apply
 )
 ```
 
-Approved apply acquires a fail-fast lock for the target namespace before catalog-card embedding, pending-state creation, credential lookup, or remote work, and retains it through applied-state and catalog commit. It validates and persists a secret-free pending card before remote writes, overlaps one local content-embedding batch with one ordered remote upsert, and commits applied state only after all remote work succeeds. Successful apply then commits one local catalog card; manual semantic fields and disabled state are preserved.
+Approved apply acquires a fail-fast lock for the target namespace before catalog-card embedding, pending-state creation, credential lookup, or remote work, and retains it through applied-state and catalog commit. It validates and persists a secret-free pending card before remote writes, overlaps one local content-embedding batch with one ordered remote upsert, and commits applied state only after all remote work succeeds. Successful apply then conditionally commits one remote catalog card; manual semantic fields and disabled state are preserved.
 
 It never runs concurrent embeddings or concurrent writes. Interactive runs show confirmed batches/rows on one stderr line; the final summary separates elapsed, embedding, and write time, whose stage totals may exceed wall time because they overlap. Tune the two independent batch controls only after measuring the workload:
 
@@ -173,16 +175,16 @@ A same-namespace approved apply fails fast if another apply holds its lock. Diff
 
 Pending, preflighted, and failed plans remain available. Catalog registration pending files live under `<state-root>/catalog-pending/`. Any pending file blocks automatic apply reruns so Buoy cannot unknowingly repeat remote writes after a crash. A successful approved apply removes its pending file and exact plan directory after remote work, state commit, and catalog commit. A newly written verified plan removes older sibling plans for the same namespace. Copy a plan elsewhere before approval if it must be retained for audit.
 
-If remote work and applied state succeed but pending confirmation, local catalog commit, or pending cleanup fails, apply exits 2 with `remote_apply_succeeded=true`, a retained recoverable pending path, and an exact local `buoy catalog reconcile` command. Output reports the phase truthfully: a cleanup-only failure keeps `catalog_updated=true`, includes catalog/card revisions, and sets `pending_cleanup=false`; earlier local failures report `catalog_updated=false`. Do not rerun apply; run the repair command instead. Reconcile can recover an interrupted confirmation only when the exact bound applied-state ledger proves a new matching success. Otherwise an unconfirmed pending file represents indeterminate remote state and can be removed only with the separately reviewed `buoy catalog abandon-pending ... --approve` flow described in the catalog guide.
+If remote work and applied state succeed but pending confirmation, remote catalog commit, or pending cleanup fails, apply exits 2 with `remote_apply_succeeded=true`, a retained recoverable pending path, and an exact `buoy catalog reconcile` command. Output reports the phase truthfully: a cleanup-only failure keeps `catalog_updated=true`, includes catalog/card revisions, and sets `pending_cleanup=false`; earlier local failures report `catalog_updated=false`. Do not rerun apply; run the repair command instead. Reconcile can recover an interrupted confirmation only when the exact bound applied-state ledger proves a new matching success. Otherwise an unconfirmed pending file represents indeterminate remote state and can be removed only with the separately reviewed `buoy catalog abandon-pending ... --approve` flow described in the catalog guide.
 
-A legacy `last-applied.json` is removed when the DuckDB ledger is first used; the ledger starts empty so the next approved apply re-upserts reviewed rows rather than trusting legacy local state.
+DuckDB is the only applied-state authority. Obsolete JSON applied-state files are ignored and left unchanged; when no `state.duckdb` exists, apply uses normal first-apply behavior.
 
 ## Stale rows
 
 Preview stale deletion locally:
 
 ```bash
-uv run buoy apply --delete-stale
+uv run buoy apply --dry-run --delete-stale
 ```
 
 Delete only those exact stale row IDs after approval:

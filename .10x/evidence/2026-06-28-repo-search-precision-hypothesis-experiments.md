@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-06-28
 Updated: 2026-06-28
-Relates-To: .10x/tickets/2026-06-28-repo-search-precision-hypothesis-experiments.md, .10x/research/2026-06-28-repo-search-precision-state-of-art.md, .10x/evidence/2026-06-28-live-turbo-search-repo-index-and-eval.md
+Relates-To: .10x/tickets/done/2026-06-28-repo-search-precision-hypothesis-experiments.md, .10x/research/2026-06-28-repo-search-precision-state-of-art.md, .10x/evidence/2026-06-28-live-turbo-search-repo-index-and-eval.md
 
 # Repo Search Precision Hypothesis Experiments
 

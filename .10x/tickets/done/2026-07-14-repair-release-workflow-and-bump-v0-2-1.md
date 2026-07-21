@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-14
 Updated: 2026-07-14
-Parent: .10x/tickets/2026-07-14-buoy-public-ci-release-plan.md
+Parent: .10x/tickets/done/2026-07-14-buoy-public-ci-release-plan.md
 Depends-On: .10x/tickets/done/2026-07-14-publish-buoy-rebrand-commit.md
 
 # Repair Hosted Release Validation and Bump v0.2.1

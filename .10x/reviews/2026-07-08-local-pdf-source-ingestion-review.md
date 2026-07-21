@@ -1,14 +1,14 @@
 Status: recorded
 Created: 2026-07-08
 Updated: 2026-07-08
-Target: working tree diff for .10x/tickets/2026-07-08-local-pdf-source-ingestion.md
+Target: working tree diff for .10x/tickets/done/2026-07-08-local-pdf-source-ingestion.md
 Verdict: pass
 
 # Local PDF Source Ingestion Review
 
 ## Target
 
-Working tree diff implementing `.10x/specs/local-pdf-source-ingestion.md` and `.10x/tickets/2026-07-08-local-pdf-source-ingestion.md`.
+Working tree diff implementing `.10x/specs/local-pdf-source-ingestion.md` and `.10x/tickets/done/2026-07-08-local-pdf-source-ingestion.md`.
 
 ## Assumptions tested
 
