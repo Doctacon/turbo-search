@@ -26,6 +26,10 @@ Independent review reached PASS with no blocker:
 
 PASS. C5 satisfies its implementation acceptance criteria and may close. The pass applies only to the reviewed PR #69 head and does not authorize C6 planning against the Buoy/pytest/Ruff pilot, any live apply or retrieval, namespace writes/deletes, catalog/default mutation, or promotion.
 
+## Subsequent citation-contract correction
+
+The PASS remains valid for C5's exact output-parity implementation. It did not establish that every control row has a parseable line-range component. The later pinned C6 Ruff corpus found 2,722 exactly ordinary-equivalent control rows across 170 paths without one; the user-ratified superseding spec now states that `current-default` preserves that exact existing behavior while treatment arms still require exact ranges. No C5 source/output change was required or made.
+
 ## Residual risk and attestation limit
 
 The recorded paired plans cover only a bounded three-file local Buoy corpus, not the exact C6 Buoy/pytest/Ruff pilot forecast. Exact pilot repository commits/corpora, namespace names, selected-file and header/source row counts, storage multipliers, and write counts remain unreported, and exact write approval remains ungranted. Local artifacts, tests, diff inspection, and hosted checks cannot retroactively prove absence of every unlogged external action; the no-live-operation conclusion remains bounded by the tracked implementation, recorded procedure, and contemporaneous operator attestation. C6 retains durable ownership of both residuals and remains blocked.

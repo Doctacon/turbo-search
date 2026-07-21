@@ -18,7 +18,7 @@ This review concerns only whether the exact seven-item contract is sufficiently 
 - The treatment coordinate model is deterministic: one-based LF-only physical rows after universal-newline acquisition, no terminal-LF row, form-feed retained within a row, and fail-closed post-acquisition bare carriage returns.
 - Standard-library `ast` and `tokenize` are sufficient and exclusively authorized. Symbol kinds, Python 3.11 grammar, decorator introducer matching, complete multiline decorator ownership, count/coordinate invariants, and unexpected-failure behavior are explicit.
 - Fixed-window breadcrumbs, innermost AST ownership, module ownership, nested carving, forward-except-at-EOF trivia attachment, deterministic 80-line subdivision, zero overlap, and no generic treatment split leave no unresolved boundary choice.
-- The identical per-file non-source header is required in all arms and counted separately. Treatment final chunks have exact LF-vector coverage and payload-accurate `Lines S-E` citations; the control correctly retains only originating-section citations and must prove exact pre-C5 parity.
+- The identical per-file non-source header is required in all arms and counted separately. Treatment final chunks have exact LF-vector coverage and payload-accurate `Lines S-E` citations. The reviewed head described control rows as retaining originating-section citations; subsequent pinned Ruff evidence disproved that universal wording while confirming exact pre-C5 parity.
 - Parse and non-Python fallbacks are whole-file, isolated fixed/no-breadcrumb treatments with explicit sanitized counts. Unexpected tokenizer, coordinate, and runtime failures stop rather than silently downgrade.
 - Default, metadata/card compatibility, local-only safety, standard-library-only dependencies, focused/full CPython 3.11/3.13 CI, and no-live-operation boundaries are explicit. C6 retains separate plan and write approval gates.
 
@@ -27,6 +27,10 @@ No blockers or unresolved semantics were found in the reviewed seven-item contra
 ## Verdict
 
 PASS. The specification at `6f46ef9bb3b925400a6672e67f68dffc74f7872d` is precise enough to activate unchanged after explicit user ratification and to make C5 open/executable. This pass does not authorize syntax implementation in the ratification record turn, C6 execution, local-plan inference, model or credential access, live operations, namespace writes/deletes, catalog/default changes, or promotion.
+
+## Subsequent user-ratified supersession
+
+This review remains the historical assessment of PR #64 at `6f46ef9bb3b925400a6672e67f68dffc74f7872d`; it is not review of the repaired PR #71 head. After C6 found 2,722 ordinary-equivalent Ruff control rows across 170 paths without a parseable `Lines S-E` component, the user ratified the narrow correction recorded in `.10x/evidence/2026-07-20-python-syntax-citation-correction-ratification.md`. The original reviewed specification is preserved at `.10x/specs/superseded/repo-python-syntax-chunking-experiment-originating-citation.md`; current authority preserves exact existing control citation output even where no line range survives, while treatment exact-line requirements and corpus/output parity remain unchanged.
 
 ## Residual risk
 

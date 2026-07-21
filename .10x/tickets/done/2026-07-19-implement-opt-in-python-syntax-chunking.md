@@ -14,7 +14,7 @@ Completed the exact ratified local-only Python syntax chunking implementation. I
 
 Own a local-only, experiment-only Python syntax chunking implementation after an active focused specification defines exact behavior. Preserve the actual current default—fixed 80-entry repository sections followed by generic Markdown token splitting/overlap—and preserve existing `--repo-search-metadata` output/behavior.
 
-The user ratified the complete seven-item syntax contract exactly as independently reviewed at PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`. `.10x/specs/repo-python-syntax-chunking-experiment.md` is active and settles the arm identifiers/control pairing, LF coordinates, AST/tokenizer decorator spans, breadcrumbs/ownership, treatment subdivision, common header, distinct control/treatment coverage and citations, fallback, compatibility, validation matrix, and local-only safety behavior. C5 has no unresolved semantic blocker and is executable within that authority.
+The user ratified the complete seven-item syntax contract exactly as independently reviewed at PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`, then ratified one narrow evidence-driven citation correction after C6: `current-default` preserves exact existing citation output even where no parseable `Lines S-E` survives, while treatments still require exact ranges. `.10x/specs/repo-python-syntax-chunking-experiment.md` is current authority; the original wording is preserved under `.10x/specs/superseded/`. No C5 output or default changed.
 
 ## Ratified syntax-contract checkpoint
 
@@ -25,7 +25,7 @@ All seven numbered items in the active specification were confirmed unchanged on
 - An active focused syntax experiment spec exists and this ticket contains no unresolved behavior.
 - Implementation is explicit opt-in, local-plan-capable, standard-library-only unless a later decision says otherwise, and unchanged by default; `current-default` exactly reproduces the pre-C5 80-entry renderer plus generic token split/overlap.
 - Each Python-aware arm is isolated from generic split/overlap and metadata/card treatments and is paired against `current-default` on the same commit/corpus.
-- Tests cover every ratified LF/AST/tokenizer/header/boundary/fallback/coverage scenario, distinguish control originating-section citations from exact treatment final-chunk citations, and prove complete treatment source-order coverage with no unintended omission or duplication.
+- Tests cover every ratified LF/AST/tokenizer/header/boundary/fallback/coverage scenario, distinguish exact existing control citation parity—including possible absence of a parseable line range—from exact treatment final-chunk citations, and prove complete treatment source-order coverage with no unintended omission or duplication.
 - Focused and full tests pass in the required CI matrix on CPython 3.11 and 3.13; one local runtime is not sufficient closure evidence.
 - Local paired plans record commit, selected files, header/source chunks and rows, multipliers, and zero remote calls/writes.
 - No namespace, catalog, applied state, dataset, label, or default changes occur.
@@ -53,6 +53,7 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 
 - `.10x/specs/repo-python-syntax-chunking-experiment.md`
 - `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`
+- `.10x/evidence/2026-07-20-python-syntax-citation-correction-ratification.md`
 - `.10x/evidence/2026-07-20-python-syntax-chunking-local-paired-plans.md`
 - `.10x/evidence/2026-07-20-python-syntax-chunking-implementation-validation.md`
 - `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`
@@ -72,6 +73,7 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 - 2026-07-20: Implemented the three opt-in arms under the active contract with standard-library AST/tokenizer boundaries, isolated exact treatment chunks, unchanged explicit control/no-arm behavior, compatibility rejection, sanitized fallbacks, and fail-closed invariants. Added focused LF/decorator/nesting/ownership/trivia/80-line/header/citation/fallback/control/CLI/plan tests; focused/full suites and the frozen-contract validator pass locally on CPython 3.11 and 3.13, and PR #69 hosted Python 3.11/Python 3.13/distribution CI passed on the implementation commit. Recorded same-commit three-file paired local plan/count evidence in `.10x/evidence/2026-07-20-python-syntax-chunking-local-paired-plans.md` and local matrix/build evidence in `.10x/evidence/2026-07-20-python-syntax-chunking-implementation-validation.md`. C5 is active pending independent implementation review; C6 remains blocked and no model, credential, remote retrieval, namespace/catalog/state write, delete, default, dataset, or label change occurred.
 - 2026-07-20: Repaired only PR #69 review blockers in commit `b5588aa48c8d916e8ff50eb3d77a2ab4403bd0dc`: explicit `current-default` now rejects any generic `--max-chunks` result that omits a selected code file's one header or any expected source chunk; acquisition-level CRLF/no-final-LF coverage and bounded end-to-end `plan --repo-chunking-arm` artifact coverage were added without changing the no-arm artifact contract. Focused 72-test and full 465-test suites plus the frozen-contract validator pass sequentially on CPython 3.11 and 3.13; distribution build and hosted run `29771927189` passed. C5 remains active for the required independent review; nothing was closed, merged, applied, or promoted.
 - 2026-07-20: Independent review passed PR #69 head `360c6b9c666ccf432c082ac44d0a1400955ce3e9` with no blocker. Closed and moved C5 to `done`; mechanically repaired active references. This satisfies only C6's C5 dependency. The exact Buoy/pytest/Ruff pilot forecast/count checkpoint and separate namespace-write approval remain absent, so C6 remains blocked and no live plan/apply/retrieval or promotion occurred.
+- 2026-07-20: Recorded the user's narrow citation correction after the larger C6 corpus exposed existing generic-parser control rows without `Lines S-E`. Superseded only the inaccurate universal wording: C5 continues to preserve exact ordinary/current-default output, treatments retain exact ranges, and no source, row, plan, corpus, or default changed.
 
 ## Closure mapping
 

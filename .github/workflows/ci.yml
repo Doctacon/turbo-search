@@ -40,6 +40,8 @@ jobs:
         run: uv sync --locked --python ${{ matrix.python-version }}
       - name: Validate frozen ranking contract
         run: PYTHONDONTWRITEBYTECODE=1 uv run python scripts/validate_ranking_contract.py
+      - name: Validate blocked C6 syntax forecast
+        run: PYTHONDONTWRITEBYTECODE=1 uv run python scripts/c6_syntax_forecast.py validate
       - name: Run tests and documentation checks
         run: PYTHONDONTWRITEBYTECODE=1 uv run python -m unittest discover -s tests -p 'test_*.py' -q
 

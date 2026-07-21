@@ -1,12 +1,14 @@
-Status: active
+Status: superseded
 Created: 2026-07-20
 Updated: 2026-07-20
 
-# Repository Python Syntax Chunking Experiment
+# Repository Python Syntax Chunking Experiment — Original Citation Wording
+
+Superseded by `.10x/specs/repo-python-syntax-chunking-experiment.md` after the user ratified one narrow correction: `current-default` preserves exact existing generic-parser citation behavior even when a final source row has no parseable `Lines S-E` component. The prior statement that every control source row retained an originating line-range component was disproved by the pinned Ruff corpus. Treatment citation requirements, corpus/output parity, and every other contract term remain unchanged.
 
 ## Authority and activation gate
 
-This is the active exact contract for C5 in `.10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md`. It supersedes `.10x/specs/superseded/repo-python-syntax-chunking-experiment-originating-citation.md` after the user ratified one narrow evidence-driven correction on 2026-07-20: `current-default` preserves exact existing generic-parser citation behavior even when a final source row has no parseable `Lines S-E` component. Treatment arms still require exact line ranges. The correction changes no arm, output, coordinate, AST/tokenizer, ownership, subdivision, header, treatment coverage/citation, fallback, validation, default, or safety semantic.
+This is the active exact contract for C5 in `.10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md`. Independent review passed PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`, and the user ratified all seven numbered items exactly as reviewed on 2026-07-20. The ratification changed no arm, coordinate, AST/tokenizer, ownership, subdivision, header, coverage/citation, fallback, validation, or safety semantics.
 
 The following boundaries are already established by the task and active records:
 
@@ -20,7 +22,7 @@ Current source inspection establishes the implementation boundary that this acti
 - `src/buoy_search/github_repo.py` currently renders non-Markdown/non-prose repository files from `text.splitlines()` in consecutive 80-entry Markdown sections headed `Lines <start>-<end>`;
 - every rendered repository code page currently begins with an H1 path plus a section containing `Repository file` and `Language`;
 - `--repo-search-metadata` adds a file-wide path/stem/symbol preamble and regex-derived Python symbol breadcrumbs;
-- `src/buoy_search/chunker.py` then applies the generic 300-token Markdown parser/split and up-to-two-sentence overlap to every section; embedded Markdown-like headings in code or fixture payloads can replace the originating line-range heading in a final chunk's `section_path`;
+- `src/buoy_search/chunker.py` then applies the generic 300-token Markdown split and up-to-two-sentence overlap to every section, while derived chunks retain the originating section heading as `section_path`;
 - manifest citations retain the GitHub blob URL and `section_path`; they do not create per-chunk GitHub line-fragment URLs;
 - supported CPython 3.11+ provides `ast`, `tokenize`, class/function/async-function locations, and inclusive `lineno`/`end_lineno` spans. A fixed `feature_version=(3, 11)` can hold accepted grammar constant across the supported 3.11/3.13 CI matrix.
 
@@ -146,7 +148,7 @@ For every selected nonempty source file in either Python-aware arm:
 
 Each Python-aware final source chunk MUST use `Lines <start>-<end>` as the final `section_path` component and retain the existing immutable GitHub blob URL as `canonical_url`. No `#Lx-Ly` URL fragment is proposed because the current page/manifest boundary owns one canonical URL per source file. Every Python-aware line-range citation MUST describe exactly the source payload carried by that final chunk.
 
-For `current-default`, validation instead MUST prove exact parity with the pre-C5 pipeline at two boundaries: rendered 80-entry repository sections and final generic Markdown chunks. Its final source chunks MUST preserve the exact existing `section_path` emitted by generic Markdown parsing, splitting, and overlap. That path MAY retain the originating `Lines S-E` component, but embedded Markdown-like headings in code or fixtures MAY replace it, leaving no parseable line-range component. Control validation MUST NOT require, synthesize, or restore a line range where the ordinary path emits none. Control rows MUST NOT be reported as exact payload-level line citations, and final-chunk reconstruction/nonoverlap assertions MUST NOT be falsely applied to them. The mandatory non-source header remains excluded from both control section coverage and treatment source coverage.
+For `current-default`, validation instead MUST prove exact parity with the pre-C5 pipeline at two boundaries: rendered 80-entry repository sections and final generic Markdown chunks. Its final source chunks intentionally retain the originating `Lines S-E` section path even when a token split carries only part of that section or sentence overlap duplicates text. They MUST NOT be reported as exact payload-level line citations, and final-chunk reconstruction/nonoverlap assertions MUST NOT be falsely applied to them. The mandatory non-source header remains excluded from both control section coverage and treatment source coverage.
 
 ### Fallback
 
@@ -171,7 +173,7 @@ No Tree-sitter package, parser grammar, model, or other dependency may be added.
 3. **LF coordinates and coverage:** An acquisition-normalized CRLF fixture containing form-feed, blank LF lines, module statements, nested symbols, and a final line without LF proves form-feed is intra-line whitespace and reconstructs the exact LF physical-line vector from each Python-aware arm; a post-acquisition bare CR fails the coordinate invariant.
 4. **Decorators and nesting:** Fixtures with multiple decorators, `@` on a row whose AST expression starts later, multiline calls, an expression-internal `@`, sync/async definitions, and nested definitions prove introducer-token matching, complete physical decorator ownership, ancestor chains, and no parent duplication.
 5. **Long symbol and trivia:** A 161-line ownership region yields `80/80/1`; leading, interstitial, nested, and trailing comment/blank-only runs follow the next-region/last-region rule without a trivia-only chunk.
-6. **Header and citation integrity:** Every arm emits one identical first non-source header final chunk included in row counts but excluded from coverage. Every Python-aware source chunk’s `Lines S-E` equals its exact payload and unchanged blob URL; control citations are validated only for exact existing generic-pipeline parity and may lack a parseable line range.
+6. **Header and citation integrity:** Every arm emits one identical first non-source header final chunk included in row counts but excluded from coverage. Every Python-aware source chunk’s `Lines S-E` equals its exact payload and unchanged blob URL; control citations are explicitly validated only as originating-section citations.
 7. **Fallback:** Malformed Python falls back wholly to isolated LF fixed/no-breadcrumb chunks with one sanitized parse-fallback count; representative non-Python source uses the same treatment and count; Markdown/prose remains unchanged; unexpected tokenizer/coordinate failures stop.
 8. **Compatibility:** No-arm output and existing `--repo-search-metadata`/card output match pre-change fixtures, including current generic split and overlap; comparison selectors reject incompatible flags before corpus generation.
 9. **Runtime and CI parity:** Focused syntax fixtures plus the full suite run in the existing required CI matrix on CPython 3.11 and 3.13 and produce identical boundaries, breadcrumbs, headers, fallback counts, and citations. A one-runtime local pass is insufficient closure evidence.
@@ -184,7 +186,7 @@ No Tree-sitter package, parser grammar, model, or other dependency may be added.
 - Token-overlap tuning, semantic splitting, retrieval/ranking changes, or model evaluation.
 - Live retrieval, namespace writes/deletes, catalog/applied-state changes, dataset/label changes, or promotion.
 - A public/default chunking profile or automatic language selector beyond deterministic fallback.
-- Repairing current-default `splitlines()` coordinates, synthesizing missing control line ranges, or changing its existing section-path behavior inside C5/C6.
+- Repairing current-default `splitlines()` coordinates or its section-level citation precision inside C5.
 
 ## Ratified exact checkpoint
 
@@ -194,11 +196,11 @@ The user confirmed the complete contract above by ratifying all seven reviewed i
 2. **Physical lines, AST, and decorators:** Confirm LF-only one-based coordinates after existing universal-newline acquisition (terminal LF adds no line; form-feed is intra-line whitespace; post-acquisition bare CR fails), Python 3.11 grammar via standard-library `ast`, only class/sync-function/async-function symbols, and standard-library `tokenize` first-token `@` coordinates owning complete physical multiline decorator spans.
 3. **Breadcrumbs and ownership:** Confirm name-only outer-to-inner chains, all intersecting chains on fixed physical windows, innermost-symbol/module ownership, nested source carved out of parents, and outside-symbol comment/blank-only runs attached forward (or backward only at EOF).
 4. **Treatment subdivision and final chunks:** Confirm isolated Python-aware final chunks have a hard maximum of 80 physical source lines, deterministic `80/80/.../remainder` subdivision, zero overlap, no generic token/sentence split, and fail-closed handling when an intact line/range cannot be planned safely.
-5. **Common header, coverage, and citations:** Confirm exactly one identical `Repository file`/`Language` non-source header final chunk in every arm, included in row/storage counts but excluded from source coverage; exact LF-vector reconstruction and payload-accurate `Lines S-E`/unchanged-blob citations apply to Python-aware final source chunks, while current-default preserves exact existing generic-pipeline citation output—including rows without a parseable line range—and is validated for exact pre-C5 parity.
+5. **Common header, coverage, and citations:** Confirm exactly one identical `Repository file`/`Language` non-source header final chunk in every arm, included in row/storage counts but excluded from source coverage; exact LF-vector reconstruction and payload-accurate `Lines S-E`/unchanged-blob citations apply to Python-aware final source chunks, while current-default retains only originating-section citations and is validated for exact pre-C5 parity.
 6. **Fallback:** Confirm whole-file isolated LF fixed/no-breadcrumb fallback for Python `SyntaxError`/`ValueError`, the same treatment for non-Python source, sanitized fallback counts, no control parsing/fallback count, and fail-closed behavior for unexpected tokenizer/coordinate/runtime failures.
 7. **Compatibility, validation, and safety:** Confirm no-arm and existing metadata/card outputs stay unchanged; focused plus full validation is required in CI on CPython 3.11 and 3.13; and C5 remains dependency-free/local-only with no model load, credential read, live call, write, delete, state, dataset, default, or product change.
 
-Original ratification provenance is recorded in `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`; citation-correction ratification and supersession rationale are recorded in `.10x/evidence/2026-07-20-python-syntax-citation-correction-ratification.md`; independent review history is recorded in `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`. Any future semantic correction requires this active specification to be superseded rather than edited in place.
+Ratification provenance is recorded in `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`; independent review is recorded in `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`. Any future semantic correction requires this active specification to be superseded rather than edited in place.
 
 ## References
 
@@ -206,8 +208,6 @@ Original ratification provenance is recorded in `.10x/evidence/2026-07-20-python
 - `.10x/tickets/done/2026-07-19-implement-opt-in-python-syntax-chunking.md`
 - `.10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md`
 - `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`
-- `.10x/evidence/2026-07-20-python-syntax-citation-correction-ratification.md`
-- `.10x/specs/superseded/repo-python-syntax-chunking-experiment-originating-citation.md`
 - `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
