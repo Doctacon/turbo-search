@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-21
 Updated: 2026-07-21
-Parent: .10x/tickets/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
+Parent: .10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
 Depends-On: None
 
 # Reconcile GitHub Repository Rename
@@ -41,8 +41,8 @@ Distribution/package/CLI rename; mutation of historical releases/provenance; rew
 - `.10x/specs/develop-to-main-release-readiness.md`
 - `.10x/specs/main-push-automatic-github-release.md`
 - `.10x/specs/protected-github-branches.md`
-- `.10x/tickets/2026-07-21-release-buoy-v0-4-1-through-main-automation.md`
-- `.10x/tickets/2026-07-21-bridge-v0-4-squash-topology-once.md`
+- `.10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-automation.md`
+- `.10x/tickets/done/2026-07-21-bridge-v0-4-squash-topology-once.md`
 
 ## Evidence expectations
 

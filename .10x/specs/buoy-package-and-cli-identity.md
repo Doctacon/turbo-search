@@ -1,39 +1,42 @@
 Status: active
-Created: 2026-07-14
-Updated: 2026-07-19
+Created: 2026-07-21
+Updated: 2026-07-21
 
-# Buoy Package and CLI Identity
+# Buoy Package, Dynamic Version, and CLI Identity
 
 ## Purpose and scope
 
-Define the code and distribution identity for Buoy through the 0.4 release.
+Define current code/distribution/CLI identity and tag-derived package version behavior after v0.4. This supersedes `.10x/specs/superseded/buoy-package-and-cli-identity-through-v0-4.md` while preserving its non-version identity and compatibility boundaries.
 
-## Behavior
+## Identity
 
-- Project metadata MUST use display name `Buoy`, distribution name `buoy-search`, current release version `0.4.0`, and Apache-2.0 licensing with a root `LICENSE` file.
-- Implementation code MUST live under `src/buoy_search`; internal imports, tests, mocks, module commands, bundled data paths, reports, and build configuration MUST use `buoy_search`.
-- The sole product console script MUST be `buoy = buoy_search.cli:main`; CLI help and version output MUST identify `buoy`.
-- Version 0.4 MUST NOT expose a `turbo-search` console entry point or a dedicated `buoy_search.cli:legacy_main` hook.
-- `python -m buoy_search` and `python -m buoy_search.autoresearch` MUST work. `turbo_search` Python imports/module execution remain an intentional clean break and MUST be documented in the migration guide.
-- User agents, generated runner identifiers, self-referential eval questions, expected source paths, fixture names, and active user-facing error text MUST use the new identity.
-- Existing semantic identifiers unrelated to branding—including source namespaces, plan IDs, apply IDs, deterministic remote `ts_*` row IDs, and intermediate `jf_*` chunk IDs—MUST NOT change solely for the rebrand.
-- The wheel/sdist MUST contain `buoy_search` and required bundled datasets, and MUST NOT contain the old implementation package.
+- Product is Buoy; distribution `buoy-search`; package `buoy_search`; sole console script `buoy = buoy_search.cli:main`; license Apache-2.0; canonical repository `Doctacon/buoy`.
+- No `turbo-search` console entry point, `legacy_main`, `turbo_search` import shim, or removed environment aliases return.
+- Existing state/plan/namespace identifiers and `.turbo-search` state-root compatibility do not change solely for version automation.
 
-## Compatibility
+## Dynamic version behavior
 
-- Scripts migrate from the removed `turbo-search` console entry point by replacing only the executable name with `buoy`; arguments and primary CLI behavior remain unchanged.
-- Package installation and upgrade validation concerns package-owned launchers only. Buoy does not delete user-created aliases, copied launchers, wrappers, caches, or other files outside package-manager ownership.
-- No Python import shim is provided.
-- Existing plan and state compatibility is governed separately by `.10x/specs/buoy-local-compatibility.md`.
-- Deprecated environment-alias removal is governed separately by `.10x/specs/buoy-v0-4-environment-alias-removal.md`.
+- `[project]` MUST declare `dynamic = ["version"]` and no static version.
+- Build requirements MUST pin `hatchling==1.31.0` and `hatch-vcs==0.5.0`.
+- Hatch version source MUST be `vcs`; its build hook MUST generate untracked `src/buoy_search/_version.py`; `buoy_search.__version__` imports that generated value.
+- Clean locked install/build occurs before source imports that need `_version.py`; the generated file MUST be gitignored and MUST be present in built artifacts.
+- Ordinary source/editable installs may expose a valid PEP 440 VCS development version derived from the latest tag and commit.
+- Release validation/build MUST set exact `SETUPTOOLS_SCM_PRETEND_VERSION` derived from the release label/tag contract. Wheel/sdist metadata, filename, generated module, installed metadata, and `buoy --version` MUST all equal that stable target.
+- `uv.lock` MUST represent the root project as dynamic editable source without a committed root release version and remain `uv lock --check` stable across commits.
+
+## Artifact and CLI behavior
+
+- Wheel/sdist contain `buoy_search`, generated version module, required datasets/tokenizer, and sole `buoy` entry point; they exclude `.10x/**`, old package/entry points, and internal release artifacts.
+- `buoy --version`, `buoy --help`, `python -m buoy_search --help`, and representative imports work in clean installed wheels.
+- Package project URLs use canonical `Doctacon/buoy`.
 
 ## Acceptance scenarios
 
-- A clean 0.4 install can run `buoy --version`, `buoy --help`, and `python -m buoy_search --help`, and has no package-owned `turbo-search` launcher.
-- A normal same-environment upgrade from the immutable released 0.3.0 wheel keeps `buoy` working and removes the old package-owned `turbo-search` launcher.
-- Importing representative modules from `buoy_search` succeeds; importing `turbo_search` is not part of the supported contract.
-- Package build inspection finds the new module/data and no old implementation module, `turbo-search` entry point, or dedicated legacy hook.
+- Clean editable sync after v0.4.0 exposes a PEP 440 development version and passes tests.
+- Exact pretend version 0.4.1 builds/installs wheel/sdist reporting only 0.4.1.
+- Lock check remains stable after a commit without dependency change.
+- Missing generated version during unsupported raw-source import does not justify tracking a stale generated file; supported workflows install/build first.
 
 ## Explicit exclusions
 
-GitHub repository mutation, PyPI publication, remote namespace changes, live Turbopuffer calls, arbitrary user-owned launcher cleanup, state-root compatibility removal, and environment-alias implementation.
+Distribution/package/CLI rename; static release-version commits; PyPI; repository/provider/product mutations; removal of separately governed state compatibility.

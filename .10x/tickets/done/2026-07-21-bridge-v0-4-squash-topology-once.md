@@ -1,7 +1,7 @@
-Status: blocked
+Status: done
 Created: 2026-07-21
 Updated: 2026-07-21
-Parent: .10x/tickets/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
+Parent: .10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
 Depends-On: .10x/tickets/done/2026-07-21-reconcile-github-repository-rename.md
 
 # Bridge v0.4 Squash Topology Once
@@ -40,7 +40,7 @@ Any content change; any main commit other than exact `c49dc05`; recurring ancest
 ## References
 
 - `.10x/decisions/one-time-v0-4-squash-topology-bridge.md`
-- `.10x/decisions/simple-main-release-governance.md`
+- `.10x/decisions/superseded/simple-main-release-governance.md`
 - `.10x/specs/develop-to-main-release-readiness.md`
 - `.10x/specs/protected-github-branches.md`
 - `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`
@@ -51,8 +51,17 @@ Exact refs/parents/tree IDs; pre/post protection and release-state observations;
 
 ## Blockers
 
-Blocked until PR #94 integrates these governing records and `.10x/tickets/done/2026-07-21-reconcile-github-repository-rename.md` completes on protected develop.
+None.
 
 ## Progress and notes
 
 - 2026-07-21: Opened from the user-ratified exact bridge contract. No bridge branch, commit, merge, release, provider, or configuration mutation occurred.
+- 2026-07-21: PR #97 carried exact zero-content bridge `691d28e543659a2ef11acc47e66f5f8993e8c64b`; strict CI `29875124848` and independent review passed. Protected merge-commit integration produced develop `5ce5c11553ac69a997b25567023b4765f5e780c8` with unchanged tree, exact main/bridge ancestry, unchanged protection/release state, and mergeable PR #93. Evidence: `.10x/evidence/2026-07-21-v0-4-squash-topology-bridge.md`; review: `.10x/reviews/2026-07-21-v0-4-squash-topology-bridge-review.md`.
+
+## Closure mapping
+
+All acceptance criteria map to the evidence/review above. The one-time exception is consumed and must not recur.
+
+## Retrospective
+
+A zero-content topology operation can appear as a no-edit worker failure; acceptance must inspect commit parents/tree rather than file changes.

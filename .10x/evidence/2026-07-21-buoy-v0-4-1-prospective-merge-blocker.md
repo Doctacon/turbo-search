@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
-Relates-To: .10x/tickets/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
+Relates-To: .10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
 
 # Buoy v0.4.1 Prospective-Merge Blocker
 

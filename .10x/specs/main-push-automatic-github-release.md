@@ -2,80 +2,82 @@ Status: active
 Created: 2026-07-21
 Updated: 2026-07-21
 
-# Main-Push Automatic GitHub Release
+# Label-Driven Main-Push Automatic GitHub Release
 
-## Purpose and authority
+## Purpose and scope
 
-Replace manual tag creation and release-environment approval with a fully automatic workflow on every push to `main`. The user ratified stable-SemVer, exact-state no-op/otherwise-permanent-failure, and no manual approval after independent review.
+Publish one deterministic stable GitHub Release automatically after a passing labeled `develop -> main` PR is merge-committed. No committed release version, changelog preparation, tag push, environment approval, PyPI, or Turbopuffer operation is involved.
 
-## Trigger, serialization, and permissions
+This specification supersedes `.10x/specs/superseded/main-push-automatic-github-release-static-version.md` for future releases. Its deterministic build, least privilege, serialization, immutable exact-state, collision, final verification, v0.4 legacy, and portability guarantees remain.
 
-`.github/workflows/release.yml` MUST trigger only on pushes to `main`, never tags or manual dispatch. Concurrency group is one repository-wide `release-main` with `cancel-in-progress: false`.
+## Trigger and merged-PR authority
 
-Validation/build jobs use `contents: read`, no secrets. The final publication job receives only `contents: write`, `id-token: write`, `attestations: write`, and `actions: read` if artifact download requires it. It MUST NOT install dependencies or execute repository code after receiving write permission; it consumes immutable build artifacts and deterministic state-machine output only.
+The workflow triggers only on pushes to `main`, serialized repository-wide with `cancel-in-progress: false`.
+
+Before mutation, exact `GITHUB_SHA` MUST:
+
+- be a two-parent merge commit ordered `[prior main, exact develop head]`;
+- resolve through GitHub's commit-associated-PR API to exactly one closed/merged same-repository PR with `merge_commit_sha=GITHUB_SHA`, base `main`, head `develop`, and merge method represented by that exact commit;
+- have exactly one `release:patch|release:minor|release:major` label.
+
+Any ambiguity, squash/rebase topology, different PR, missing/multiple label, or API mismatch fails before build publication or mutation.
+
+## Version and notes
+
+Using prior main as the base, derive the target version exactly as `.10x/specs/develop-to-main-release-readiness.md`. The recomputed base tag, label, and target MUST equal the readiness semantics.
+
+Project metadata MUST be dynamic through pinned `hatch-vcs==0.5.0`; build and install validation use exact `SETUPTOOLS_SCM_PRETEND_VERSION=<target>`. Source checkouts may expose a PEP 440 VCS development version; published wheel/sdist and `buoy --version` MUST expose exact stable target SemVer.
+
+`CHANGELOG.md` remains frozen history through v0.4.0. The GitHub Release uses generated notes over the exact previous-tag-to-current range.
 
 ## Validation and deterministic build
 
-Before mutation the workflow MUST:
+Read-only jobs use `contents: read`, `pull-requests: read`, and no secrets. They MUST:
 
-1. require stable `MAJOR.MINOR.PATCH` agreement across project/module/lock, with no leading zero in any multi-digit core numeric identifier;
-2. require empty Unreleased, current pending section, and older sections whose `YYYY-MM-DD` values are real ISO calendar dates;
-3. run the same locked 3.11/3.13 validation as readiness;
-4. build wheel/sdist exactly once with `SOURCE_DATE_EPOCH=GITHUB_SHA commit timestamp`, `PYTHONHASHSEED=0`, `TZ=UTC`, `LC_ALL=C`, and locked backend;
-5. verify assets, metadata, inventory, clean install, CLI, and mandatory tokenizer smoke;
-6. produce a hash-addressed immutable state plan from authoritative GitHub tag/Release/provenance inspection.
+1. validate merged PR/topology/label and tag authority;
+2. validate dynamic metadata/frozen changelog/current repository policy;
+3. run complete locked Python 3.11 and 3.13 validation;
+4. build wheel/sdist exactly once with target override and deterministic environment;
+5. verify exact names/metadata/inventory, clean install, CLI/help/version, and exact bundled tokenizer;
+6. produce a hash-addressed immutable state plan from authoritative tag/Release/assets/provenance inspection.
+
+The final publication job alone receives `contents: write`, `id-token: write`, `attestations: write`, and artifact-read permission. It installs nothing and executes no repository code.
 
 ## Exact state machine
 
-For `TAG=v<version>` and exact `SHA=GITHUB_SHA`:
+For target `TAG=v<target>` and exact main `SHA`:
 
 ### Create
 
-Only when both tag ref and Release are absent:
+Only when tag ref and Release are both absent:
 
-- REST-create an annotated tag object with tag `TAG`, message `Buoy <version>`, fixed tagger `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`, and object `SHA` type `commit`;
-- REST-create `refs/tags/TAG` pointing to that tag object;
-- if ref creation returns 422, authoritatively reinspect tag, Release, downloaded assets, and provenance once: exact complete state becomes a no-op without attestation or Release mutation; every partial or mismatched observation permanently fails;
-- attest exact wheel/sdist digests with subject names, repository `Doctacon/buoy`, workflow `release.yml`, source ref `refs/heads/main`, and source commit `SHA`;
-- REST-create non-draft/non-prerelease Release `Buoy <version>` for `TAG`, target identity `TAG`, generated notes, and exactly the two already-built assets;
-- for both create and no-op outcomes, freshly reinspect tag object/peel and Release/tag identity, download the published assets and compare their exact names/digests, and verify provenance fields before success.
+- REST-create annotated tag object `TAG`, message `Buoy <target>`, fixed GitHub Actions bot tagger, object `SHA` commit;
+- REST-create `refs/tags/TAG` to that object;
+- on ref 422, perform one full authoritative reinspection; exact complete becomes no-op, every partial/mismatch fails;
+- attest exact wheel/sdist subject names/digests for repository `Doctacon/buoy`, workflow `release.yml`, source ref `refs/heads/main`, and exact `SHA`;
+- REST-create non-draft/non-prerelease Release `Buoy <target>` with generated notes and exactly those two built assets;
+- unconditionally reinspect tag/Release, download and hash both assets, and verify provenance before success.
 
 ### No-op
 
-Only when annotated tag and Release both exist and all of these match exact `SHA`: tag peel, Release tag/name/non-draft/non-prerelease identity, exact two asset names/digests, and provenance subject names/digests/repository/workflow/source ref/source commit. Then succeed without mutation.
+Only exact complete matching tag peel, Release identity, two asset names/digests, and provenance succeeds without mutation.
 
 ### Permanent fail
 
-Every other state—including lightweight tag, tag-only, Release-only, wrong peel, partial assets, digest/provenance mismatch, or conflicting target—fails without automated completion, overwrite, move, deletion, cleanup, or retry repair. Recovery requires a separately authorized operator decision or abandoning that version.
+Every lightweight, tag-only, Release-only, partial asset, wrong peel/identity/digest/provenance, conflicting target, or repeated mutation state fails without completion, overwrite, move, deletion, cleanup, or retry repair.
 
-## Race behavior
+## Legacy v0.4.0
 
-Serialization prevents workflow-owned overlap. A concurrent external creator between inspection and mutation is handled only by the single 422 reinspection above. It can convert to exact continuation/no-op only when every authoritative identity matches; otherwise fail. No loop or repeated mutation attempt is permitted.
+The sole immutable legacy no-op remains exactly as recorded under repository `Doctacon/buoy-search`, source ref `refs/tags/v0.4.0`, commit `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, exact two asset digests, workflow, tag, and Release identity. No future target may use either legacy repository or source-ref exception.
 
-## Existing v0.4.0 transition
+## Acceptance scenarios
 
-Published v0.4.0 is the sole legacy no-op exception. It MUST be accepted only when every normal exact-state field matches and all of these legacy pins match simultaneously:
-
-- tag `v0.4.0`, annotated and peeled to `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`;
-- Release name `Buoy v0.4.0`, tag/target `v0.4.0`, non-draft, non-prerelease, and exactly two assets;
-- wheel `buoy_search-0.4.0-py3-none-any.whl` SHA-256 `89b84c6beba2979ab6ffd0d244d1d0f5c1af938cfbec021a89094a7109e5c4c8`;
-- sdist `buoy_search-0.4.0.tar.gz` SHA-256 `9c0469d2fc03b8e03780b06793537736391c21f0ed07c43adab9e674988ffd3a`;
-- provenance repository `Doctacon/buoy-search`, workflow `release.yml`, source ref `refs/tags/v0.4.0`, source commit `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, and the exact corresponding subject names/digests.
-
-This exception exists only because the already-published v0.4.0 provenance predates main-push automation and the repository rename. Its `Doctacon/buoy-search` repository field is an immutable legacy pin; v0.4.1 and every future version MUST require canonical repository `Doctacon/buoy` and provenance source ref `refs/heads/main`. Neither legacy exception MUST generalize. Any different main commit retaining 0.4.0 fails readiness and automatic release. The next release requires an explicit stable version bump; this spec does not choose it.
-
-## Environment removal and supersession
-
-After repository workflow integration proves zero `environment: release` references and GitHub reports zero active/pending deployments, implementation MUST delete the unused `release` environment and verify 404/readback absence. It MUST supersede old tag-trigger/manual-approval release specs/decision, replace `docs/releasing.md`, close obsolete/open v0.4 release records truthfully, and preserve historical evidence.
-
-## Tests
-
-Repository-local dry tests cover triggers, job permissions, action pins, strict stable version/real-date changelog rules, deterministic build variables, create/no-op/all mismatch states, annotated/lightweight tags, executable deterministic 422 full-reinspection behavior, executable final published-asset/provenance verification, generated-note/tag target, asset/provenance fields, serialization, no environment/tag trigger/manual dispatch, and forbidden overwrite/delete/move/force-push commands. Readiness Policy scans the bounded repository-wide release-behavior surface (all workflows and release helpers) and rejects PyPI or Turbopuffer behavior.
-
-## Portability
-
-GitHub is the user-required existing host. The state machine, version checks, build, hashes, and validation live in standard Python/shell. `docs/releasing.md` MUST map GitHub REST operations to portable Git operations plus generic forge release/attestation APIs so migration to self-hosted Git/CI reuses the same scripts and artifacts. GitHub integration is limited to a thin API adapter and pinned open-source actions; no proprietary registry or artifact format is introduced.
+- Merge-committed patch-labeled PR over v0.4.0 computes/publishes exact v0.4.1 automatically.
+- Main SHA without exact merged PR/label/topology fails before mutation.
+- Build metadata and installed CLI equal target despite dynamic source metadata.
+- Existing exact complete target no-ops; every partial/mismatch permanently fails.
+- Published assets have exact digests and canonical future provenance.
 
 ## Explicit exclusions
 
-Choosing next version; product changes; PyPI; Turbopuffer; environment approval; manual tag push; tag-trigger/manual workflow; tag/Release replacement; force push; ancestry sync.
+Static project/module/lock release version; committed pending changelog; squash/rebase main promotion; manual tag/workflow/environment approval; PyPI; Turbopuffer; destructive repair; force push; product changes.

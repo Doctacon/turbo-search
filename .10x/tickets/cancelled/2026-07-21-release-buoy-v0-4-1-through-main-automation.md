@@ -1,4 +1,4 @@
-Status: blocked
+Status: cancelled
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: None
@@ -22,7 +22,7 @@ Exercise the ratified simple release process end to end by preparing stable Buoy
 1. In an isolated `work/*` worktree from current `develop`, update project/module/lock version authorities to exactly 0.4.1 and add the exact pending changelog section/link required by the active readiness spec.
 2. Run repository release-policy checks, complete Python 3.11/3.13 validation, deterministic double-build comparison, artifact inspection, and clean-wheel CLI/tokenizer smoke.
 3. Obtain independent review and integrate only the preparation change to protected `develop` through a passing pull request.
-4. Open one pull request whose head is exact repository branch `develop` and base is `main`. If the inherited v0.4 squash topology prevents prospective-merge construction, execute only `.10x/tickets/2026-07-21-bridge-v0-4-squash-topology-once.md`, then resume the exact develop-to-main PR.
+4. Open one pull request whose head is exact repository branch `develop` and base is `main`. If the inherited v0.4 squash topology prevents prospective-merge construction, execute only `.10x/tickets/done/2026-07-21-bridge-v0-4-squash-topology-once.md`, then resume the exact develop-to-main PR.
 5. Require all four exact `Release readiness / ...` checks to pass on GitHub's prospective merge result, obtain independent promotion review, then merge through branch protection using the repository-required release merge commit.
 6. Observe the automatic `main` push workflow to terminal state and verify the new annotated `v0.4.1` tag, GitHub Release `Buoy v0.4.1`, exact two assets/digests, and provenance source ref `refs/heads/main` and exact source commit.
 7. Record raw hosted evidence, independent final review, and coherent closure.
@@ -50,7 +50,7 @@ Product behavior changes; version other than 0.4.1; prerelease/build metadata; m
 - `.10x/specs/develop-to-main-release-readiness.md`
 - `.10x/specs/main-push-automatic-github-release.md`
 - `.10x/specs/protected-github-branches.md`
-- `.10x/decisions/simple-main-release-governance.md`
+- `.10x/decisions/superseded/simple-main-release-governance.md`
 - `.10x/evidence/2026-07-21-simple-main-release-governance-configuration.md`
 - `.10x/reviews/2026-07-21-simple-main-release-governance-configuration-review.md`
 - `.10x/decisions/buoy-product-and-repository-identity.md`
@@ -62,7 +62,7 @@ Exact source/destination commits; changed version/changelog paths; local command
 
 ## Blockers
 
-PR #93 is conflicting before GitHub can construct the prospective merge ref, and the intentional repository rename makes active `Doctacon/buoy-search` checks stale. Reconciliation is owned by `.10x/tickets/done/2026-07-21-reconcile-github-repository-rename.md`, followed by the exact bridge in `.10x/tickets/2026-07-21-bridge-v0-4-squash-topology-once.md`; all remain blocked until PR #94's governing records pass review and integrate. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`.
+None. This static-version approach is superseded by `.10x/tickets/2026-07-21-label-driven-automatic-release-plan.md`; v0.4.1 remains owned by its label-driven child.
 
 ## Progress and notes
 
@@ -73,3 +73,5 @@ PR #93 is conflicting before GitHub can construct the prospective merge ref, and
 - 2026-07-21: PR #92 squash-integrated to develop as `8694afc94984e6993730acd205af3bdca93c5c8b`. Exact `develop -> main` PR #93 was opened, but GitHub reports it conflicting before prospective-merge construction; only ordinary CI ran. Read-only merge-tree diagnosis attributes the conflict to the accepted v0.4 squash topology. Ticket blocked without merge/release mutation. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`.
 - 2026-07-21: User explicitly ratified the recommended one-time protected, content-neutral ancestry bridge after the inherited conflict was explained. The exception is pinned to exact main `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, requires develop-tree identity and merge-commit ancestry preservation, and cannot recur. Decision: `.10x/decisions/one-time-v0-4-squash-topology-bridge.md`.
 - 2026-07-21: GitHub then reported the intentional canonical rename to `Doctacon/buoy`; the user authorized updating future release identity while preserving exact v0.4 legacy provenance under `Doctacon/buoy-search`. Reconciliation child: `.10x/tickets/done/2026-07-21-reconcile-github-repository-rename.md`. No release or provider mutation occurred.
+- 2026-07-21: The exact one-time bridge completed through PR #97 as develop `5ce5c11553ac69a997b25567023b4765f5e780c8`; PR #93 became mergeable and readiness ran. The four release jobs passed but emitted bare job names that did not match configured required contexts, so protection correctly blocked merge and no release occurred.
+- 2026-07-21: User rejected further static-version/process ceremony and explicitly authorized label-driven tag-derived versions, frozen changelog, merge-commit auto-merge, and automatic publication. This ticket is cancelled as superseded; achieved rename/bridge work remains valid, PR #93 remains open, and v0.4.1 transfers to `.10x/tickets/2026-07-21-release-v0-4-1-label-driven.md`.

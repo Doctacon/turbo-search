@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
-Relates-To: .10x/tickets/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
+Relates-To: .10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-automation.md
 
 # Buoy v0.4.1 Preparation
 
@@ -54,7 +54,7 @@ A fresh CPython 3.13 virtual environment normally installed only the built wheel
 
 ## What this supports
 
-This supports the preparation-phase version, changelog, supported-Python, deterministic-build, artifact-inspection, and clean-wheel acceptance criteria for `.10x/tickets/2026-07-21-release-buoy-v0-4-1-through-main-automation.md`.
+This supports the preparation-phase version, changelog, supported-Python, deterministic-build, artifact-inspection, and clean-wheel acceptance criteria for `.10x/tickets/cancelled/2026-07-21-release-buoy-v0-4-1-through-main-automation.md`.
 
 ## Limits and side effects
 

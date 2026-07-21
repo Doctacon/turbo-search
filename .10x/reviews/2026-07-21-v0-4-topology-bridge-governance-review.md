@@ -15,12 +15,12 @@ It found two blockers:
 1. `.10x/specs/protected-github-branches.md` required every `work/* -> develop` PR to squash, which would discard bridge ancestry.
 2. No executable child ticket owned bridge creation/integration, while the release parent excluded ancestry sync.
 
-It also noted that `.10x/decisions/simple-main-release-governance.md` should acknowledge the pinned migration exception.
+It also noted that `.10x/decisions/superseded/simple-main-release-governance.md` should acknowledge the pinned migration exception.
 
 ## Response
 
 - Added the sole exact merge-commit exception to protected-branch behavior and acceptance criteria without generalizing task merge methods.
-- Opened `.10x/tickets/2026-07-21-bridge-v0-4-squash-topology-once.md` with exact parents/tree, protected checks, independent review, merge method, ancestry/tree verification, non-mutation, and non-repeatability criteria.
+- Opened `.10x/tickets/done/2026-07-21-bridge-v0-4-squash-topology-once.md` with exact parents/tree, protected checks, independent review, merge method, ancestry/tree verification, non-mutation, and non-repeatability criteria.
 - Updated the release parent to delegate only this exception and to use the repository-required merge commit for `develop -> main` promotion.
 - Updated simple release governance to distinguish the pinned inherited migration from prohibited recurring sync ceremony.
 
