@@ -59,7 +59,7 @@ Focused and full CPython 3.11/3.13 results; exact golden tokenizer/payload/bound
 - `.10x/evidence/2026-07-20-deterministic-token-budget-subdivision-shaping.md`
 - `.10x/reviews/2026-07-20-deterministic-token-budget-subdivision-contract-review.md`
 - `.10x/tickets/done/2026-07-20-shape-deterministic-token-budget-subdivision.md`
-- `.10x/tickets/2026-07-20-shape-prose-token-budget-compatibility.md`
+- `.10x/tickets/done/2026-07-20-shape-prose-token-budget-compatibility.md`
 - `.10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md`
 - `src/buoy_search/repo_syntax_chunking.py`
 - `src/buoy_search/github_repo.py`

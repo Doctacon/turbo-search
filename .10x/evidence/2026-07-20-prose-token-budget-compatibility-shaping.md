@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-20-shape-prose-token-budget-compatibility.md, .10x/specs/deterministic-repository-prose-token-budget-compatibility.md, .10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md
+Relates-To: .10x/tickets/done/2026-07-20-shape-prose-token-budget-compatibility.md, .10x/specs/deterministic-repository-prose-token-budget-compatibility.md, .10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md
 
 # Prose Token-Budget Compatibility Shaping Evidence
 

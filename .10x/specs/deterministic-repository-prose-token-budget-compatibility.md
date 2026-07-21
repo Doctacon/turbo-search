@@ -1,16 +1,16 @@
-Status: draft
+Status: active
 Created: 2026-07-20
-Updated: 2026-07-20
+Updated: 2026-07-21
 
 # Deterministic Repository-Prose Token-Budget Compatibility
 
-## Draft authority and purpose
+## Active authority and purpose
 
-This inactive focused draft shapes the unresolved repository Markdown/prose compatibility surface exposed by C6. It does not authorize implementation, tests, generic pipeline changes, plan/artifact regeneration, tokenizer execution beyond read-only shaping, model construction/inference, provider/live operations, C6 execution, or namespace writes.
+This focused specification activates only the user-ratified Option A no-action contract for the repository Markdown/prose compatibility surface exposed by C6. Every repository-prose `MarkdownChunk` MUST remain byte-for-byte unchanged across the ordinary no-arm path, explicit `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`. No prose row may be split, truncated, omitted, recited as compatible, or changed in identity, order, count, or artifact representation.
 
-The active source-only contract `.10x/specs/deterministic-treatment-token-budget-subdivision.md` MUST NOT be reused for prose. Repository prose has heading-based sections and generic sentence overlap, not physical `SourceRange` ownership, breadcrumbs, exact `Lines S-E` citations, or source-line reconstruction.
+The exact preserved treatment checkpoint therefore MUST retain all 366 incompatible prose plan rows—183 unique `(repository,row_id)` parents across 57 paths, duplicated in the two treatment arms—as an independent fail-closed C6 stop. C6 remains blocked. This active specification authorizes no implementation or implementation ticket, tests, generic pipeline changes, plan/artifact regeneration, tokenizer execution, model construction/inference, provider/live operations, C6 execution, namespace writes, or write approval.
 
-The exact preserved treatment checkpoint contains 366 incompatible prose plan rows: 183 unique `(repository,row_id)` parents across 57 paths, duplicated in `fixed-80-python-breadcrumbs` and `python-ast`. Read-only plan inspection found the same 183 parents unchanged in `current-default`. Exact decomposition, the 57-path inventory, cause analysis, and exploratory option deltas are recorded in `.10x/evidence/2026-07-20-prose-token-budget-compatibility-shaping.md`.
+The active source-only contract `.10x/specs/deterministic-treatment-token-budget-subdivision.md` MUST NOT be reused for prose. Repository prose has heading-based sections and generic sentence overlap, not physical `SourceRange` ownership, breadcrumbs, exact `Lines S-E` citations, or source-line reconstruction. Exact decomposition, the 57-path inventory, cause analysis, and rejected exploratory option deltas are recorded in `.10x/evidence/2026-07-20-prose-token-budget-compatibility-shaping.md`.
 
 ## Provenance map
 
@@ -23,16 +23,15 @@ The exact preserved treatment checkpoint contains 366 incompatible prose plan ro
 | No-action preserves parity but leaves C6 blocked | Record-backed consequence |
 | Treatment-only splitting breaks prose parity with current-default | Source-observed consequence |
 | All-three-arm splitting preserves cross-arm parity but breaks ordinary/current-default byte parity unless the ordinary generic pipeline changes too | Source-observed and active-contract-backed consequence |
-| Scope, exact boundary hierarchy, overlap, coverage contract, atomic fallback, failure scope, and parity policy | **Blocked pending explicit user ratification** |
-| Final row/plan/artifact/namespace/storage identities after any implementation | Blocked on ratified behavior, implementation, and complete regeneration |
+| Option A parity, unchanged-row, no-action, and fail-closed policy | User-ratified after independent PASS; active in this specification |
+| Split boundaries, overlap, coverage, atomic fallback, or changed failure scope | Rejected and non-authoritative under selected Option A |
+| Final row/plan/artifact/namespace/storage identities after any implementation | Not applicable: Option A authorizes no implementation or regeneration |
 
-## Recommendation for the current C6 checkpoint
+## Selected Option A authority for the current C6 checkpoint
 
-**Recommend Option A: take no prose action in current C6.** It is the only option that preserves both active invariants at once: ordinary no-arm remains byte-for-byte equal to explicit `current-default`, and repository prose remains unchanged across `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`. The consequence is explicit: the 366 incompatible treatment occurrences remain fail-closed and C6 remains blocked.
+**Option A is selected: take no prose action in current C6.** Ordinary no-arm MUST remain byte-for-byte equal to explicit `current-default`, and repository prose MUST remain unchanged across `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`. The exact 366 incompatible treatment occurrences remain fail-closed and C6 remains blocked.
 
-If exact prose compatibility is required rather than parity-preserving no action, recommend a **separate shaping pass for Option C on the shared ordinary generic pipeline**, not a C6-local all-three-arm fork. Only shared-pipeline behavior can prospectively preserve ordinary/current-default equality while applying the same rule to all three arms. That broader change needs its own project-wide affected-population inventory, regeneration-grade boundary contract, compatibility review, active specification, and executable ticket. This draft does not select or authorize it.
-
-Options B, C, and D remain comparison material only. In particular, treatment-only B would supersede unchanged-prose isolation, while C6-local C would supersede ordinary/current-default equality.
+Options B, C, and D are rejected alternatives retained only as historical comparison material. They are not active behavior, recommendations, acceptance criteria, implementation inputs, or authority to open an implementation ticket. Any future proposal to split prose or change the shared generic pipeline would require a new shaping owner, explicit supersession of this Option A contract, independent review, and fresh user ratification. In particular, treatment-only B would supersede unchanged-prose isolation, while C6-local C would supersede ordinary/current-default equality.
 
 ## Current behavior that a decision must preserve or explicitly supersede
 
@@ -75,9 +74,9 @@ The two lines beginning `Section:` and their following blank separator are omitt
 
 A separately reconstructed string or approximate counter MUST NOT authorize a boundary. If its bytes differ from the production property, planning aborts. Every emitted final production payload MUST be re-rendered and re-counted; a count above 512 aborts the complete repository/arm plan before any successful artifact is emitted.
 
-The remainder of this draft is intentionally option-shaped. RFC 2119 terms become binding only for the option and exact checkpoint values the user ratifies after review.
+The remainder of this specification preserves the reviewed option analysis. RFC 2119 terms are binding only for selected Option A. Every statement under rejected Options B, C, and D—including projections, recommendations, future gates, and proposed mechanics—is non-authoritative comparison material.
 
-## Option A — no action / preserve exact generic prose
+## Selected Option A — no action / preserve exact generic prose
 
 - Keep all prose chunks byte-for-byte identical across ordinary no-arm, `current-default`, and both treatment arms.
 - Keep all section paths, overlap, identities, indexes, counts, and plan artifacts unchanged.
@@ -86,7 +85,7 @@ The remainder of this draft is intentionally option-shaped. RFC 2119 terms becom
 
 This is the only option that preserves every current parity invariant without widening generic behavior. It does not advance C6 readiness.
 
-## Option B — treatment-only final-row compatibility pass
+## Rejected Option B — treatment-only final-row compatibility pass (non-authority)
 
 This option would process only generic prose rows inside `fixed-80-python-breadcrumbs` and `python-ast` after current generic chunking and before final plan emission.
 
@@ -124,7 +123,7 @@ Tradeoff if later defined: paragraph preference may preserve structure more stro
 
 Either B1 or B2 clears the 366 preserved treatment-prose occurrences in the local probe while deliberately breaking treatment/current-default prose equality for the affected parents. The identical 183 current-default parents remain above 512. Ratifying this option therefore requires explicit supersession of C6's unchanged-prose treatment-isolation invariant and an explicit decision that exact compatibility is treatment-only.
 
-## Option C — all-arm or global final-row compatibility pass
+## Rejected Option C — all-arm or global final-row compatibility pass (non-authority)
 
 Apply B1 or B2 identically to `current-default` and both treatment arms. This preserves prospective cross-arm prose parity.
 
@@ -133,7 +132,7 @@ Apply B1 or B2 identically to `current-default` and both treatment arms. This pr
 
 If applied only inside C6 arm routing, explicit `current-default` ceases to equal the ordinary no-arm path. If applied to the shared generic pipeline, ordinary/current-default equality can remain prospective, but every generic caller gains an exact pinned-tokenizer dependency and changed behavior for over-limit final rows. The project-wide affected population is unknown. This is broader than treatment-prose compatibility and requires a separate global compatibility contract and impact review; it MUST NOT be smuggled into a C6-local implementation ticket.
 
-## Option D — integrate exact accounting into the generic splitter
+## Rejected Option D — integrate exact accounting into the generic splitter (non-authority)
 
 Replace approximate accumulation decisions inside the generic unit/sentence/word splitter with complete-payload exact accounting while retaining a separate 300 retrieval target and/or 512 hard maximum.
 
@@ -148,9 +147,9 @@ This could preserve generic structural intent more directly but leaves several i
 
 No projection is authoritative until those semantics are ratified. This option has the widest regression surface and is not the minimal C6-local change.
 
-## Recommended atomic-content and fail-closed semantics for any future shared-pipeline C shaping
+## Rejected future Option C mechanics retained for comparison only
 
-The current recommendation remains A, so no splitting or fallback is selected. If the user instead authorizes the separate shared-pipeline Option C shaping pass, this draft recommends the following exact policy for that later checkpoint:
+Option A is active, so no splitting or fallback is selected. The following previously reviewed proposal is retained only as non-authoritative historical comparison material; it MUST NOT be implemented or used to open a ticket:
 
 1. At a fixed half-open parent-content cursor, exhaustively test all ratified structural or whitespace end offsets greater than the cursor using exact production payload accounting; choose the farthest feasible end from the first ratified tier containing one.
 2. If no such end fits, scalar fallback tests every later Python `str` boundary, which is a Unicode-code-point boundary for the UTF-8-decoded parent, and chooses the farthest end whose exact `parent.content[cursor:end]` production payload is at most 512. Scalar fallback does not skip, rewrite, normalize, or trim whitespace and does not require a boundary-adjacent character to be non-whitespace; exact adjacent interval coverage owns every character.
@@ -160,9 +159,9 @@ The current recommendation remains A, so no splitting or fallback is selected. I
 
 Dropping context, truncating, omitting content, or accepting oversize content is not recommended and is outside every option in this draft.
 
-## Isolation and downstream gates common to any ratified split
+## Non-authoritative downstream considerations for any future superseding split
 
-A later implementation ticket would have to prove:
+If a future, separately shaped contract supersedes Option A, its later implementation ticket would have to prove:
 
 1. exact tokenizer identity/options/offline behavior and full final payload accounting;
 2. deterministic boundary selection without monotonicity assumptions;
@@ -179,9 +178,11 @@ After separately reviewed implementation, a separately authorized complete forec
 
 ## Authority exclusions
 
-This draft and its checkpoint authorize no selection or activation; source, test, dependency, lockfile, CI, plan, manifest, chunks JSONL, forecast, compact authority, tokenizer report, validator, cache, corpus, or namespace mutation; tokenizer or model construction; inference; download or network access; credential/provider calls; retrieval; catalog, applied-state, routing-default, or namespace operations; deletes; evaluation; promotion; merge; or write approval. Option A confirmation would record no action only. Authorization to shape shared-pipeline C would authorize read-only shaping and draft-record work only, not implementation or regeneration.
+Activation selects no-action Option A only. It authorizes no source, test, dependency, lockfile, CI configuration, plan, manifest, chunks JSONL, forecast, compact authority, tokenizer report, validator, cache, corpus, or namespace mutation; tokenizer or model construction; inference; download or network access; credential/provider calls; retrieval; catalog, applied-state, routing-default, or namespace operations; deletes; evaluation; promotion; merge; or write approval. It creates no implementation authority and requires no implementation ticket.
 
-## Exact confirm-or-correct user checkpoint
+## Exact ratified user checkpoint
+
+The reviewed checkpoint is retained below verbatim for provenance. The user confirmed only its first Option A recommendation; every alternative and future Option C statement in the quoted checkpoint is rejected non-authority.
 
 > **Recommendation for current C6 — confirm or correct Option A.** Preserve every current repository-prose `MarkdownChunk` byte-for-byte across ordinary no-arm, explicit `current-default`, `fixed-80-python-breadcrumbs`, and `python-ast`. Do not split, truncate, omit, recite as compatible, or alter prose identity/order/counts/artifacts. Keep the exact 366 incompatible treatment occurrences—183 unique parents across 57 paths, duplicated in the two treatments—fail-closed. C6 remains blocked and receives no implementation, regeneration, readiness, approval, or write authority.
 >
@@ -195,11 +196,13 @@ This draft and its checkpoint authorize no selection or activation; source, test
 >
 > All B1/B2 row and 64-row-request deltas remain shaping projections; source subdivision changes later totals. Any future implementation still requires a separately reviewed active spec and executable ticket, complete source-and-prose regeneration, exact artifact/count/storage/namespace identities, independent review, zero incompatible final rows, and the still-separate exact nine-namespace write approval. This checkpoint authorizes no selection or activation; no source, test, dependency, lockfile, CI, plan, manifest, chunks JSONL, forecast, compact authority, tokenizer report, validator, cache, corpus, or namespace mutation; no tokenizer/model construction, inference, download, network, credential/provider call, retrieval, catalog/applied-state/default operation, delete, evaluation, promotion, merge, or write approval. Option A confirmation records no action only; shared-pipeline C authorization permits shaping records only. Neither path itself unblocks C6.
 
-Until independent review passes and the user explicitly confirms Option A or authorizes the separate shared-pipeline C shaping pass, this specification remains `draft`, the shaping ticket remains `blocked`, and no executable prose implementation ticket may be opened from it.
+Independent review passed PR #78 pre-ratification head `02adbd1cd9fc33dd7f5d52e6c9ef33770f155f74`, and the user explicitly confirmed exact Option A. This specification is therefore active only for the no-action contract. The shaping ticket is done, no implementation ticket exists, and C6 remains blocked on the unchanged 366/183/57 fail-closed incompatibilities.
 
 ## References
 
-- `.10x/tickets/2026-07-20-shape-prose-token-budget-compatibility.md`
+- `.10x/tickets/done/2026-07-20-shape-prose-token-budget-compatibility.md`
+- `.10x/evidence/2026-07-21-prose-token-budget-option-a-ratification.md`
+- `.10x/reviews/2026-07-21-prose-token-budget-compatibility-contract-review.md`
 - `.10x/evidence/2026-07-20-prose-token-budget-compatibility-shaping.md`
 - `.10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md`
 - `.10x/specs/deterministic-treatment-token-budget-subdivision.md`
