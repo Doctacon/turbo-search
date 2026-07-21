@@ -12,7 +12,7 @@ Initial review found four blockers: active authorities still required alias remo
 
 The repaired shaping:
 
-- supersedes the prior identity decision with `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md` and aligns active specs on retention through 0.3/removal target 0.4;
+- supersedes the prior identity decision with `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md` and aligns active specs on retention through 0.3/removal target 0.4;
 - binds main-ancestry incorporation to GitHub's release-PR update-branch endpoint with expected-head SHA, ancestry verification, and fail-closed behavior;
 - records annotated-tag push as the first external mutation and environment approval as the later attestation/Release-assets boundary;
 - adds a fourth sequential child for separately reviewed post-release changelog finalization;

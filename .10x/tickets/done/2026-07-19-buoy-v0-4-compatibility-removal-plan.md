@@ -50,7 +50,7 @@ Any compatibility beyond the three named aliases; any artifact exclusion beyond 
 - `.10x/specs/buoy-v0-4-console-alias-removal.md`
 - `.10x/specs/buoy-v0-4-environment-alias-removal.md`
 - `.10x/specs/buoy-v0-4-internal-record-artifact-exclusion.md`
-- `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md`
+- `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md`
 - `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`
 - `.10x/reviews/2026-07-19-v0-4-compatibility-removal-shaping-review-response.md`
 - `.10x/reviews/2026-07-19-buoy-v0-4-aggregate-packaging-blocker-review.md`

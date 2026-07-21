@@ -31,7 +31,7 @@ Exactly three implemented public aliases are explicitly scheduled for removal in
 2. environment fallback `TURBO_SEARCH_EMBEDDING_MODEL`;
 3. environment fallback `TURBO_SEARCH_EMBEDDING_PRECISION`.
 
-The governing authority is `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md`. It moves these aliases from the rejected 0.3 removal date to 0.4, rejects permanent retention, and explicitly says future removal still requires an executable ticket, verification, and release notes. Supporting active contracts are `.10x/specs/buoy-package-and-cli-identity.md`, `.10x/specs/buoy-local-compatibility.md`, and `.10x/specs/embedding-inference-precision.md`.
+The governing authority is `.10x/decisions/superseded/buoy-product-identity-and-compatibility-v0-3.md`. It moves these aliases from the rejected 0.3 removal date to 0.4, rejects permanent retention, and explicitly says future removal still requires an executable ticket, verification, and release notes. Supporting active contracts are `.10x/specs/buoy-package-and-cli-identity.md`, `.10x/specs/buoy-local-compatibility.md`, and `.10x/specs/embedding-inference-precision.md`.
 
 No other active record assigns a removal release to another compatibility surface. The `TURBO_SEARCH_*` wording resolves to the two implemented variables above; repository-wide inspection found no other old-branded environment variable.
 

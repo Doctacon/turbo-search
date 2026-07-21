@@ -36,7 +36,7 @@ Only when both tag ref and Release are absent:
 - REST-create an annotated tag object with tag `TAG`, message `Buoy <version>`, fixed tagger `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`, and object `SHA` type `commit`;
 - REST-create `refs/tags/TAG` pointing to that tag object;
 - if ref creation returns 422, authoritatively reinspect tag, Release, downloaded assets, and provenance once: exact complete state becomes a no-op without attestation or Release mutation; every partial or mismatched observation permanently fails;
-- attest exact wheel/sdist digests with subject names, repository `Doctacon/buoy-search`, workflow `release.yml`, source ref `refs/heads/main`, and source commit `SHA`;
+- attest exact wheel/sdist digests with subject names, repository `Doctacon/buoy`, workflow `release.yml`, source ref `refs/heads/main`, and source commit `SHA`;
 - REST-create non-draft/non-prerelease Release `Buoy <version>` for `TAG`, target identity `TAG`, generated notes, and exactly the two already-built assets;
 - for both create and no-op outcomes, freshly reinspect tag object/peel and Release/tag identity, download the published assets and compare their exact names/digests, and verify provenance fields before success.
 
@@ -62,7 +62,7 @@ Published v0.4.0 is the sole legacy no-op exception. It MUST be accepted only wh
 - sdist `buoy_search-0.4.0.tar.gz` SHA-256 `9c0469d2fc03b8e03780b06793537736391c21f0ed07c43adab9e674988ffd3a`;
 - provenance repository `Doctacon/buoy-search`, workflow `release.yml`, source ref `refs/tags/v0.4.0`, source commit `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, and the exact corresponding subject names/digests.
 
-This exception exists only because the already-published v0.4.0 provenance predates main-push automation. Any mismatch permanently fails. Every future version MUST require provenance source ref `refs/heads/main`; the legacy source-ref exception MUST NOT generalize. Any different main commit retaining 0.4.0 fails readiness and automatic release. The next release requires an explicit stable version bump; this spec does not choose it.
+This exception exists only because the already-published v0.4.0 provenance predates main-push automation and the repository rename. Its `Doctacon/buoy-search` repository field is an immutable legacy pin; v0.4.1 and every future version MUST require canonical repository `Doctacon/buoy` and provenance source ref `refs/heads/main`. Neither legacy exception MUST generalize. Any different main commit retaining 0.4.0 fails readiness and automatic release. The next release requires an explicit stable version bump; this spec does not choose it.
 
 ## Environment removal and supersession
 

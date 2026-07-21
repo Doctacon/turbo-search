@@ -6,7 +6,7 @@ Updated: 2026-07-21
 
 ## Purpose and scope
 
-Define GitHub and CI enforcement for the long-lived `develop` integration branch and `main` release branch in `Doctacon/buoy-search`.
+Define GitHub and CI enforcement for the long-lived `develop` integration branch and `main` release branch in `Doctacon/buoy`.
 
 ## Completed branch bootstrap
 

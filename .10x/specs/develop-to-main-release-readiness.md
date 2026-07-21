@@ -8,7 +8,7 @@ Updated: 2026-07-21
 
 Replace release ancestry syncs and conversational preflights with four mechanically required GitHub checks on every pull request targeting `main`. The user ratified this repaired contract after independent review.
 
-The only supported release PR source is branch `develop` in `Doctacon/buoy-search`. Main does **not** require strict base freshness or main-as-ancestor; the checks validate GitHub's exact prospective merge commit. Develop retains its existing strict ordinary CI protection.
+The only supported release PR source is branch `develop` in `Doctacon/buoy`. Main does **not** require strict base freshness or main-as-ancestor; the checks validate GitHub's exact prospective merge commit. Develop retains its existing strict ordinary CI protection.
 
 ## Required workflow and checks
 
@@ -25,7 +25,7 @@ Main protection MUST require exactly these app-bound release checks, PRs, zero f
 
 GitHub's pull-request merge ref MUST be checked out. Policy MUST verify:
 
-- head repository and branch are exactly `Doctacon/buoy-search:develop`;
+- head repository and branch are exactly `Doctacon/buoy:develop`;
 - checkout is GitHub's prospective merge commit with exact current base-main and head-develop parents;
 - project, module, and lock agree on stable `MAJOR.MINOR.PATCH` only—no prerelease/build suffix;
 - `CHANGELOG.md` has empty `Unreleased`, exactly current `## [X.Y.Z] - pending`, and every older released section has an ISO date;

@@ -33,11 +33,11 @@ Exercise the ratified simple release process end to end by preparing stable Buoy
 - `CHANGELOG.md` has empty Unreleased, exactly current pending 0.4.1, real dates on older sections, and correct comparison links.
 - Preparation validation passes on Python 3.11 and 3.13; deterministic builds and clean-wheel/tokenizer smoke pass.
 - Preparation reaches `develop` only through protected passing CI and independent review.
-- The main PR source is exactly `Doctacon/buoy-search:develop`; all four exact readiness checks pass on the prospective merge commit.
+- The main PR source is exactly `Doctacon/buoy:develop`; all four exact readiness checks pass on the prospective merge commit.
 - Main promotion occurs through the protected PR only; no force push or recurring ancestry-sync ceremony is used. The sole exact v0.4 migration bridge, if required, satisfies its focused child ticket first.
 - Automatic release run succeeds from the resulting exact main commit.
 - `v0.4.1` is annotated and peels to that commit; Release identity is non-draft/non-prerelease and contains exactly the expected wheel/sdist with recorded SHA-256 digests.
-- `gh attestation verify` passes for both assets with repository `Doctacon/buoy-search`, workflow `release.yml`, source ref `refs/heads/main`, and exact source commit.
+- `gh attestation verify` passes for both assets with repository `Doctacon/buoy`, workflow `release.yml`, source ref `refs/heads/main`, and exact source commit.
 - PyPI remains absent for 0.4.1; no Turbopuffer operation occurs.
 - Every unexpected partial/mismatch state stops without automated repair, overwrite, move, deletion, retry, or cleanup.
 
@@ -53,6 +53,8 @@ Product behavior changes; version other than 0.4.1; prerelease/build metadata; m
 - `.10x/decisions/simple-main-release-governance.md`
 - `.10x/evidence/2026-07-21-simple-main-release-governance-configuration.md`
 - `.10x/reviews/2026-07-21-simple-main-release-governance-configuration-review.md`
+- `.10x/decisions/buoy-product-and-repository-identity.md`
+- `.10x/tickets/2026-07-21-reconcile-github-repository-rename.md`
 
 ## Evidence expectations
 
@@ -60,7 +62,7 @@ Exact source/destination commits; changed version/changelog paths; local command
 
 ## Blockers
 
-PR #93 is conflicting before GitHub can construct the prospective merge ref, so the four release-readiness checks cannot run. The user-ratified bridge is owned by `.10x/tickets/2026-07-21-bridge-v0-4-squash-topology-once.md`; both parent and child remain blocked until PR #94's governing records pass review and integrate. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`.
+PR #93 is conflicting before GitHub can construct the prospective merge ref, and the intentional repository rename makes active `Doctacon/buoy-search` checks stale. Reconciliation is owned by `.10x/tickets/2026-07-21-reconcile-github-repository-rename.md`, followed by the exact bridge in `.10x/tickets/2026-07-21-bridge-v0-4-squash-topology-once.md`; all remain blocked until PR #94's governing records pass review and integrate. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`.
 
 ## Progress and notes
 
@@ -70,3 +72,4 @@ PR #93 is conflicting before GitHub can construct the prospective merge ref, so 
 - 2026-07-21: PR #92 exact-head CI `29870237282` passed all protected develop checks. Independent review passed exact head `2b008edd2618286bb56f7693ca9204959ed81edf` with no blockers. Review: `.10x/reviews/2026-07-21-buoy-v0-4-1-preparation-review.md`. No main/tag/Release/PyPI/Turbopuffer/configuration mutation occurred.
 - 2026-07-21: PR #92 squash-integrated to develop as `8694afc94984e6993730acd205af3bdca93c5c8b`. Exact `develop -> main` PR #93 was opened, but GitHub reports it conflicting before prospective-merge construction; only ordinary CI ran. Read-only merge-tree diagnosis attributes the conflict to the accepted v0.4 squash topology. Ticket blocked without merge/release mutation. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`.
 - 2026-07-21: User explicitly ratified the recommended one-time protected, content-neutral ancestry bridge after the inherited conflict was explained. The exception is pinned to exact main `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, requires develop-tree identity and merge-commit ancestry preservation, and cannot recur. Decision: `.10x/decisions/one-time-v0-4-squash-topology-bridge.md`.
+- 2026-07-21: GitHub then reported the intentional canonical rename to `Doctacon/buoy`; the user authorized updating future release identity while preserving exact v0.4 legacy provenance under `Doctacon/buoy-search`. Reconciliation child: `.10x/tickets/2026-07-21-reconcile-github-repository-rename.md`. No release or provider mutation occurred.
