@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import re
 import sys
@@ -12,24 +13,55 @@ import tomllib
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def generated_version() -> str:
+    path = ROOT / "src" / "buoy_search" / "_version.py"
+    try:
+        text = path.read_text()
+    except FileNotFoundError as exc:
+        raise ValueError("generated package version is unavailable; install or build Buoy first") from exc
+    match = re.search(
+        r'^__version__\s*=\s*version\s*=\s*["\']([^"\']+)["\']',
+        text,
+        re.MULTILINE,
+    )
+    if match is None:
+        raise ValueError("generated package version is malformed")
+    return match.group(1)
+
+
 def project_version() -> str:
     with (ROOT / "pyproject.toml").open("rb") as handle:
-        return str(tomllib.load(handle)["project"]["version"])
+        project = tomllib.load(handle)["project"]
+    if "version" in project:
+        return str(project["version"])
+    version = os.environ.get("SETUPTOOLS_SCM_PRETEND_VERSION")
+    if not version:
+        raise ValueError(
+            "dynamic package validation requires SETUPTOOLS_SCM_PRETEND_VERSION"
+        )
+    return version
 
 
 def module_version() -> str:
     text = (ROOT / "src" / "buoy_search" / "__init__.py").read_text()
     match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
-    if match is None:
-        raise ValueError("src/buoy_search/__init__.py does not declare __version__")
-    return match.group(1)
+    if match is not None:
+        return match.group(1)
+    if "from ._version import __version__" in text:
+        return generated_version()
+    raise ValueError("src/buoy_search/__init__.py does not expose __version__")
 
 
-def verify_tag(tag: str) -> None:
+def validated_version() -> str:
     project = project_version()
     module = module_version()
     if module != project:
-        raise ValueError(f"package version mismatch: pyproject={project!r}, module={module!r}")
+        raise ValueError(f"package version mismatch: project={project!r}, module={module!r}")
+    return project
+
+
+def verify_tag(tag: str) -> None:
+    project = validated_version()
     expected = f"v{project}"
     if tag != expected:
         raise ValueError(f"release tag mismatch: expected {expected!r}, received {tag!r}")
@@ -46,7 +78,7 @@ def verify_remote_annotated_tag(tag: str, object_type: str) -> None:
 
 
 def verify_assets(dist: Path) -> list[str]:
-    version = project_version()
+    version = validated_version()
     expected = {
         f"buoy_search-{version}-py3-none-any.whl",
         f"buoy_search-{version}.tar.gz",

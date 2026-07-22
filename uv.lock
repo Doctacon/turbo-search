@@ -229,7 +229,6 @@ wheels = [
 
 [[package]]
 name = "buoy-search"
-version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },

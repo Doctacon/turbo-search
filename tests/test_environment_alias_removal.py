@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from packaging.version import Version
+
 from buoy_search import autoresearch
 from buoy_search.cli import main
 
@@ -190,7 +192,8 @@ class EnvironmentAliasRemovalTests(unittest.TestCase):
             with self.assertRaises(SystemExit) as raised:
                 main(["--version"])
         self.assertEqual(raised.exception.code, 0)
-        self.assertRegex(stdout.getvalue(), r"^buoy \d+\.\d+\.\d+\n$")
+        rendered_version = stdout.getvalue().removeprefix("buoy ").strip()
+        self.assertEqual(str(Version(rendered_version)), rendered_version)
         self.assertEqual(stderr.getvalue(), "")
 
         for argv in ([], ["catalog"]):
