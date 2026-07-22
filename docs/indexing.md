@@ -54,6 +54,59 @@ PDF namespaces use `pdf-<filename>-<sha16>-v1`; other files use `file-<ext>-<fil
 
 Directories, archives, OCR, image captioning, audio/video transcription, remote file URLs, plugins, and page/slide/sheet/cell-level citations are not supported.
 
+### DuckDB document relations
+
+DuckDB mode reads one already-shaped table or view. Upstream extraction and transformation belong in dlt, dbt, SQLMesh, or SQL; Buoy owns validation, deterministic Markdown materialization, shared chunking, diffing, planning, and synchronization.
+
+The canonical command is:
+
+```bash
+uv run buoy plan ./knowledge.duckdb \
+  --relation analytics.documents \
+  --source-id product-docs
+```
+
+`--table` is an alias for `--relation`, and `crawl` accepts the same database arguments. Supplying `--relation` activates database mode, so the database filepath and `--source-id` are then required. The source ID must be a lowercase ASCII slug such as `product-docs`. Relation names may contain one to three ordinary identifier components; mapped column names must be ordinary single identifiers.
+
+#### Upstream SQL model and row contract
+
+One row represents one logical document. The default required columns are `document_id` and `content`; `title` is optional:
+
+```sql
+CREATE VIEW analytics.documents AS
+SELECT
+  CAST(source_record_id AS VARCHAR) AS document_id,
+  rendered_markdown AS content,
+  title
+FROM transformed_documents;
+```
+
+Use `--id-column`, `--content-column`, or `--title-column` when the already-shaped relation uses different ordinary identifier names. Without `--title-column`, Buoy auto-detects `title`; absent, null, or blank titles fall back to the text document ID. IDs are converted to text and must remain nonblank and unique. Null or blank content is skipped and counted, and a relation with no nonblank documents fails. `--max-pages` caps source documents in this mode; `--max-chunks` still caps generated chunks.
+
+Self-contained tables and views are supported. An ordinary view may select from relations stored in the same DuckDB database. A persisted view that reads an external file or database, or requires extension loading, is not supported: Buoy keeps external access, extension autoinstall, and extension autoload disabled. Materialize the final relation as a table in the DuckDB database upstream before planning instead.
+
+Buoy validates and quotes every relation and column identifier, opens one read-only DuckDB connection, and scans in deterministic document-ID order. It does not install or load extensions.
+
+#### Identity, chunks, and safety boundary
+
+For `--source-id product-docs`, stable identities are:
+
+| Identity | Value |
+| --- | --- |
+| Base source URI | `duckdb://product-docs` |
+| Source/state ID | `duckdb-product-docs` |
+| Default namespace | `duckdb-product-docs-v1` |
+| Default output | `artifacts/site-crawls/duckdb-product-docs` |
+| Document URI | `duckdb://product-docs/<percent-encoded-document-id>` |
+
+The database path, file hash, physical row order, and current database contents do not affect those identities. The path is not written into plan artifacts. A document ID determines its stable page filename and logical URI; changing its title or content does not change that URI.
+
+Each selected row becomes reviewable Markdown in `pages/` and then enters the same `process_corpus()` pipeline as other sources. A long document may produce multiple chunks. Those chunks retain the same logical document URI, and `duckdb-` namespaces use the document/page retrieval defaults so results aggregate by document rather than applying repository-code ranking.
+
+Only `plan` and `crawl` read DuckDB. `apply --dry-run` and approved `apply` consume integrity-verified saved artifacts only: deleting, moving, renaming, or changing the database after planning does not affect saved-plan verification or application.
+
+V1 intentionally excludes arbitrary SQL supplied to Buoy, joins or transformations inside Buoy, arbitrary metadata mapping, source URLs, timestamps, CDC, watermarks, and non-DuckDB databases.
+
 ## Plan artifacts
 
 A plan directory contains:

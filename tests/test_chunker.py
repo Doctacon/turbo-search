@@ -46,6 +46,26 @@ class MarkdownChunkerTests(unittest.TestCase):
             self.assertEqual(doc_kind, "blog")
             self.assertIn("example-post", tags)
 
+    def test_generated_json_quoted_frontmatter_preserves_quotes_and_backslashes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus = Path(tmp)
+            page = corpus / "quoted.md"
+            page.write_text(
+                "---\n"
+                'url: "file://source/doc%5Cpath%22quoted"\n'
+                'title: "Title \\"quoted\\" at C:\\\\docs\\\\file"\n'
+                'document_id: "doc\\\\path\\"quoted"\n'
+                "---\n"
+                "Body text.\n",
+                encoding="utf-8",
+            )
+
+            document = parse_markdown_file(page, corpus)
+
+            self.assertEqual(document.url, 'file://source/doc%5Cpath%22quoted')
+            self.assertEqual(document.title, 'Title "quoted" at C:\\docs\\file')
+            self.assertEqual(document.metadata["document_id"], 'doc\\path"quoted')
+
     def test_chunking_is_heading_aware_and_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             corpus = Path(tmp)

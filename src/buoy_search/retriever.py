@@ -52,7 +52,7 @@ MISSING_SCHEMA_ATTRIBUTE_RE = re.compile(
 def namespace_uses_website_defaults(namespace: str) -> bool:
     """Return true when a namespace should use document/page ranking defaults."""
 
-    return namespace.startswith(("site-", "pdf-", "file-"))
+    return namespace.startswith(("site-", "pdf-", "file-", "duckdb-"))
 
 
 def ranking_defaults_for_namespace(namespace: str) -> dict[str, object]:

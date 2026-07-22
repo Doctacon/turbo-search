@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import hashlib
+import json
 from pathlib import Path
 import re
 from typing import Iterable, Iterator, Sequence, TypeVar
@@ -204,10 +205,15 @@ def parse_scalar_frontmatter(lines: Sequence[str]) -> dict[str, str]:
         if not re.match(r"^[A-Za-z_][A-Za-z0-9_-]*$", key):
             continue
         value = value.strip()
-        if (value.startswith('"') and value.endswith('"')) or (
-            value.startswith("'") and value.endswith("'")
-        ):
-            value = value[1:-1]
+        if value.startswith('"') and value.endswith('"'):
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                value = value[1:-1]
+            else:
+                value = parsed if isinstance(parsed, str) else str(parsed)
+        elif value.startswith("'") and value.endswith("'"):
+            value = value[1:-1].replace("''", "'")
         metadata[key] = value
     return metadata
 

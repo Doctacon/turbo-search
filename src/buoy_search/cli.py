@@ -66,6 +66,13 @@ from buoy_search.crawler import (
     detect_source,
 )
 from buoy_search.github_repo import GitHubRepoError, crawl_github_repo, crawl_github_repo_with_plan
+from buoy_search.duckdb_relation import (
+    DuckDBRelationError,
+    DuckDBRelationSource,
+    crawl_duckdb_relation,
+    crawl_duckdb_relation_with_plan,
+    duckdb_relation_source,
+)
 from buoy_search.repo_syntax_chunking import REPO_CHUNKING_ARMS
 from buoy_search.evals import (
     build_dry_run_eval_report,
@@ -186,10 +193,40 @@ def should_show_progress(args: argparse.Namespace) -> bool:
     )
 
 
+def add_database_source_arguments(command_parser: argparse.ArgumentParser) -> None:
+    command_parser.add_argument(
+        "--relation",
+        "--table",
+        dest="relation",
+        default=None,
+        help="DuckDB table or view (one to three dot-separated ordinary identifiers); --table is an alias.",
+    )
+    command_parser.add_argument(
+        "--source-id",
+        default=None,
+        help="Stable DuckDB source ID matching lowercase letters/digits separated by single hyphens.",
+    )
+    command_parser.add_argument(
+        "--id-column",
+        default=None,
+        help="DuckDB document ID column (default: document_id).",
+    )
+    command_parser.add_argument(
+        "--content-column",
+        default=None,
+        help="DuckDB document content column (default: content).",
+    )
+    command_parser.add_argument(
+        "--title-column",
+        default=None,
+        help="DuckDB title column; otherwise auto-detect title and fall back to document ID.",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="buoy",
-        description="Local site/repository/local-document RAG utilities. Planning is local-only by default unless explicitly documented otherwise.",
+        description="Local site/repository/document/DuckDB RAG utilities. Planning is local-only by default unless explicitly documented otherwise.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
@@ -197,10 +234,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     crawl_parser = subparsers.add_parser(
         "crawl",
-        help="crawl a website, public GitHub repo, or local document and chunk locally; always dry-run",
+        help="crawl a website, public GitHub repo, local document, or DuckDB relation and chunk locally; always dry-run",
         description=(
-            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, or "
-            "convert one local document file with MarkItDown, generate a local Markdown corpus, and chunk it for namespace planning. This command "
+            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, "
+            "convert one local document file with MarkItDown, or scan one DuckDB relation read-only, "
+            "generate a local Markdown corpus, and chunk it for namespace planning. This command "
             "is local-only with respect to turbopuffer: it does not read turbopuffer credentials, "
             "embed text, create namespaces, or call turbopuffer."
         ),
@@ -209,8 +247,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--base-url",
         required=True,
         metavar="SOURCE",
-        help="Absolute http(s) URL, public GitHub repo URL, or supported local document filepath to crawl.",
+        help="Absolute http(s) URL, public GitHub repo URL, supported local document filepath, or DuckDB database filepath to crawl.",
     )
+    add_database_source_arguments(crawl_parser)
     crawl_parser.add_argument(
         "--out-dir",
         type=Path,
@@ -222,8 +261,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=positive_int,
         default=None,
         help=(
-            "Maximum pages/files to scrape. Defaults: "
-            f"websites={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
+            "Maximum pages/files/documents to process. Defaults: "
+            f"websites and DuckDB relations={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
         ),
     )
     crawl_parser.add_argument(
@@ -361,10 +400,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     plan_parser = subparsers.add_parser(
         "plan",
-        help="crawl a website, public GitHub repo, or local document and write local review/apply plan artifacts; no live writes",
+        help="crawl a website, public GitHub repo, local document, or DuckDB relation and write local review/apply plan artifacts; no live writes",
         description=(
-            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, or "
-            "convert one local document file with MarkItDown, generate a local Markdown corpus, chunk it, compare it to local applied state, and "
+            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, "
+            "convert one local document file with MarkItDown, or scan one DuckDB relation read-only, "
+            "generate a local Markdown corpus, chunk it, compare it to local applied state, and "
             "write reviewable plan artifacts. This command is local-only with respect to turbopuffer: "
             "it does not read turbopuffer credentials, embed text, create namespaces, or call turbopuffer."
         ),
@@ -373,7 +413,7 @@ def build_parser() -> argparse.ArgumentParser:
         "url",
         nargs="?",
         metavar="SOURCE",
-        help="Absolute http(s) URL, public GitHub repo URL, or supported local document filepath to crawl and plan.",
+        help="Absolute http(s) URL, public GitHub repo URL, supported local document filepath, or DuckDB database filepath to crawl and plan.",
     )
     plan_parser.add_argument(
         "--base-url",
@@ -381,6 +421,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Absolute http(s) URL, public GitHub repo URL, or supported local document filepath to crawl and plan. Kept for backwards compatibility; positional source is preferred.",
     )
+    add_database_source_arguments(plan_parser)
     plan_parser.add_argument(
         "--out-dir",
         type=Path,
@@ -409,8 +450,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=positive_int,
         default=None,
         help=(
-            "Maximum pages/files to scrape. Defaults: "
-            f"websites={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
+            "Maximum pages/files/documents to process. Defaults: "
+            f"websites and DuckDB relations={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
         ),
     )
     plan_parser.add_argument(
@@ -979,6 +1020,34 @@ def _print_json(payload: dict[str, object]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
+def source_from_cli_args(args: argparse.Namespace, requested_source: str | None) -> object:
+    database_flags = {
+        "--source-id": args.source_id,
+        "--id-column": args.id_column,
+        "--content-column": args.content_column,
+        "--title-column": args.title_column,
+    }
+    if args.relation is None:
+        supplied = [flag for flag, value in database_flags.items() if value is not None]
+        if supplied:
+            raise ValueError(f"{', '.join(supplied)} require --relation to activate DuckDB database mode.")
+        if requested_source is None:
+            raise ValueError("source URL/path is required.")
+        return detect_source(requested_source)
+    if requested_source is None:
+        raise ValueError("DuckDB database filepath is required when --relation is used.")
+    if args.source_id is None:
+        raise ValueError("--source-id is required when --relation activates DuckDB database mode.")
+    return duckdb_relation_source(
+        requested_source,
+        relation=args.relation,
+        source_id=args.source_id,
+        id_column=args.id_column or "document_id",
+        content_column=args.content_column or "content",
+        title_column=args.title_column,
+    )
+
+
 def _apply_source_cap_defaults(args: argparse.Namespace, source: object) -> None:
     if args.max_pages is None:
         args.max_pages = DEFAULT_GITHUB_REPO_MAX_FILES if isinstance(source, GitHubRepoSource) else DEFAULT_CRAWL_MAX_PAGES
@@ -987,6 +1056,8 @@ def _apply_source_cap_defaults(args: argparse.Namespace, source: object) -> None
 
 
 def crawl_source(source: object, options: CrawlOptions) -> dict[str, object]:
+    if isinstance(source, DuckDBRelationSource):
+        return crawl_duckdb_relation(source, options)
     if isinstance(source, GitHubRepoSource):
         return crawl_github_repo(source, options)
     if isinstance(source, (PdfSource, LocalFileSource)):
@@ -995,6 +1066,8 @@ def crawl_source(source: object, options: CrawlOptions) -> dict[str, object]:
 
 
 def crawl_source_with_plan(source: object, options: CrawlOptions) -> CrawlExecution:
+    if isinstance(source, DuckDBRelationSource):
+        return crawl_duckdb_relation_with_plan(source, options)  # type: ignore[return-value]
     if isinstance(source, GitHubRepoSource):
         return crawl_github_repo_with_plan(source, options)
     if isinstance(source, (PdfSource, LocalFileSource)):
@@ -1004,7 +1077,7 @@ def crawl_source_with_plan(source: object, options: CrawlOptions) -> CrawlExecut
 
 def _run_crawl(args: argparse.Namespace) -> int:
     try:
-        source = detect_source(args.base_url)
+        source = source_from_cli_args(args, args.base_url)
         base_url = source.base_url
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
@@ -1014,7 +1087,9 @@ def _run_crawl(args: argparse.Namespace) -> int:
         return 2
 
     _apply_source_cap_defaults(args, source)
-    out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url)
+    out_dir = args.out_dir if args.out_dir is not None else (
+        source.default_out_dir if isinstance(source, DuckDBRelationSource) else default_out_dir(base_url)
+    )
     progress = OneLineProgress(enabled=should_show_progress(args))
     progress.update(f"crawl: preparing {base_url}", force=True)
     options = CrawlOptions(
@@ -1043,7 +1118,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
     )
     try:
         summary = crawl_source(source, options)
-    except (RuntimeError, GitHubRepoError) as exc:
+    except (RuntimeError, GitHubRepoError, DuckDBRelationError) as exc:
         progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
@@ -1057,28 +1132,30 @@ def _run_crawl(args: argparse.Namespace) -> int:
 
 
 def _run_plan(args: argparse.Namespace) -> int:
-    if not resolve_cli_state_root(args):
-        return 2
     if args.url and args.base_url and args.url != args.base_url:
         print("Provide either positional URL or --base-url, not conflicting values.", file=sys.stderr)
         return 2
-    requested_url = args.base_url or args.url
-    if not requested_url:
-        print("source URL/path is required; pass it as `buoy plan <source>` or with --base-url.", file=sys.stderr)
-        return 2
+    requested_source = args.base_url or args.url
     try:
-        source = detect_source(requested_url)
+        source = source_from_cli_args(args, requested_source)
         base_url = source.base_url
     except ValueError as exc:
-        print(str(exc), file=sys.stderr)
+        message = str(exc)
+        if message == "source URL/path is required.":
+            message = "source URL/path is required; pass it as `buoy plan <source>` or with --base-url."
+        print(message, file=sys.stderr)
+        return 2
+    if not resolve_cli_state_root(args):
         return 2
     if args.repo_chunking_arm and not isinstance(source, GitHubRepoSource):
         print("--repo-chunking-arm is supported only for GitHub repositories.", file=sys.stderr)
         return 2
 
     _apply_source_cap_defaults(args, source)
-    out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url).with_name(
-        f"{default_out_dir(base_url).name}-plan"
+    out_dir = args.out_dir if args.out_dir is not None else (
+        source.default_out_dir
+        if isinstance(source, DuckDBRelationSource)
+        else default_out_dir(base_url).with_name(f"{default_out_dir(base_url).name}-plan")
     )
     progress = OneLineProgress(enabled=should_show_progress(args))
     progress.update(f"plan: preparing {base_url}", force=True)
@@ -1149,7 +1226,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         publication_started_at = observe_monotonic()
         write_plan_artifacts(artifacts, out_dir)
         publication_seconds = elapsed_since(publication_started_at)
-    except (RuntimeError, GitHubRepoError, OSError, ValueError, AppliedStateError, PlanDiffError, json.JSONDecodeError) as exc:
+    except (RuntimeError, GitHubRepoError, DuckDBRelationError, OSError, ValueError, AppliedStateError, PlanDiffError, json.JSONDecodeError) as exc:
         progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
@@ -1210,6 +1287,17 @@ def plan_crawl_options(args: argparse.Namespace, crawl_summary: dict[str, object
     }
     if args.repo_chunking_arm is not None:
         options["repo_chunking_arm"] = args.repo_chunking_arm
+    if crawl_summary and crawl_summary.get("source_kind") == "duckdb_relation":
+        options.update(
+            {
+                "source_kind": "duckdb_relation",
+                "duckdb_source_id": crawl_summary["duckdb_source_id"],
+                "duckdb_relation": crawl_summary["duckdb_relation"],
+                "id_column": crawl_summary["id_column"],
+                "content_column": crawl_summary["content_column"],
+                "title_column": crawl_summary["title_column"],
+            }
+        )
     return options
 
 
@@ -1679,10 +1767,21 @@ def print_crawl_text(payload: dict[str, object]) -> None:
             "  file: "
             f"{payload.get('file_filename')} ({payload.get('file_extension')}; {str(payload.get('file_sha256', ''))[:16]})"
         )
+    if source_kind == "duckdb_relation":
+        print(f"  relation: {payload.get('duckdb_relation')} (source_id={payload.get('duckdb_source_id')})")
+        print(
+            "  documents: "
+            f"selected={payload.get('documents_selected')}; "
+            f"empty={payload.get('documents_skipped_empty')}; "
+            f"capped={payload.get('documents_skipped_limit')}; "
+            f"rows={payload.get('rows_scanned')}"
+        )
     print(f"  namespace_candidate: {payload['namespace_candidate']}")
     print(f"  strategy: {payload['crawl_strategy']}")
     if source_kind in {"pdf", "local_file"}:
         print(f"  documents_converted: {payload.get('documents_converted', payload.get('pages_scraped'))}; chunks_generated: {payload['chunks_generated']}")
+    elif source_kind == "duckdb_relation":
+        print(f"  documents_generated: {payload.get('documents_generated')}; chunks_generated: {payload['chunks_generated']}")
     else:
         print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
     print_limit_summary(payload)
@@ -1716,11 +1815,22 @@ def print_plan_text(payload: dict[str, object]) -> None:
             "  file: "
             f"{payload.get('file_filename')} ({payload.get('file_extension')}; {str(payload.get('file_sha256', ''))[:16]})"
         )
+    if source_kind == "duckdb_relation":
+        print(f"  relation: {payload.get('duckdb_relation')} (source_id={payload.get('duckdb_source_id')})")
+        print(
+            "  documents: "
+            f"selected={payload.get('documents_selected')}; "
+            f"empty={payload.get('documents_skipped_empty')}; "
+            f"capped={payload.get('documents_skipped_limit')}; "
+            f"rows={payload.get('rows_scanned')}"
+        )
     print(f"  namespace: {payload['namespace']}")
     print(f"  plan_id: {payload['plan_id']}")
     print(f"  embedding_precision: {payload['embedding_precision']}")
     if source_kind in {"pdf", "local_file"}:
         print(f"  documents_converted: {payload.get('documents_converted', payload.get('pages_scraped'))}; chunks_generated: {payload['chunks_generated']}")
+    elif source_kind == "duckdb_relation":
+        print(f"  documents_generated: {payload.get('documents_generated')}; chunks_generated: {payload['chunks_generated']}")
     else:
         print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
     print_limit_summary(payload)
@@ -1766,12 +1876,18 @@ def print_limit_summary(payload: dict[str, object]) -> None:
     max_pages = payload.get("max_pages")
     max_chunks = payload.get("max_chunks")
     limit_reached = bool(payload.get("limit_reached"))
+    source_kind = payload.get("source_kind", "website")
+    chunk_limit_reached = bool(payload.get("chunk_limit_reached", limit_reached))
     if max_pages is not None or max_chunks is not None:
-        print(f"  caps: max_pages={max_pages}; max_chunks={max_chunks}; chunk_limit_reached={limit_reached}")
+        label = "max_documents" if source_kind == "duckdb_relation" else "max_pages"
+        print(f"  caps: {label}={max_pages}; max_chunks={max_chunks}; chunk_limit_reached={chunk_limit_reached}")
     warnings: list[str] = []
-    if max_pages is not None and payload.get("pages_scraped") == max_pages:
+    if source_kind == "duckdb_relation":
+        if payload.get("document_limit_reached"):
+            warnings.append("document cap")
+    elif max_pages is not None and payload.get("pages_scraped") == max_pages:
         warnings.append("page cap")
-    if limit_reached or (max_chunks is not None and payload.get("chunks_generated") == max_chunks):
+    if chunk_limit_reached or (max_chunks is not None and payload.get("chunks_generated") == max_chunks):
         warnings.append("chunk cap")
     if warnings:
         print(

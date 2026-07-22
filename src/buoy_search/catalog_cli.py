@@ -76,7 +76,11 @@ def configure_catalog_parser(subparsers: argparse._SubParsersAction[argparse.Arg
 
     parser = commands.add_parser("upsert", help="create or update one complete remote manual card")
     parser.add_argument("namespace")
-    parser.add_argument("--source-kind", required=True, choices=["github_repo", "website", "document"])
+    parser.add_argument(
+        "--source-kind",
+        required=True,
+        choices=["github_repo", "website", "document", "database"],
+    )
     parser.add_argument("--source-uri", required=True)
     parser.add_argument("--site-id", required=True)
     parser.add_argument("--title", required=True)

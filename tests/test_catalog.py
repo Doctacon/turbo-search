@@ -369,6 +369,38 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         )
         self.assertEqual((website.source_kind, website.title, website.tags), ("website", "docs.example.com", ["website"]))
 
+        database = generated_semantics(
+            base_url="duckdb://gong-calls",
+            site_id="duckdb-gong-calls",
+            plan_schema_version=1,
+            source_metadata=[
+                {
+                    "source_kind": "duckdb_relation",
+                    "duckdb_source_id": "gong-calls",
+                    "duckdb_relation": "analytics.calls",
+                    "duckdb_document_id": "call-1",
+                },
+                {
+                    "source_kind": "duckdb_relation",
+                    "duckdb_source_id": "gong-calls",
+                    "duckdb_relation": "analytics.calls",
+                    "duckdb_document_id": "call-2",
+                },
+            ],
+        )
+        self.assertEqual(database.source_kind, "database")
+        self.assertEqual(database.source_uri, "duckdb://gong-calls")
+        self.assertEqual(database.title, "gong-calls (analytics.calls)")
+        self.assertEqual(
+            database.summary,
+            "DuckDB document relation analytics.calls from logical source gong-calls.",
+        )
+        self.assertEqual(database.aliases, ["analytics.calls", "gong-calls"])
+        self.assertEqual(
+            database.tags,
+            ["database", "duckdb", "relation analytics.calls", "source gong-calls"],
+        )
+
         for raw_kind, filename_key, filename, base_url in (
             ("pdf", "pdf_filename", "Research Notes.pdf", "pdf://opaque-source-id"),
             ("local_file", "file_filename", "Research Notes.csv", "file://opaque-source-id"),
@@ -421,6 +453,7 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ("document", "https://example.com/document.pdf"),
             ("document", "file://stable-source-id"),
             ("document", "pdf://stable-source-id"),
+            ("database", "duckdb://stable-source-id"),
         ):
             with self.subTest(valid=source_uri):
                 card = prepare_card(
@@ -428,6 +461,48 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
                     embedder=FixedEmbedder(),
                 )
                 self.assertEqual(card.source_uri, source_uri)
+
+    def test_database_source_uri_validation_fails_closed_on_shape_and_kind_mismatches(self) -> None:
+        invalid = (
+            ("database", "duckdb://user@gong-calls"),
+            ("database", "duckdb://gong-calls:1234"),
+            ("database", "duckdb://gong-calls/"),
+            ("database", "duckdb://gong-calls/document-1"),
+            ("database", "duckdb://gong-calls?mode=read-only"),
+            ("database", "duckdb://gong-calls#fragment"),
+            ("database", "duckdb://Gong-calls"),
+            ("database", "duckdb://gong_calls"),
+            ("database", "https://example.com/database"),
+            ("database", "file://gong-calls"),
+            ("website", "duckdb://gong-calls"),
+            ("document", "duckdb://gong-calls"),
+        )
+        for source_kind, source_uri in invalid:
+            with self.subTest(source_kind=source_kind, source_uri=source_uri), self.assertRaises(CatalogError):
+                prepare_card(
+                    fields(source_kind=source_kind, source_uri=source_uri),
+                    embedder=FailingEmbedder(),
+                )
+
+    def test_generated_database_requires_verified_duckdb_relation_source_kind(self) -> None:
+        metadata = {
+            "duckdb_source_id": "gong-calls",
+            "duckdb_relation": "analytics.calls",
+        }
+        for source_metadata in (
+            [metadata],
+            [{**metadata, "source_kind": "local_file"}],
+        ):
+            with self.subTest(source_metadata=source_metadata), self.assertRaisesRegex(
+                CatalogError,
+                "requires source_kind 'duckdb_relation'",
+            ):
+                generated_semantics(
+                    base_url="duckdb://gong-calls",
+                    site_id="duckdb-gong-calls",
+                    plan_schema_version=1,
+                    source_metadata=source_metadata,
+                )
 
     def test_generated_metadata_contradictions_and_unsupported_inputs_fail(self) -> None:
         cases = [
@@ -441,6 +516,10 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "local_file"}]}, "requires one consistent.*file_filename"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": 1}]}, "source_kind must be a string"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": None}]}, "source_kind must be a string"),
+            ({"base_url": "https://example.com", "source_metadata": [{"source_kind": "duckdb_relation"}]}, "contradicts"),
+            ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation", "duckdb_source_id": "other", "duckdb_relation": "calls"}]}, "contradicts"),
+            ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation", "duckdb_source_id": "gong-calls", "duckdb_relation": "bad-name"}]}, "valid duckdb_relation"),
+            ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation"}]}, "requires one consistent valid duckdb_source_id"),
         ]
         for values, message in cases:
             with self.subTest(values=values), self.assertRaisesRegex(CatalogError, message):

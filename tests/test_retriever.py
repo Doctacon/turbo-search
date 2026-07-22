@@ -15,6 +15,7 @@ from buoy_search.retriever import (
     build_multi_query_subqueries,
     is_source_path,
     rank_hits,
+    ranking_defaults_for_namespace,
     ranking_profile_multiplier,
     row_to_hit,
 )
@@ -284,6 +285,21 @@ class RetrieverTests(unittest.TestCase):
         self.assertEqual(result.hits[0].score_info["fusion"], "client_rrf")
         self.assertIn("ann", result.hits[0].score_info["source_ranks"])
         self.assertIn("bm25", result.hits[0].score_info["source_ranks"])
+
+    def test_duckdb_namespaces_use_document_page_defaults_without_changing_existing_prefixes(self) -> None:
+        document_defaults = ranking_defaults_for_namespace("site-example-v1")
+        self.assertEqual(ranking_defaults_for_namespace("duckdb-gong-calls-v1"), document_defaults)
+        self.assertEqual(ranking_defaults_for_namespace("pdf-notes-v1"), document_defaults)
+        self.assertEqual(ranking_defaults_for_namespace("file-md-notes-v1"), document_defaults)
+        self.assertEqual(
+            ranking_defaults_for_namespace("github-owner-repo-v1"),
+            {
+                "ranking_mode": "file",
+                "ranking_profile": "repo_code",
+                "ranking_pool": 100,
+                "ranking_aggregation": "adaptive_sum_3",
+            },
+        )
 
     def test_default_file_ranking_deduplicates_repo_paths_and_demotes_process_docs(self) -> None:
         retriever = HybridRetriever(

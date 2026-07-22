@@ -195,6 +195,10 @@ class CatalogCliTests(unittest.TestCase):
         self.assertIn("remote namespace", stdout)
         self.assertIn(REMOTE_CATALOG_NAMESPACE, stdout)
 
+        result, stdout, stderr = run_cli(["catalog", "upsert", "--help"], env={})
+        self.assertEqual((result, stderr), (0, ""))
+        self.assertIn("database", stdout)
+
         result, stdout, stderr = run_cli(["catalog", "list", "--catalog", "legacy.json"])
         self.assertEqual((result, stdout), (2, ""))
         self.assertIn("unrecognized arguments: --catalog", stderr)
