@@ -737,13 +737,12 @@ class ReleaseAutomationTests(unittest.TestCase):
             with self.assertRaisesRegex(ReleaseError, "asset names mismatch"):
                 verify_artifacts(dist, root)
 
-    def test_current_changelog_records_pending_v0_4_1_and_verified_v0_4_0_release(self) -> None:
+    def test_current_changelog_is_frozen_through_v0_4_0_and_points_to_releases(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
-        self.assertIn("## [Unreleased]\n\n## [0.4.1] - pending", changelog)
-        self.assertIn("four prospective-merge readiness checks and deterministic automatic GitHub publication", changelog)
+        self.assertNotIn("## [Unreleased]", changelog)
+        self.assertNotIn("## [0.4.1]", changelog)
         self.assertIn("## [0.4.0] - 2026-07-21", changelog)
-        self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy/compare/v0.4.1...HEAD", changelog)
-        self.assertIn("[0.4.1]: https://github.com/Doctacon/buoy/compare/v0.4.0...v0.4.1", changelog)
+        self.assertIn("[GitHub Releases](https://github.com/Doctacon/buoy/releases)", changelog)
         self.assertIn("[0.4.0]: https://github.com/Doctacon/buoy/releases/tag/v0.4.0", changelog)
 
     def test_release_docs_describe_simple_flow_and_self_hosted_mapping(self) -> None:
@@ -785,12 +784,13 @@ class ReleaseAutomationTests(unittest.TestCase):
                 if relative:
                     self.assertTrue((source.parent / relative).resolve().exists(), f"{source}: {target}")
 
-    def test_package_metadata_describes_v0_4_public_support(self) -> None:
+    def test_package_metadata_describes_dynamic_version_and_v0_4_public_support(self) -> None:
         with (ROOT / "pyproject.toml").open("rb") as handle:
             config = tomllib.load(handle)
         project = config["project"]
         self.assertEqual(project["license"], "Apache-2.0")
-        self.assertEqual(project["version"], "0.4.1")
+        self.assertNotIn("version", project)
+        self.assertEqual(project["dynamic"], ["version"])
         self.assertEqual(project["scripts"], {"buoy": "buoy_search.cli:main"})
         self.assertEqual(
             project["urls"],
@@ -806,8 +806,27 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertIn("Programming Language :: Python :: 3.11", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.13", project["classifiers"])
         self.assertIn("vector-search", project["keywords"])
-        self.assertEqual(config["build-system"]["requires"], ["hatchling==1.31.0"])
+        self.assertEqual(
+            config["build-system"]["requires"],
+            ["hatchling==1.31.0", "hatch-vcs==0.5.0"],
+        )
+        self.assertEqual(config["tool"]["hatch"]["version"], {"source": "vcs"})
+        self.assertEqual(
+            config["tool"]["hatch"]["build"]["hooks"]["vcs"],
+            {"version-file": "src/buoy_search/_version.py"},
+        )
         self.assertEqual(config["tool"]["hatch"]["build"]["exclude"], ["/.10x/**"])
+        self.assertIn("src/buoy_search/_version.py", (ROOT / ".gitignore").read_text().splitlines())
+        self.assertIn(
+            "from ._version import __version__",
+            (ROOT / "src" / "buoy_search" / "__init__.py").read_text(),
+        )
+        with (ROOT / "uv.lock").open("rb") as handle:
+            lock = tomllib.load(handle)
+        root_packages = [item for item in lock["package"] if item["name"] == "buoy-search"]
+        self.assertEqual(len(root_packages), 1)
+        self.assertEqual(root_packages[0]["source"], {"editable": "."})
+        self.assertNotIn("version", root_packages[0])
 
     def test_finalized_changelog_retains_v0_4_release_content_and_history(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
@@ -862,7 +881,7 @@ class ReleaseAutomationTests(unittest.TestCase):
             (ROOT / "CHANGELOG.md").read_text(),
         )
 
-    def test_legacy_release_check_cli_rejects_mismatch_without_git_side_effects(self) -> None:
+    def test_legacy_release_check_cli_rejects_dynamic_mismatch_without_git_side_effects(self) -> None:
         before = subprocess.run(
             ["git", "show-ref", "--tags"], cwd=ROOT, text=True, capture_output=True, check=False
         ).stdout

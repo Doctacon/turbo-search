@@ -12,17 +12,36 @@ import tomllib
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def generated_version() -> str:
+    path = ROOT / "src" / "buoy_search" / "_version.py"
+    try:
+        text = path.read_text()
+    except FileNotFoundError as exc:
+        raise ValueError("generated package version is unavailable; install or build Buoy first") from exc
+    match = re.search(
+        r'^__version__\s*=\s*version\s*=\s*["\']([^"\']+)["\']',
+        text,
+        re.MULTILINE,
+    )
+    if match is None:
+        raise ValueError("generated package version is malformed")
+    return match.group(1)
+
+
 def project_version() -> str:
     with (ROOT / "pyproject.toml").open("rb") as handle:
-        return str(tomllib.load(handle)["project"]["version"])
+        project = tomllib.load(handle)["project"]
+    return str(project["version"]) if "version" in project else generated_version()
 
 
 def module_version() -> str:
     text = (ROOT / "src" / "buoy_search" / "__init__.py").read_text()
     match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
-    if match is None:
-        raise ValueError("src/buoy_search/__init__.py does not declare __version__")
-    return match.group(1)
+    if match is not None:
+        return match.group(1)
+    if "from ._version import __version__" in text:
+        return generated_version()
+    raise ValueError("src/buoy_search/__init__.py does not expose __version__")
 
 
 def verify_tag(tag: str) -> None:

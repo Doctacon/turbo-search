@@ -7,6 +7,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+src/buoy_search/_version.py
 
 # Virtual environments and local tooling state
 .venv/

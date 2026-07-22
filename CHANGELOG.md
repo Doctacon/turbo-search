@@ -1,14 +1,6 @@
 # Changelog
 
-Notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
-
-## [Unreleased]
-
-## [0.4.1] - pending
-
-### Changed
-
-- Replaced manual tag and release-environment ceremony with four prospective-merge readiness checks and deterministic automatic GitHub publication.
+Notable changes through v0.4.0 follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/). Future release notes are published with canonical [GitHub Releases](https://github.com/Doctacon/buoy/releases).
 
 ## [0.4.0] - 2026-07-21
 
@@ -91,8 +83,6 @@ Notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 - The annotated `v0.2.0` tag was preserved without a GitHub Release after its hosted validation failed before artifact construction or publication.
 
-[Unreleased]: https://github.com/Doctacon/buoy/compare/v0.4.1...HEAD
-[0.4.1]: https://github.com/Doctacon/buoy/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Doctacon/buoy/releases/tag/v0.4.0
 [0.3.0]: https://github.com/Doctacon/buoy/releases/tag/v0.3.0
 [0.2.1]: https://github.com/Doctacon/buoy/releases/tag/v0.2.1

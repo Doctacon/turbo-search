@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: .10x/tickets/2026-07-21-label-driven-automatic-release-plan.md
@@ -31,6 +31,11 @@ Workflow/branch/label/auto-merge changes; main/tag/Release/PyPI/Turbopuffer/prod
 ## Evidence expectations
 
 Exact diff; lock before/after; development/exact versions; deterministic hashes; full suites; clean install; review; protected integration.
+
+## Progress and notes
+
+- 2026-07-21: Implemented pinned Hatch VCS dynamic metadata, ignored generated `src/buoy_search/_version.py`, generated-version import, dynamic editable lock, frozen-through-v0.4.0 changelog guidance, and dynamic-aware fail-closed legacy release checks on `work/implement-tag-derived-package-versioning`. Updated focused tests for PEP 440 development CLI versions and the complete dynamic metadata/lock/changelog contract.
+- 2026-07-21: Local validation passed: clean isolated locked editable install reported matching development version `0.4.1.dev71+g429f499db.d20260722`; Python 3.11 and 3.13 each passed 535 tests plus ranking and C6 validators; two exact 0.4.1 builds were byte-identical; archive inventory, clean wheel install, CLI/help/import, and tokenizer smoke passed. Evidence: `.10x/evidence/2026-07-21-tag-derived-package-versioning.md`. Independent review and hosted CI remain integration-side because this bounded execution did not push or mutate GitHub.
 
 ## Blockers
 
