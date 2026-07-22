@@ -8,7 +8,7 @@ Verdict: pass
 
 ## Target
 
-PR #99 at exact head `75dd2023ac542a93430accf339b0eb04f032eed1`, implementing `.10x/tickets/2026-07-21-implement-tag-derived-package-versioning.md` against the active package identity and release-validation specifications.
+PR #99 at exact head `75dd2023ac542a93430accf339b0eb04f032eed1`, implementing `.10x/tickets/cancelled/2026-07-21-implement-tag-derived-package-versioning.md` against the active package identity and release-validation specifications.
 
 ## Findings
 

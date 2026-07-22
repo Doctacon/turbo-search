@@ -1,6 +1,6 @@
-Status: open
+Status: cancelled
 Created: 2026-07-21
-Updated: 2026-07-21
+Updated: 2026-07-22
 Parent: None
 Depends-On: None
 
@@ -12,11 +12,11 @@ Replace static version/changelog release preparation with one labeled `develop -
 
 ## Child sequence
 
-1. `.10x/tickets/2026-07-21-implement-tag-derived-package-versioning.md`
-2. `.10x/tickets/2026-07-21-implement-label-driven-release-readiness.md`
-3. `.10x/tickets/2026-07-21-implement-label-driven-main-push-release.md`
-4. `.10x/tickets/2026-07-21-configure-label-driven-release-hosting.md`
-5. `.10x/tickets/2026-07-21-release-v0-4-1-label-driven.md`
+1. `.10x/tickets/cancelled/2026-07-21-implement-tag-derived-package-versioning.md`
+2. `.10x/tickets/cancelled/2026-07-21-implement-label-driven-release-readiness.md`
+3. `.10x/tickets/cancelled/2026-07-21-implement-label-driven-main-push-release.md`
+4. `.10x/tickets/cancelled/2026-07-21-configure-label-driven-release-hosting.md`
+5. `.10x/tickets/cancelled/2026-07-21-release-v0-4-1-label-driven.md`
 
 Children are sequential because they overlap release metadata/tooling and hosted behavior. This parent is not executable.
 
@@ -44,6 +44,10 @@ Children are sequential because they overlap release metadata/tooling and hosted
 ## Progress and notes
 
 - 2026-07-21: User explicitly authorized exactly one release label, tag-derived versions through open-source hatch-vcs, frozen historical changelog with GitHub-generated future notes, merge commits, automatic merge, and PR #93 as first v0.4.1 proof. Compatibility research passed without project mutation.
+
+## Cancellation
+
+- 2026-07-22: Cancelled at the user’s direction. For now, release-process work is abandoned; ordinary development continues on `work/*` branches in worktrees and integrates into `develop`. Existing release specifications, decisions, research, and evidence are preserved for possible later reuse.
 
 ## Blockers
 

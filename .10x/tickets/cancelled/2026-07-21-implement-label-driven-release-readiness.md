@@ -1,8 +1,8 @@
-Status: blocked
+Status: cancelled
 Created: 2026-07-21
-Updated: 2026-07-21
-Parent: .10x/tickets/2026-07-21-label-driven-automatic-release-plan.md
-Depends-On: .10x/tickets/2026-07-21-implement-tag-derived-package-versioning.md
+Updated: 2026-07-22
+Parent: .10x/tickets/cancelled/2026-07-21-label-driven-automatic-release-plan.md
+Depends-On: .10x/tickets/cancelled/2026-07-21-implement-tag-derived-package-versioning.md
 
 # Implement Label-Driven Release Readiness
 
@@ -27,11 +27,15 @@ Main-push publication; hosted label/auto-merge/protection mutation; main merge/t
 
 - `.10x/specs/develop-to-main-release-readiness.md`
 - `.10x/specs/protected-github-branches.md`
-- `.10x/tickets/2026-07-21-implement-tag-derived-package-versioning.md`
+- `.10x/tickets/cancelled/2026-07-21-implement-tag-derived-package-versioning.md`
 
 ## Evidence expectations
 
 Label/version vectors; labeled/unlabeled concurrency; workflow/job identities; exact no-checkout permissions/head/merge/trailer proof; exact prospective fixture; target build; tests/CI/review/integration.
+
+## Cancellation
+
+- 2026-07-22: Cancelled at the user’s direction. For now, release-process work is abandoned; ordinary development continues on `work/*` branches in worktrees and integrates into `develop`. Existing release specifications, decisions, research, and evidence are preserved for possible later reuse.
 
 ## Blockers
 

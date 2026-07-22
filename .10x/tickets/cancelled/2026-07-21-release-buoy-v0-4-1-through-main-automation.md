@@ -62,7 +62,7 @@ Exact source/destination commits; changed version/changelog paths; local command
 
 ## Blockers
 
-None. This static-version approach is superseded by `.10x/tickets/2026-07-21-label-driven-automatic-release-plan.md`; v0.4.1 remains owned by its label-driven child.
+None. This static-version approach is superseded by `.10x/tickets/cancelled/2026-07-21-label-driven-automatic-release-plan.md`; v0.4.1 remains owned by its label-driven child.
 
 ## Progress and notes
 
@@ -74,4 +74,4 @@ None. This static-version approach is superseded by `.10x/tickets/2026-07-21-lab
 - 2026-07-21: User explicitly ratified the recommended one-time protected, content-neutral ancestry bridge after the inherited conflict was explained. The exception is pinned to exact main `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, requires develop-tree identity and merge-commit ancestry preservation, and cannot recur. Decision: `.10x/decisions/one-time-v0-4-squash-topology-bridge.md`.
 - 2026-07-21: GitHub then reported the intentional canonical rename to `Doctacon/buoy`; the user authorized updating future release identity while preserving exact v0.4 legacy provenance under `Doctacon/buoy-search`. Reconciliation child: `.10x/tickets/done/2026-07-21-reconcile-github-repository-rename.md`. No release or provider mutation occurred.
 - 2026-07-21: The exact one-time bridge completed through PR #97 as develop `5ce5c11553ac69a997b25567023b4765f5e780c8`; PR #93 became mergeable and readiness ran. The four release jobs passed but emitted bare job names that did not match configured required contexts, so protection correctly blocked merge and no release occurred.
-- 2026-07-21: User rejected further static-version/process ceremony and explicitly authorized label-driven tag-derived versions, frozen changelog, merge-commit auto-merge, and automatic publication. This ticket is cancelled as superseded; achieved rename/bridge work remains valid, PR #93 remains open, and v0.4.1 transfers to `.10x/tickets/2026-07-21-release-v0-4-1-label-driven.md`.
+- 2026-07-21: User rejected further static-version/process ceremony and explicitly authorized label-driven tag-derived versions, frozen changelog, merge-commit auto-merge, and automatic publication. This ticket is cancelled as superseded; achieved rename/bridge work remains valid, PR #93 remains open, and v0.4.1 transfers to `.10x/tickets/cancelled/2026-07-21-release-v0-4-1-label-driven.md`.

@@ -1,7 +1,7 @@
-Status: blocked
+Status: cancelled
 Created: 2026-07-21
-Updated: 2026-07-21
-Parent: .10x/tickets/2026-07-21-label-driven-automatic-release-plan.md
+Updated: 2026-07-22
+Parent: .10x/tickets/cancelled/2026-07-21-label-driven-automatic-release-plan.md
 Depends-On: None
 
 # Implement Tag-Derived Package Versioning
@@ -53,6 +53,10 @@ All behavioral acceptance criteria are supported. The ticket's evidence expectat
 ## Retrospective
 
 The stale generated-version concern is now prevented by the fail-closed checker and executable regressions, which are the durable reusable safeguards. The invalid parallel shared-`.venv` attempt is recorded so future validation runs use isolated environments or sequential interpreter syncs. No additional knowledge or skill record is warranted: the active dynamic-version specification and focused tests already encode the reusable contract and procedure. Closure retrospective remains pending only for integration evidence.
+
+## Cancellation
+
+- 2026-07-22: Cancelled at the user’s direction. For now, release-process work is abandoned; ordinary development continues on `work/*` branches in worktrees and integrates into `develop`. Existing release specifications, decisions, research, and evidence are preserved for possible later reuse.
 
 ## Blockers
 

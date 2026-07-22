@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
-Relates-To: .10x/tickets/2026-07-21-implement-tag-derived-package-versioning.md, .10x/specs/buoy-package-and-cli-identity.md, .10x/specs/buoy-release-validation.md
+Relates-To: .10x/tickets/cancelled/2026-07-21-implement-tag-derived-package-versioning.md, .10x/specs/buoy-package-and-cli-identity.md, .10x/specs/buoy-release-validation.md
 
 # Tag-Derived Package Versioning Candidate
 

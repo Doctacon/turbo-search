@@ -1,8 +1,8 @@
-Status: blocked
+Status: cancelled
 Created: 2026-07-21
-Updated: 2026-07-21
-Parent: .10x/tickets/2026-07-21-label-driven-automatic-release-plan.md
-Depends-On: .10x/tickets/2026-07-21-implement-label-driven-release-readiness.md
+Updated: 2026-07-22
+Parent: .10x/tickets/cancelled/2026-07-21-label-driven-automatic-release-plan.md
+Depends-On: .10x/tickets/cancelled/2026-07-21-implement-label-driven-release-readiness.md
 
 # Implement Label-Driven Main-Push Release
 
@@ -26,11 +26,15 @@ Hosted label/auto-merge configuration; actual main merge/release; product behavi
 
 - `.10x/specs/main-push-automatic-github-release.md`
 - `.10x/specs/buoy-release-validation.md`
-- `.10x/tickets/2026-07-21-implement-label-driven-release-readiness.md`
+- `.10x/tickets/cancelled/2026-07-21-implement-label-driven-release-readiness.md`
 
 ## Evidence expectations
 
 Merged-PR API fixtures; version vectors; state matrices; permissions; deterministic artifacts; complete suites; hosted CI; independent review; protected integration.
+
+## Cancellation
+
+- 2026-07-22: Cancelled at the user’s direction. For now, release-process work is abandoned; ordinary development continues on `work/*` branches in worktrees and integrates into `develop`. Existing release specifications, decisions, research, and evidence are preserved for possible later reuse.
 
 ## Blockers
 

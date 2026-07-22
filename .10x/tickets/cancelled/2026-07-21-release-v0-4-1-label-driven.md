@@ -1,8 +1,8 @@
-Status: blocked
+Status: cancelled
 Created: 2026-07-21
-Updated: 2026-07-21
-Parent: .10x/tickets/2026-07-21-label-driven-automatic-release-plan.md
-Depends-On: .10x/tickets/2026-07-21-configure-label-driven-release-hosting.md
+Updated: 2026-07-22
+Parent: .10x/tickets/cancelled/2026-07-21-label-driven-automatic-release-plan.md
+Depends-On: .10x/tickets/cancelled/2026-07-21-configure-label-driven-release-hosting.md
 
 # Release v0.4.1 Through Label-Driven Automation
 
@@ -28,12 +28,16 @@ Manual merge/tag/workflow/environment approval; version/changelog commit; squash
 
 - `.10x/specs/develop-to-main-release-readiness.md`
 - `.10x/specs/main-push-automatic-github-release.md`
-- `.10x/tickets/2026-07-21-configure-label-driven-release-hosting.md`
+- `.10x/tickets/cancelled/2026-07-21-configure-label-driven-release-hosting.md`
 - PR #93: `https://github.com/Doctacon/buoy/pull/93`
 
 ## Evidence expectations
 
 Exact PR/labels/auto-merge/checks/merge; release run/logical state; tag object/peel; Release/assets/download hashes; attestations; PyPI absence; no-provider attestation; independent review.
+
+## Cancellation
+
+- 2026-07-22: Cancelled at the user’s direction. For now, release-process work is abandoned; ordinary development continues on `work/*` branches in worktrees and integrates into `develop`. Existing release specifications, decisions, research, and evidence are preserved for possible later reuse.
 
 ## Blockers
 
